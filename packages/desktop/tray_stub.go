@@ -42,3 +42,7 @@ func setWindowsTaskbarIcon() bool { return true }
 // focusMainWindow 非 Windows 没有 Win32 置前，恢复交给 wails 的
 // WindowUnminimise/WindowShow 与窗口管理器。
 func focusMainWindow() {}
+
+// clampInitialWindowTop 非 Windows 的初始位置由系统窗口管理器约束，
+// 无需 Win32 夹取。
+func clampInitialWindowTop(string) {}

@@ -223,6 +223,10 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			log.Printf("[启动计时] WebView2 就绪 +%v", time.Since(startupStarted).Round(time.Millisecond))
 			window.Store(ctx)
+			// Wails 按工作区垂直居中初始位置，窗口高于工作区（低分辨率或高
+			// DPI 缩放）时顶部会跑出屏幕外且无法拖回；趁窗口仍隐藏先夹回
+			// 工作区顶部（见 windowposition_windows.go）。
+			clampInitialWindowTop(windowTitle)
 			runtime.WindowShow(ctx)
 			installNotifyActivation(currentWindow)
 			if config.mode == modeStandalone && config.devRoot == "" {
