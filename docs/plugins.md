@@ -37,10 +37,11 @@
 | [浏览器兼容](../packages/plugins/browser-compat/README.md) | 自动生效；设置 → 浏览器日志 | 为旧 WebKit 垫平 Iterator/AbortSignal/Promise 缺口，并提供当前页面临时错误日志与能力清单 |
 | [网页目录选择](../packages/plugins/directory-picker-browse/README.md) | 打开工作区 | 在浏览器内选择运行 dsh 的机器上的目录 |
 | [固定 YOLO](../packages/plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
+| [网页搜索开关](../packages/plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
 
 ## 分发组合
 
-20 个功能组件以 10 个第三方 Bundle 随 dsh-station 提供。组合包是安装、卸载和升级单位；
+21 个功能组件以 11 个第三方 Bundle 随 dsh-station 提供。组合包是安装、卸载和升级单位；
 除表中注明外，其组件行仍可在插件详情中单独停用。
 
 | 分发包 | 类型 | 包含组件或功能 |
@@ -55,6 +56,7 @@
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
 | yolo-mode | 独立包 | 固定 YOLO |
+| web-search-switch | 独立包 | 网页搜索开关 |
 
 完整包名均为 `@dsh-station/dsh-plugin-<上表名称>`。唯一不在该表中的项目扩展是壳级
 [remote-privileged](../packages/plugins/remote-privileged/README.md)：它提供 connection 的
@@ -66,7 +68,7 @@ webServer 注入和模型 Bundle 在线启停所需的稳定启动屏障，随 l
 
 ## 安装、升级与停用
 
-- 新建 `dsh-station-web` profile 时，10 个分发包通过 dsh 官方插件管理器默认安装并启用；
+- 新建 `dsh-station-web` profile 时，11 个分发包通过 dsh 官方插件管理器默认安装并启用；
   官方 `web` profile 不加载它们。
 - dsh-station 升级时会升级所有**仍安装**的随附包，包括当前停用的 Bundle；不会改变 Bundle
   是否启用，也不会改回组件行的停用状态。

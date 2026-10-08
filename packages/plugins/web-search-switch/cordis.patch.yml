@@ -1,0 +1,6 @@
+# dsh-station 的独立 Bundle patch；行 id 是插件行在 loader 树里的稳定身份。
+# 宿主半刻意为空：停用状态记录在 dsh profile 自己的用户层 cordis.patch.yml
+# （官方 pluginManager 写入），浏览器半经 ctx.remote.pluginManager 操作官方行。
+- insert:
+    - id: web-search-switch
+      name: './dist/index.js'

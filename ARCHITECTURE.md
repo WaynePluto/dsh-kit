@@ -5,7 +5,7 @@
 
 ## 1. 范围与粒度
 
-- pnpm workspace：4 个基础包、1 个纯浏览器构建期 UI 包、20 个功能组件包、4 个纯组合 Bundle 包，以及 1 个壳级 overlay 包（remote-privileged），合计 25 个插件目录；另有独立 Go module `packages/desktop/`（Wails 桌面应用），根目录负责现有开发、检查和交付。
+- pnpm workspace：4 个基础包、1 个纯浏览器构建期 UI 包、21 个功能组件包、4 个纯组合 Bundle 包，以及 1 个壳级 overlay 包（remote-privileged），合计 26 个插件目录；另有独立 Go module `packages/desktop/`（Wails 桌面应用），根目录负责现有开发、检查和交付。
 - 扫描 `packages/*/src`、插件入口/README/manifest、`scripts` 和 `packaging`。
 - 不将 `node_modules`、`dist`、`release`、`.dev`、锁文件及生成图标当作手写模块。
 - 以包/模块组为粒度，不把全部插件、React 组件和工具逐个塞入同一张图。
@@ -23,13 +23,13 @@
 | 设置与模型插件（7） | `packages/plugins/{agents-md,proxy,copilot-auth,models-catalog,model-capabilities,favorite-models,notify}` | 全局提示词、出网代理、模型登录/目录/能力/收藏、桌面通知 | dsh 设置/连接/槽位；代理用 undici，模型目录用 pi-ai |
 | 会话插件（3） | `packages/plugins/{turn-retry,chat-scroll,user-message-fork}` | 重试、滚动、用户消息分叉 | dsh 会话/投影/浏览器 UI；仅 turn-retry 有实质宿主业务 |
 | 工作区与工具插件（5） | `packages/plugins/{services,terminal,tools-inspector,skills-inspector,files}` | 常驻服务、交互终端、工具/技能历史、右侧 Sidebar 只读文件浏览 | dsh live Agent、工具、PTY、RPC、Sidebar slots；services 自有 Node 进程管理引擎 |
-| 环境与预设（6） | `packages/plugins/{remote-settings,remote-privileged,browser-compat,directory-picker-browse,yolo-mode,concise-mode}` | 远程设置（ownsHost、顶部 Open In… Explorer 立即返回与置前增强）、旧 WebKit API 垫片与临时浏览器诊断、网页目录选择、固定 YOLO、精简预设；remote-privileged 携带壳级 connection 注入、模型 HMR 启动屏障与原生主题只读投影 | 功能组件进入第三方分发 Bundle；remote-privileged 由壳常驻加载 |
+| 环境与预设（7） | `packages/plugins/{remote-settings,remote-privileged,browser-compat,directory-picker-browse,yolo-mode,concise-mode,web-search-switch}` | 远程设置（ownsHost、顶部 Open In… Explorer 立即返回与置前增强）、旧 WebKit API 垫片与临时浏览器诊断、网页目录选择、固定 YOLO、精简预设、官方网页搜索启停开关；remote-privileged 携带壳级 connection 注入、模型 HMR 启动屏障与原生主题只读投影 | 功能组件进入第三方分发 Bundle；remote-privileged 由壳常驻加载 |
 | 开发与验证脚本 | `scripts/dev-stack.mjs`、`dev-runtime.mjs`、`plugin-distributions.mjs`、`prepare-desktop.mjs`、`local-config.mjs`、`*-check.mjs` | 本地全链路、隔离 dsh 运行时、开发插件介质、插件契约冒烟与依赖检查 | launcher/relay 源码模块、Node；脚本各自声明环境前提 |
 | 发行打包 | `scripts/release.mjs`（统一入口）、`scripts/pack.mjs`（服务版 zip，仅 linux-x64）、`scripts/pack-desktop.mjs`（桌面 setup/portable）、`packaging/`、`.github/workflows/` | 四个发布端介质（D22：win/mac/linux 桌面版 + Linux 服务版，各 lite/full；桌面再分 setup/portable）、构建一次串行打包、产物检查、启动脚本、图标、CI | archiver、pnpm、Go 工具链；服务版不带 Node 二进制 |
 | Windows 托盘（已退役） | `packaging/win-launcher/*.go` | 菜单、单实例、自启动、日志轮转、Node launcher 生命周期；win 服务版退役（D22）后不再随介质构建，syso 资源仍供桌面壳，去留见路线图 | Go 标准库、Win32 API；同一 `package main`，无第三方 Go 包 |
 | 桌面应用 | `packages/desktop/{main,config,bootstrap,statuspage,backend,backend_events,remote,remote_control,remote_navigation,navigation,startup_loading,admin_loading,loading_stream,loading_client,discover,notifypipe,about}.go`、`tray_windows.go` | Wails v2 单窗口：独立模式托管自有 launcher 后台（`--desktop` 状态行契约 + 实例锁 + 随包/系统 Node 发现），attach 模式附着开发栈；受管模式 AssetServer 立即 302 到临时 loopback 启动页，就绪后顶层交接真实 origin；Win32 托盘含显示/浏览器打开/启用、停止、重启远程/退出；`remote.go`/`remote_control.go`/`navigation.go` 提供状态、应答跟踪与共享动作，管理入口先打开 `admin_loading.go` 的临时只读加载页；`about.go` 按需解析并缓存工作站/dsh/Node/Wails/Go 版本，供标题栏「关于」原生弹窗；开发桌面同样受管，仅显式 attach 只读；通知管道带共享令牌 | 独立 Go module `github.com/wailsapp/wails/v2@v2.16.0`；原生网络/权限隔离（S1.3）仍未实现，mac/Linux 托盘与实机验收待 S10 |
 
-20 个功能组件按 `plugin-catalog.json` 分发为 4 个组合包与 6 个独立第三方 Bundle；首次默认安装，仍安装项随 dsh-station 配套升级，卸载后不自动补回。唯一随 `--patch` 传入的是 remote-privileged 的壳级 overlay，包含 connection 注入和模型 HMR 启动屏障，不属于第三方插件生命周期。`@dsh-station/plugin-ui` 是构建期辅助，也不进入分发清单。
+21 个功能组件按 `plugin-catalog.json` 分发为 4 个组合包与 7 个独立第三方 Bundle；首次默认安装，仍安装项随 dsh-station 配套升级，卸载后不自动补回。唯一随 `--patch` 传入的是 remote-privileged 的壳级 overlay，包含 connection 注入和模型 HMR 启动屏障，不属于第三方插件生命周期。`@dsh-station/plugin-ui` 是构建期辅助，也不进入分发清单。
 具体功能及使用限制见 [插件索引](docs/plugins.md) 和各包 README。
 
 ## 3. 源码依赖关系图
@@ -44,7 +44,7 @@ graph TD
   Launcher --> Protocol[protocol]
   Relay --> Protocol
   Connector[connector] --> Protocol
-  Plugins[20 个功能组件 / 10 个分发 Bundle] --> DshLibs[官方 dsh 族库]
+  Plugins[21 个功能组件 / 11 个分发 Bundle] --> DshLibs[官方 dsh 族库]
   Plugins --> PluginUI[plugin-ui：构建期内联]
   Plugins --> Undici[undici]
   PluginUI --> React[React/DOM 页面单例]

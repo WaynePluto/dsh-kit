@@ -86,6 +86,13 @@
       "components": [
         { "name": "@dsh-station/dsh-plugin-yolo-mode", "rowId": "yolo-mode" }
       ]
+    },
+    {
+      "name": "@dsh-station/dsh-plugin-web-search-switch",
+      "source": "packages/plugins/web-search-switch",
+      "components": [
+        { "name": "@dsh-station/dsh-plugin-web-search-switch", "rowId": "web-search-switch" }
+      ]
     }
   ]
 }

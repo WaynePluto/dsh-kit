@@ -22,7 +22,7 @@ describe('plugin installation media', () => {
     const output = join(base, 'with space', 'plugins')
     const result = materializePluginDistributions({ root, output })
 
-    expect(result.plugins).toHaveLength(10)
+    expect(result.plugins).toHaveLength(11)
     expect(existsSync(join(output, 'catalog.json'))).toBe(true)
     // 指纹清单随介质一并生成，launcher 用它免于每次启动逐字节哈希介质树。
     const stampFile = JSON.parse(readFileSync(join(output, 'stamp.json'), 'utf8')) as {
@@ -46,7 +46,7 @@ describe('plugin installation media', () => {
     const manifest = JSON.parse(readFileSync(join(group, 'package.json'), 'utf8')) as {
       dependencies: Record<string, string>
     }
-    expect(manifest.dependencies['@dsh-station/dsh-plugin-turn-retry']).toBe('0.0.2')
+    expect(manifest.dependencies['@dsh-station/dsh-plugin-turn-retry']).toBe('0.0.3-20261008')
     expect(JSON.stringify(manifest)).not.toContain('workspace:')
   })
 

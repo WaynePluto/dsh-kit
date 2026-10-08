@@ -6,7 +6,8 @@
 
 - **桌面版**（packages/desktop，Wails）：win / mac / linux 三个发布端，每端再分
   **setup（安装包）**与 **portable（便携 zip）**两种形态。
-  - setup：win 为 NSIS `setup.exe`（`packaging/desktop-installer.nsi`），mac 为 DMG
+  - setup：win 为 NSIS `setup.exe`（`packaging/desktop-installer.nsi`，目录页默认回显
+    注册表里记录的上次安装目录，旧版未记录时从 UninstallString 反推），mac 为 DMG
     （hdiutil，拖入 Applications），linux 为 deb（纯 Node 构建，含 `.desktop` 与图标）。
   - portable：全平台都是解压即用的目录 zip（mac 为 `.app` zip）。
   - 完整版附带固定版本 Node（清单见 `packaging/desktop-node.json`，SHA-256 校验）与
