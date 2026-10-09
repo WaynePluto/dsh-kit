@@ -44,15 +44,34 @@ async function validateOverrides(root, rootBytes, overrides, parseYaml) {
 export async function ensureDevelopmentRuntime({
   root = ROOT, run = runNode, log = console.log,
   parseYaml = async text => (await import('yaml')).parse(text),
+  runtimeDependencies: injectedRuntimeDependencies,
 } = {}) {
   const rootBytes = readFileSync(join(root, 'package.json'))
   const rootManifest = JSON.parse(rootBytes.toString('utf8'))
-  const launcherManifest = JSON.parse(readFileSync(join(root, 'packages', 'launcher', 'package.json'), 'utf8'))
-  const runtimeDependencies = Object.fromEntries(Object.entries(launcherManifest.dependencies)
-    .filter(([name]) => !name.startsWith('@dsh-station/') || name === '@dsh-station/plugin-ui')
-    .map(([name, version]) => [name,
-      name === '@dsh-station/plugin-ui' ? `file:${join(root, 'packages', 'plugin-ui')}` : version,
-    ]))
+  // 原 launcher package.json 的依赖清单（launcher 退役后内联于此）：
+  // dsh 运行时家族 + 常用工具，外加以 file: 链接的 plugin-ui（浏览器插件内联源）。
+  const runtimeDependencies = injectedRuntimeDependencies ?? {
+    '@deepseek-ai/dsh': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-home-paths': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-llm': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-plugin-manager': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-sandbox-policy': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-terminal': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-terminal-bash': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-tool-terminal': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-tools': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-user-approval': '0.2.0-rc.2',
+    '@deepseek-ai/schemastery': '3.18.4',
+    '@dsh-station/plugin-ui': `file:${join(root, 'packages', 'plugin-ui')}`,
+    '@earendil-works/pi-ai': '0.87.1',
+    commander: '15.0.0',
+    immer: '10.2.0',
+    pnpm: '10.17.0',
+    undici: '8.11.2',
+    yaml: '2.9.1',
+    zod: '4.6.5',
+    zustand: '4.4.7',
+  }
   const overrides = rootManifest.pnpm?.overrides
   if (overrides === undefined || Object.keys(overrides).length === 0) {
     throw new Error('根 package.json 缺少 pnpm.overrides，无法准备一致的 dsh 开发运行时。')

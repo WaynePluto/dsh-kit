@@ -1,10 +1,8 @@
 /**
- * 本地开发栈的共享设置。
+ * 冒烟脚本与开发入口的共享设置（D27 后无独立 launcher/发行栈）。
  *
- * 范围：仅用于开发入口。发行绿色包使用 `@dsh-station/launcher`
- *（M3.1）启动 dsh + connector；此脚本还会启动 relay，
- * 以便单机验证完整的局域网链路。开发栈使用独立的 station home 与 dsh home、
- * 错开的端口，可以与已安装的发行版实例同时运行（见下方常量注释）。
+ * 开发与冒烟使用独立的 station home 与 dsh home、错开的端口，
+ * 可以与正式实例（官方 dsh + station-suite）同时运行（见下方常量注释）。
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
@@ -67,7 +65,8 @@ const runtimeDescriptorPath = join(DEV_DIRECTORY, 'runtime.json')
 const runtimeDescriptor = existsSync(runtimeDescriptorPath)
   ? JSON.parse(readFileSync(runtimeDescriptorPath, 'utf8'))
   : undefined
-const sourceRequire = createRequire(join(ROOT, 'packages/launcher/package.json'))
+// 解析锚点用根 package.json：工作区 hoisted node_modules 里同样有 @deepseek-ai/dsh 与 pnpm。
+const sourceRequire = createRequire(join(ROOT, 'package.json'))
 export const DSH_BIN = runtimeDescriptor?.dshBin ?? fileURLToPath(pathToFileURL(
   sourceRequire.resolve('@deepseek-ai/dsh/lib/bin.js'),
 ))

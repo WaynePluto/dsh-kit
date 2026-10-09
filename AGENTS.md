@@ -19,12 +19,12 @@ DeepSeek Harness (dsh) 的完整封装工作站：桌面应用与绿色/服务�
 - dsh 始终 bind 127.0.0.1。relay 原样转发 Host/Origin，通过 --trusted-host 声明信任。
 - 所有非 loopback 浏览器访问必须认证；仅 loopback socket + loopback Host 同时成立才免登录。
 - 一台机器独立 origin，公网用子域名，局域网可用每机器端口，不能挂子路径。
-- launcher、connector、relay 不引入原生模块，持久化用 node:sqlite，密码哈希用 node:crypto scrypt。
+- connector、relay 与 remote-runtime 组件不引入原生模块，持久化用 node:sqlite，密码哈希用 node:crypto scrypt。
 - 优先成熟依赖，所有直接依赖固定版本，不使用范围、dist-tag 或隐式升级。
 - 与官方 dsh 共用标准 DSH_HOME，仅在 dsh-station-web profile 安装项目功能插件。
   不写 home 级 patch、不修改官方 web profile，不实现第二套插件管理器。
 - 普通插件位于 packages/plugins/<名字>，包名 @dsh-station/dsh-plugin-<名字>，
-  包根 overlay 用 ./dist/index.js；launcher、dev-stack、pack 都要检查宿主和浏览器产物。
+  包根 overlay 用 ./dist/index.js；plugins:build 与 build-suite 都要检查宿主和浏览器产物。
 - 全部功能组件按 station-suite 单包分发（D27）：官方「添加插件」一条路径安装/升级，套件 patch 由 `scripts/build-suite.mjs` 生成；plugin-catalog/launcher 旧分发流程仅为开发栈过渡，不再产出发行介质。
 - `remote-privileged` 的 connection/webServer 注入、模型 HMR 启动屏障与原生主题只读投影作为不可卸载的壳级基础设施；模型屏障服务挂在 root fiber，避免 Bundle 在线启停重启 `llm-pi-ai`。管理页主题单向消费工作站自有投影，不读写原生profile或通过公开主题GET回写宿主。
 - concise-mode（用户文案「简洁模式」）是独立第三方 Profile Bundle，位于 dsh-web-app 后；patch 内联声明两个 `@deepseek-ai/dsh-agent-preset` 行，不加载 preset root 或 locator entry；子代理深度沿用 dsh 原生配置（默认 1）。

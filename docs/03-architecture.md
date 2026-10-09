@@ -14,9 +14,9 @@ flowchart LR
   TLS --> Relay[入口机器 relay]
   Connector[目标机器 connector] -->|主动建立控制和数据 WebSocket| Relay
   Connector -->|HTTP / WebSocket 字节| DSH[目标机器 dsh: 127.0.0.1]
-  Launcher[目标机器 launcher] --> Connector
-  Launcher --> DSH
-  Launcher --> LocalRelay[目标机器 relay]
+  Host[官方 dsh 应用] --> DSH
+  Host -->|remote-runtime 组件 spawn| Connector
+  Host -->|remote-runtime 组件 spawn| LocalRelay[目标机器 relay]
 ```
 
 打开 pc2 的页面就是操作 pc2 的文件与进程，入口机器 pc1 只转发请求。
@@ -28,7 +28,6 @@ flowchart LR
 | `packages/protocol` | 控制帧、schema、协议版本、超时与错误码 |
 | `packages/connector` | 拨出隧道、设备签名认证、回拨数据流、重连 |
 | `packages/relay` | 浏览器认证、设备认证、管理页、机器路由与字节转发 |
-| `packages/launcher` | 配置、profile、产物检查、子进程监督；桌面远程按需启用与启用失败隔离 |
 | `packages/plugins` | 通过 dsh 插件扩展功能；见 [插件索引](plugins.md) |
 | `packages/plugins`（装载） | 全部功能组件随 station-suite 单包分发（D27）；connection 覆写、模型 HMR 屏障与主题投影进入套件 patch 层；launcher 与 plugin-catalog 的旧分发流程仅剩开发栈过渡使用 |
 
@@ -46,14 +45,14 @@ dsh-base → dsh-web-app → 已启用的第三方 Bundle（默认 10 个分发�
 
 concise-mode 在 Bundle patch 内联声明两个 Agent preset 行，不使用 preset root 或 locator entry；
 子代理深度由 dsh 原生界面控制，默认 1。
-launcher 首次安装默认分发包，后续配套升级仍在 profile dependencies 中的包并保留 Bundle/组件停用；
-已卸载包不自动补回，从发行版 `plugins/` 或开发 `.dev/plugins/` 目录经官方管理页重装。
+station-suite 是唯一分发包：官方「添加插件」一条路径安装/升级，卸载即整体移除（D27）；
+launcher 多包分发与配套升级机制已随 launcher 退役删除。
 
 ### 插件 Bundle 与壳级 overlay 装载
 
 每个插件包在 package.json 声明 `dsh.bundle.patch` 指向包根 `cordis.patch.yml`，
 入口写相对路径 `./dist/index.js`；dsh 将它锚定到该文件目录，发行包移动后仍可解析。
-launcher 与开发栈都在启动前检查宿主与浏览器产物，缺失即拒绝启动。
+插件构建链（plugins:build / build-suite）要求宿主与浏览器产物齐备，缺失即响亮失败。
 带浏览器半的包同时声明 `dsh.client`，dsh 据此下发 `dist/client.js`。
 
 默认分发与装载顺序以根目录 [plugin-catalog.json](../plugin-catalog.json) 为准：
@@ -107,7 +106,7 @@ dsh 使用绝对 `/api` 路径，所以每台机器必须有独立 origin，不�
 4. 控制帧承载 open-stream、心跳、dsh token 和状态上报。
 
 心跳每 30 秒一次，90 秒无响应判离线。重连按 1 至 30 秒指数退避并加抖动。
-设备被停止并移除等致命错误使 connector 退出，launcher 随之关闭整套进程。
+设备被停止并移除等致命错误使 connector 退出；插件时代不再联动整套停机，remote-runtime 在下次宿主启动时重拉。
 
 ### 4.3 数据信道
 
@@ -121,11 +120,11 @@ WebSocket 走独立 upgrade 路径，不能交给普通 HTTP 路由处理。
 
 ### 4.4 dsh 信任与浏览器认证
 
-relay 原样转发 Host/Origin；launcher 为 dsh 声明浏览器使用的 trusted host。
+relay 原样转发 Host/Origin；dsh 需要的 trusted host 由套件的 dshRemoteTrust 服务注入 connection 行。
 条目必须是裸 host 或 host:port，错误格式会导致 dsh 启动失败。
 远程设置能力由 [remote-settings](../packages/plugins/remote-settings/README.md) 提供。
 
-launcher 从 dsh 输出截获启动 token，经 connector 的 dsh-auth 帧上报 relay。
+remote-runtime 经 `ctx.connection.authenticatedUrl()` 取得启动 token 写入 `~/.dsh-station/dsh-token`，relay 首访 401 时读取该文件发起一次重定向。
 仅当 dsh 对首页返回 401，relay 才返回一次 `?token=` 重定向，让 dsh 自己交换 cookie。
 已带 token 的请求不重定向，API 的 401 原样透传；relay 登录始终在此前完成。
 
@@ -147,7 +146,7 @@ launcher 从 dsh 输出截获启动 token，经 connector 的 dsh-auth 帧上报
 | Windows 托盘 | Go 标准库与 Win32 API |
 
 直接依赖固定版本，版本以 manifest 为准，`pnpm check:dependencies` 检查。
-launcher、relay、connector 不引入原生模块；dsh 的平台依赖决定发行包按平台分发。
+relay、connector 与 remote-runtime 不引入原生模块。
 
 ## 6. 请求顺序
 

@@ -44,7 +44,7 @@ export interface Connector {
   /**
    * membership 记录的 hub 面向浏览器的 authority。
    * Mode A 原样转发浏览器的 Host，因此这台机器上的 dsh 必须
-   * 信任此 authority（`--trusted-host`）。如何使用它由 launcher 负责。
+   * 信任此 authority。插件时代由套件的 dshRemoteTrust 服务注入 connection 行。
    */
   readonly browserAuthority: string | undefined
   /** 一直运行到 `stop()`，或以 ConnectorFatalError 拒绝。 */

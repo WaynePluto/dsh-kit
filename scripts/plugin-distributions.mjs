@@ -10,7 +10,7 @@ import {
 } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { mediaDirectoryStamp, mediaStampFileContent } from '../packages/launcher/src/media-stamp.ts'
+import { mediaDirectoryStamp, mediaStampFileContent } from './lib/media-stamp.mjs'
 
 const SCRIPT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const CATALOG_FILE = 'plugin-catalog.json'

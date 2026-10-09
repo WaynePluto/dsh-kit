@@ -5,6 +5,10 @@
 
 ## 已实现
 
+- [x] launcher 退役（2026-10-09，D27 第二轮）：删除 packages/launcher 与 dev-stack/dev-profile；
+运行时依赖清单内联到 dev-runtime.mjs（可注入以保持测试可控），解析锚点改根 package.json，
+media-stamp 迁 scripts/lib；开发入口改为 scripts/dev-suite.mjs（隔离 home/端口 + 套件安装 + dsh web），
+dev-runtime.spec 13 项全过。plugin-catalog/plugin-distributions 暂留供 concise-mode-check 冒烟（后续随套件化冒烟改造清理）。
 - [x] 删壳第一轮（2026-10-09，D27）：删除 packages/desktop（Go/Wails 壳）、pack 桌面/服务版打包与 release 发布管线
 （scripts/pack*、release.mjs、prepare/dev-desktop*、release.yml 工作流、packaging 桌面相关、release-version skill、docs/06-packaging.md），
 根 package.json 移除 desktop/release 脚本与 archiver；保留 make-icons 图标链、dsh-station.config.example.json 与 dev 栈（launcher 退役见后续任务）。

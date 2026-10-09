@@ -91,7 +91,7 @@ const connectorConfigShape = z.strictObject({
    *
    * 可选：如果与 dsh 一起启动的 connector 没有人捕获到这一行，
    * 仍然会转发流量，但浏览器随后必须以其他方式完成 dsh 自己的登录
-   * 交换。启动 dsh 的进程（launcher）负责提供它。
+   * 交换。插件时代由 remote-runtime 经 dsh-token 文件提供给 relay。
    */
   dshToken: dshWebTokenSchema.optional(),
   /**
@@ -126,7 +126,7 @@ export interface HubTarget {
    * hub 面向浏览器的 authority，例如 `10.1.2.87:30810`。Mode A
    * 原样转发浏览器的 Host，因此这台机器上的 dsh 必须
    * 通过 `--trusted-host` 信任它。connector 只记录它；启动和
-   * 配置 dsh 是 launcher 的职责。
+   * 配置 dsh 是宿主（官方应用）的职责。
    */
   readonly browserAuthority?: string | undefined
 }

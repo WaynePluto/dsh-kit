@@ -164,7 +164,7 @@ export const errorFrameSchema = z.strictObject({
 
 /**
  * Relay 对唤醒探测的应答：操作员在入口机器的「机器」页请求过这台机器上线。
- * connector 收到后把 lastHub 恢复为 membership 的 hub（launcher 会自动重启
+ * connector 收到后把 lastHub 恢复为 membership 的 hub（插件时代由宿主重启
  * dsh 恢复信任地址），随后结束探测会话，由主循环正常拨号上线。
  */
 export const reconnectOfferFrameSchema = z.strictObject({

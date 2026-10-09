@@ -17,9 +17,6 @@ function fixture() {
   temporary.push(parent)
   const root = join(parent, 'repo')
   write(join(root, 'package.json'), JSON.stringify({ pnpm: { overrides: { example: '1.0.0' } } }))
-  write(join(root, 'packages/launcher/package.json'), JSON.stringify({ dependencies: {
-    '@deepseek-ai/dsh': '0.1.7-rc.2', '@dsh-station/relay': 'workspace:*', pnpm: '10.17.0',
-  } }))
   write(join(root, 'pnpm-workspace.yaml'), 'packages: []\n')
   write(join(root, 'pnpm-lock.yaml'), 'overrides:\n  example: 1.0.0\n')
   const run = vi.fn(async (args: string[]) => {
@@ -48,7 +45,11 @@ describe('development runtime validated content cache', () => {
     expect(f.run).toHaveBeenCalledTimes(1)
     expect(first.runtime.startsWith(join(dirname(f.root), '.repo-runtime'))).toBe(true)
     const manifest = JSON.parse(readFileSync(join(first.runtime, 'package.json'), 'utf8'))
-    expect(manifest.dependencies).toEqual({ '@deepseek-ai/dsh': '0.1.7-rc.2', pnpm: '10.17.0' })
+    // 依赖清单已内联到 dev-runtime.mjs（launcher 退役）：校验关键家族成员存在。
+    expect(manifest.dependencies['@deepseek-ai/dsh']).toBe('0.2.0-rc.2')
+    expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('0.87.1')
+    expect(manifest.dependencies['@dsh-station/plugin-ui']).toContain('file:')
+    expect(Object.keys(manifest.dependencies).every(name => !name.startsWith('@dsh-station/') || name === '@dsh-station/plugin-ui')).toBe(true)
     expect(f.run.mock.calls[0]?.[0]).toContain('--ignore-scripts')
     expect(f.run.mock.calls[0]?.[0]).toContain('--config.node-linker=hoisted')
   })
@@ -105,16 +106,20 @@ describe('development runtime validated content cache', () => {
     expect(f.run).toHaveBeenCalledTimes(1)
   })
 
-  it('rebuilds missing artifacts and changed launcher dependencies despite a validation hit', async () => {
+  it('rebuilds when the injected runtime dependency list changes', async () => {
     const f = fixture()
     const before = await ensureDevelopmentRuntime(f)
-    rmSync(before.dshBin)
-    await ensureDevelopmentRuntime(f)
-    write(join(f.root, 'packages/launcher/package.json'), '{"dependencies":{"pnpm":"10.18.0"}}')
-    const after = await ensureDevelopmentRuntime(f)
+    const after = await ensureDevelopmentRuntime({ ...f, runtimeDependencies: { '@deepseek-ai/dsh': '0.2.0', pnpm: '10.17.0' } })
     expect(after.fingerprint).not.toBe(before.fingerprint)
-    expect(f.parseYaml).toHaveBeenCalledTimes(2)
-    expect(f.run).toHaveBeenCalledTimes(3)
+    expect(f.run).toHaveBeenCalledTimes(2)
+  })
+
+  it('installs the pinned dsh runtime from the inlined dependency list', async () => {
+    const f = fixture()
+    const descriptor = await ensureDevelopmentRuntime(f)
+    const manifest = JSON.parse(readFileSync(join(descriptor.runtime, 'package.json'), 'utf8'))
+    expect(manifest.dependencies['@deepseek-ai/dsh']).toBe('0.2.0-rc.2')
+    expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('0.87.1')
   })
 
   it('does not publish a failed install and retries it without reparsing unchanged valid inputs', async () => {

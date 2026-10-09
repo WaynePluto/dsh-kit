@@ -57,7 +57,7 @@ const { prepareHome } = context
  */
 async function dshBaselineFiles() {
   try {
-    const require = createRequire(join(ROOT, 'packages/launcher/package.json'))
+    const require = createRequire(join(ROOT, 'package.json'))
     const specifier = require.resolve('@deepseek-ai/dsh-agent-instructions')
     const module = await import(new URL(`file://${specifier.replaceAll('\\', '/')}`).href)
     const discover = module.discoverBaselineInstructionFiles
