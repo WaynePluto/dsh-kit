@@ -107,7 +107,7 @@ describe('native theme projection', () => {
     const ctx = start(path)
     await settle()
     expect(ctx.on).not.toHaveBeenCalled()
-    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-station] theme projection: invalid destination')
+    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-remote] theme projection: invalid destination')
   })
 
   it('拒绝把原生 profile 文件作为输出', () => {
@@ -206,7 +206,7 @@ describe('native theme projection', () => {
     await settle()
     expect(read(path).preference).toBe('dark')
     expect(readdirSync(dirname(path))).toEqual([protocol.THEME_FILE_NAME])
-    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-station] theme projection: write failed')
+    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-remote] theme projection: write failed')
     faults[fault] = false
     ctx.emit()
     await settle()
@@ -219,7 +219,7 @@ describe('native theme projection', () => {
     writeFileSync(blocked, '')
     const ctx = start(join(blocked, protocol.THEME_FILE_NAME))
     await settle()
-    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-station] theme projection: write failed')
+    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-remote] theme projection: write failed')
   })
 
   it('释放取消订阅和排队写入，缓存仍在', async () => {
@@ -254,7 +254,7 @@ describe('native theme projection', () => {
     start(path, ctx)
     await settle()
     expect(read(path).preference).toBe('dark')
-    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-station] theme projection: loader unavailable')
+    expect(ctx.logger.warn).toHaveBeenCalledWith('[dsh-remote] theme projection: loader unavailable')
   })
 
   it('两个工作站的输出路径与状态完全独立', async () => {

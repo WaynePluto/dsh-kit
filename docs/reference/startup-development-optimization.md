@@ -11,7 +11,7 @@
 - `dev-desktop-prepare.mjs` 在准备子进程内直接调用该函数，不再为 runtime 多启动一次 Node。
   runtime 完成后才加载 `local-config.mjs`，原运行时描述一致性检查保留。
 - 根 package.json、pnpm-workspace.yaml、pnpm-lock.yaml **每次完整读取并计算 SHA-256**，
-  成功校验的内容摘要保存在 `node_modules/.cache/dsh-station/dev-runtime-validation.json`。
+  成功校验的内容摘要保存在 `node_modules/.cache/dsh-remote/dev-runtime-validation.json`。
   摘要与缓存版本命中时才跳过 YAML import/parse；内容改变、缓存丢失或损坏都重新校验。
   不是 mtime/size 缓存，同长度并恢复原时间戳的 lockfile 漂移也会拒绝。
 - launcher dependencies、根 overrides 每次重新读取，运行时目录指纹算法与目录布局不变；
@@ -92,7 +92,7 @@
 ## 验证与产物
 
 - 最终launcher：24文件、353测试通过、1项Windows不适用的POSIX权限测试跳过。
-  `DSH_STATION_INTEGRATION=1` 开发桥真实后端验证启用→停止→启用→重启→停止，认证和dsh继续可用。
+  `DSH_REMOTE_INTEGRATION=1` 开发桥真实后端验证启用→停止→启用→重启→停止，认证和dsh继续可用。
 - 覆盖缓存命中、同大小/mtime内容变化、根/workspace/lock漂移、损坏缓存、依赖变化、产物丢失、
   安装失败重试、纯模块导入、构建失效、慢准备取消和孙进程回收。非法UTF-8解码相同但原始字节不同的
   文件仍重新校验，不因替换字符损失变化检测。

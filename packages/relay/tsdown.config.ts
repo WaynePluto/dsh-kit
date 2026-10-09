@@ -5,7 +5,7 @@ export default defineConfig({
   format: 'esm',
   platform: 'node',
   target: 'node22',
-  deps: { alwaysBundle: [/^@dsh-station\//] },
+  deps: { alwaysBundle: [/^@dsh-remote\//] },
   dts: false,
   clean: true,
   outExtensions: () => ({ js: '.js' }),

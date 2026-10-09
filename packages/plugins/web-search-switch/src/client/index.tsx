@@ -2,8 +2,10 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：引入声明本插件读取服务的 Context 合并。
-// `dsh-api-remotes/client` 提供 ctx.remote.pluginManager / ctx.remote.pluginInventory。
+// ctx.remote 的 pluginManager / pluginInventory 命名空间由对应 UI 包的
+// typert remote-client 贡献文件扩展（TypertRemoteNamespaceMap）。
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-plugin-manager/remote'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // plugins.bundle.config 槽位契约（keyed、owner props）由插件管理页声明。

@@ -1,4 +1,4 @@
-// 生成 station-suite 聚合 Bundle 的 cordis.patch.yml，并把组件与依赖闭包物化进
+// 生成 suite 聚合 Bundle 的 cordis.patch.yml，并把组件与依赖闭包物化进
 // 套件自身的 node_modules（本地目录安装是 link: 语义，pnpm 不安装 link 包的依赖，
 // 套件必须自带；git 地址安装时 pnpm 从克隆仓库解析 file: 依赖，物化内容被忽略）。
 // 组件行来自各组件包自己的 patch：`name: './dist/index.js'` 改写为裸包名
@@ -11,13 +11,13 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLUGINS = join(ROOT, 'packages', 'plugins')
-const SUITE_PACKAGE = '@dsh-station/dsh-plugin-station-suite'
+const SUITE_PACKAGE = '@dsh-remote/dsh-plugin-suite'
 const COMBO_PACKAGES = new Set([
   'remote-experience',
   'model-enhancements',
   'conversation-enhancements',
   'development-tools',
-  'station-suite',
+  'suite',
   // remote-privileged 不是普通组件包：它的行（屏障/投影）在套件模板的特殊段落里。
   'remote-privileged',
 ])
@@ -102,7 +102,7 @@ function componentSection() {
   return sections.join('\n\n')
 }
 
-const header = `# dsh-station 全量套件 Bundle（本文件由 scripts/build-suite.mjs 生成，勿手改）。
+const header = `# dsh-remote 全量套件 Bundle（本文件由 scripts/build-suite.mjs 生成，勿手改）。
 # 单输入安装：官方 dsh 插件管理页「添加插件」输入本目录路径（或仓库地址），
 # 即安装/升级全部组件与远程运行时。组件行沿用组合包的裸包名 + disabled 表达式
 # 约定：套件被停用/卸载（离开 bundles 列表）时全部组件行一并禁用。
@@ -129,14 +129,14 @@ const header = `# dsh-station 全量套件 Bundle（本文件由 scripts/build-s
 # 注意：loader 对裸子路径名按「当前包内相对路径」解析（实测），因此这里一律用
 # 相对本 patch 的路径形式（与官方组合包一致）。
 - insert:
-    - id: dsh-station-model-bootstrap-fallback
-      name: './node_modules/@dsh-station/dsh-plugin-remote-privileged/model-bootstrap.mjs'
-    - id: dsh-station-theme-projection
-      name: './node_modules/@dsh-station/dsh-plugin-remote-privileged/theme-projection.mjs'
+    - id: dsh-remote-model-bootstrap-fallback
+      name: './node_modules/@dsh-remote/dsh-plugin-remote-privileged/model-bootstrap.mjs'
+    - id: dsh-remote-theme-projection
+      name: './node_modules/@dsh-remote/dsh-plugin-remote-privileged/theme-projection.mjs'
 `
 
 const output = `${header}\n${componentSection()}\n`
-const target = join(PLUGINS, 'station-suite', 'cordis.patch.yml')
+const target = join(PLUGINS, 'suite', 'cordis.patch.yml')
 writeFileSync(target, output.endsWith('\n') ? output : `${output}\n`)
 process.stdout.write(`已生成 ${target}\n`)
 
@@ -144,7 +144,7 @@ process.stdout.write(`已生成 ${target}\n`)
 // 本地目录安装是 link: 语义，pnpm 不安装 link 包的依赖；套件必须自带全部内容。
 // git 地址安装时 pnpm 从克隆仓库解析 file: 依赖，物化内容被 profile 内安装覆盖。
 
-const SUITE_DIR = join(PLUGINS, 'station-suite')
+const SUITE_DIR = join(PLUGINS, 'suite')
 const SUITE_MODULES = join(SUITE_DIR, 'node_modules')
 const RUNTIME_PACKAGE_DIRS = ['relay', 'connector', 'protocol']
 
@@ -170,7 +170,7 @@ function copySelfContainedPackage(source, target) {
 
 /**
  * 从仓库根 node_modules 复制 registry 依赖闭包（扁平布局，匹配 hoisted 解析）。
- * 跳过 @deepseek-ai/*（dsh 宿主运行时树提供，避免第二单例）与 @dsh-station/*。
+ * 跳过 @deepseek-ai/*（dsh 宿主运行时树提供，避免第二单例）与 @dsh-remote/*。
  */
 function copyRegistryClosure(seedNames) {
   const rootModules = join(ROOT, 'node_modules')
@@ -178,7 +178,7 @@ function copyRegistryClosure(seedNames) {
   const done = new Set()
   while (pending.length > 0) {
     const name = pending.shift()
-    if (done.has(name) || name.startsWith('@deepseek-ai/') || name.startsWith('@dsh-station/')) continue
+    if (done.has(name) || name.startsWith('@deepseek-ai/') || name.startsWith('@dsh-remote/')) continue
     done.add(name)
     const source = join(rootModules, name)
     if (!existsSync(join(source, 'package.json'))) {
@@ -199,19 +199,19 @@ function copyRegistryClosure(seedNames) {
 
 function materializeSuiteModules() {
   rmSync(SUITE_MODULES, { recursive: true, force: true })
-  mkdirSync(join(SUITE_MODULES, '@dsh-station'), { recursive: true })
+  mkdirSync(join(SUITE_MODULES, '@dsh-remote'), { recursive: true })
   const registrySeeds = new Set()
   const componentDirs = [...componentDirectories(), 'remote-privileged']
   for (const dir of componentDirs) {
     const source = join(PLUGINS, dir)
-    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-station', packageNameOf(source).split('/')[1]))
+    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1]))
     for (const name of Object.keys(manifest.dependencies ?? {})) registrySeeds.add(name)
   }
   for (const dir of RUNTIME_PACKAGE_DIRS) {
     const source = join(ROOT, 'packages', dir)
-    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-station', packageNameOf(source).split('/')[1]))
+    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1]))
     // relay/connector/protocol 是应用包，无 files 字段：显式带上构建产物。
-    cpSync(join(source, 'dist'), join(SUITE_MODULES, '@dsh-station', packageNameOf(source).split('/')[1], 'dist'), { recursive: true })
+    cpSync(join(source, 'dist'), join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1], 'dist'), { recursive: true })
     // relay/connector 是独立进程：带上它们的完整 registry 闭包（@deepseek-ai 之外）。
     for (const name of Object.keys(manifest.dependencies ?? {})) registrySeeds.add(name)
   }
@@ -219,7 +219,7 @@ function materializeSuiteModules() {
   // 组件声明的 @deepseek-ai 依赖里，只有 dsh 运行时确实提供的才跳过；pi-ai 等
   // 第三方 scope（@earendil-works）正常复制。schemastery 等 dsh 家族包由宿主提供。
   const copied = copyRegistryClosure([...registrySeeds])
-  process.stdout.write(`物化完成：${componentDirs.length + RUNTIME_PACKAGE_DIRS.length} 个 @dsh-station 包 + ${copied.size} 个 registry 依赖（${[...copied].join(', ')}）\n`)
+  process.stdout.write(`物化完成：${componentDirs.length + RUNTIME_PACKAGE_DIRS.length} 个 @dsh-remote 包 + ${copied.size} 个 registry 依赖（${[...copied].join(', ')}）\n`)
 }
 
 materializeSuiteModules()

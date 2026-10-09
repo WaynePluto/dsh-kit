@@ -5,9 +5,9 @@ import process from 'node:process'
 
 // 纯 mjs 不引入工作区依赖；测试与 protocol 的公开契约交叉核对。
 export const THEME_FILE_NAME = 'dsh-theme.json'
-export const THEME_FILE_ENV_NAME = 'DSH_STATION_THEME_FILE'
+export const THEME_FILE_ENV_NAME = 'DSH_REMOTE_THEME_FILE'
 export const MAX_THEME_PROJECTION_BYTES = 1024
-export const name = 'dsh-station-theme-projection'
+export const name = 'dsh-remote-theme-projection'
 export const inject = ['loader']
 
 /** 仅取原生顶层 ui-theme 行的活跃配置，不读写任何原生文件。 */
@@ -53,7 +53,7 @@ export function apply(ctx) {
   if (path === undefined) return
   const diagnose = (reason) => {
     // 不输出原生错误、配置、路径或 URL，防止日志泄露宿主数据。
-    try { ctx.logger.warn(`[dsh-station] theme projection: ${reason}`) } catch { /* 诊断不能阻止 dsh。 */ }
+    try { ctx.logger.warn(`[dsh-remote] theme projection: ${reason}`) } catch { /* 诊断不能阻止 dsh。 */ }
   }
   if (!isAbsolute(path) || basename(path) !== THEME_FILE_NAME) {
     diagnose('invalid destination')

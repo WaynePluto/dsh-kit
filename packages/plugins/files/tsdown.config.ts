@@ -3,7 +3,7 @@ import { createPluginBuildConfig } from '../../plugin-build/index.mjs'
 
 export default defineConfig(
   createPluginBuildConfig({
-    id: '@dsh-station/dsh-plugin-files',
+    id: '@dsh-remote/dsh-plugin-files',
     entry: ['src/index.ts'],
     hostDeps: { neverBundle: [/^@deepseek-ai\//] },
     client: true,

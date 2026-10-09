@@ -1,5 +1,5 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
-import type { DialogPointerConfig } from '@dsh-station/plugin-ui'
+import type { DialogPointerConfig } from '@dsh-remote/plugin-ui'
 import {
   DialogMoveHandle,
   DialogResizeHandle,
@@ -8,7 +8,7 @@ import {
   dialogResizeHandleStyle,
   readPixels,
   useDialogPointerInteraction,
-} from '@dsh-station/plugin-ui'
+} from '@dsh-remote/plugin-ui'
 import {
   applyLogDialogMove,
   applyLogDialogResize,

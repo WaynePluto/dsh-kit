@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-station/relay",
+  "name": "@dsh-remote/relay",
   "version": "0.0.3-20261008",
   "license": "MIT",
   "private": true,
@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "bin": {
-    "dsh-station-relay": "./dist/cli.js"
+    "dsh-remote-relay": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsdown",
@@ -18,7 +18,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@dsh-station/protocol": "file:../protocol",
+    "@dsh-remote/protocol": "file:../protocol",
     "@hono/node-server": "1.19.17",
     "commander": "15.0.0",
     "hono": "4.13.11",

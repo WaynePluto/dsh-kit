@@ -17,7 +17,7 @@ profile 的 `dependencies` 是第三方 Bundle 是否安装的事实，`dsh.prof
 启用的事实，profile patch 中目标行的 `disabled` 则是组件是否停用的事实，三者不能混用。
 项目首次默认安装第三方 Bundle，配套升级只处理仍在 dependencies 中的包，并保留后两种状态；
 卸载后不得仅凭“默认清单”重新加入 dependency 或 bundles。
-升级判定用状态文件（`dsh-station-bundles-state.json`）记录的介质版本与内容指纹：
+升级判定用状态文件（`dsh-remote-bundles-state.json`）记录的介质版本与内容指纹：
 两者与介质一致且 profile `node_modules` 链接完好时启动跳过介质物化
 与 pnpm（快路径）；版本或内容变化、链接缺失、迁移或上次同步中断走完整路径。
 指纹优先取介质生成时随 `catalog.json` 一并写出的 `stamp.json`（一次小文件读取，
@@ -32,7 +32,7 @@ node_modules，届时沿用条目回到完整重装列表。
 
 项目介质物化由 `packages/launcher/src/plugin-copy.ts` 以最多 8 路文件操作复制，普通依赖仍是
 真实文件；仅 pi-ai/http-proxy 保持原有共享模块链接，不改变安装布局或依赖版本。
-失败后停止派发并等待在途写入结束；profile 根的 `.dsh-station-plugin-media.pending` 在修改缓存前写入，
+失败后停止派发并等待在途写入结束；profile 根的 `.dsh-remote-plugin-media.pending` 在修改缓存前写入，
 复制、官方安装和状态提交全部成功才移除。标记存在时禁止快路径，但保留旧 offered/停用/卸载状态，
 避免重试自动补回用户已卸载的包。慢路径各步骤开始时（复制介质/准备依赖/包管理器安装）经
 状态行 `pluginStage` 标记上报，桌面加载页只把它映射为固定文案（未知标记沿用阶段默认文案）；
@@ -65,7 +65,7 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
   这会使任意 Bundle 开关被无关插件的 `failed to import` 阻断；磁盘选择已保存但旧 fiber 未卸载，
   随后的卸载又会得到 `bundle-in-use`。进程重启只会掩盖问题，不能以“重启后正常”代替稳定 ID。
 
-### dsh-station 分发约束
+### dsh-remote 分发约束
 
 - 根 `plugin-catalog.json` 将 20 个功能组件映射为 4 个组合包与 6 个独立包。发行介质位于
   `plugins/`，开发介质位于 `.dev/plugins/`；两者都用本地绝对目录走上述官方安装流程。
@@ -88,7 +88,7 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 dsh-web-app 提供 `agent-preset-registry` 与原生预设；concise-mode Bundle 排在其后，用 patch 直接
 插入 `preset-concise` 和 `preset-concise-ptc` 两行 `@deepseek-ai/dsh-agent-preset`，
 各行 `config.plugins` 内联声明 persona、工具与压缩插件。这里没有 preset root、locator entry
-或以文件系统目录加载预设的逻辑；只在 dsh-station-web profile 增加这两个预设。
+或以文件系统目录加载预设的逻辑；只在 dsh-remote-web profile 增加这两个预设。
 
 0.1.7-rc.1 不再支持旧版「复制预设 → 写入用户预设目录」：预设现在是 profile/Bundle 中的
 `@deepseek-ai/dsh-agent-preset` 声明，原生设置页只提供「查看配置」（只读）及「让 Agent 帮我创建预设模式」。
@@ -123,7 +123,7 @@ React、Cordis、store、slots、ui-primitives 等共享运行时保持 external
 launcher、开发栈和打包脚本必须同时检查宿主与浏览器产物。
 
 注册时 readFileSync 将 bundle 读成不可变快照，以 IMMUTABLE_CACHE 下发；只有 rebuilt() 会重读，
-该回调由 HMR watch 触发。dsh-station-web 没有 HMR，任何插件改动都必须构建并重启 dsh。
+该回调由 HMR watch 触发。dsh-remote-web 没有 HMR，任何插件改动都必须构建并重启 dsh。
 
 ## 原生客户端加载页
 
@@ -325,7 +325,7 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
 - 订阅 `app-boot/config-reload`：`reconcileProfilePatches` 完成活跃性校验后广播，ConfigEditor 持久化修改会经过此路径。
   原生 `settings.describe()` 返回完整描述列表，不接收 namespace 参数；不把定向 `loader/volatile-update` 当作全局事件。
   来源：`packages/boot/app-boot/src/profile.ts`、`packages/boot/config-editor/src/index.ts`；已核对0.2.0-rc.2源码。
-- launcher/dev-stack 用 `DSH_STATION_THEME_FILE` 传绝对路径。插件原子写 `dsh-theme.json`，
+- launcher/dev-stack 用 `DSH_REMOTE_THEME_FILE` 传绝对路径。插件原子写 `dsh-theme.json`，
   严格只有 `{version:1,preference:light|dark|system}`，最多1024 UTF-8字节；不携带原生配置、URL或凭据。
 - relay 只读项目投影，以目录 `fs.watch` 覆盖原子替换，去重后通知管理页；坏文件/缺失保持进程内上次有效值，首次为system。
   管理 HTML 直接带初值，固定哈希脚本单向消费 NDJSON，认证/连接寿命限制见 [安全](../04-security.md#管理页只读主题流)。
@@ -399,7 +399,7 @@ token 拼写和实际值是两件事，需用真实页面 getComputedStyle 检�
 （`--dsh-frame-overlay-top` 由 `packages/client/ui-layout/src/client/AppFrame.module.css` 发布：
 桌面为 `--dsh-frame-top-clearance + 20px`，浏览器为 20px）；全屏 mask 顶部让出标题栏
 （`inset: var(--dsh-frame-chrome-top,0px) 0 0`）。外部留白来自视口高度限制和居中，不是标题/header 的 padding。
-项目 relay 管理页是顶部对齐的独立文档，不应复制整套 modal：其 `--dsh-station-page-top-gap`
+项目 relay 管理页是顶部对齐的独立文档，不应复制整套 modal：其 `--dsh-remote-page-top-gap`
 保留24px（窄屏12px）页面留白；桌面 `chromebar.go` 将36px标题栏占位与该值叠加，不能覆盖它。
 dsh 文档未定义该项目变量，沿用36px占位和border-box，不改变原生设置样式。
 

@@ -9,7 +9,7 @@ import {
   type DshRestartStatus,
   type MembershipHub,
   type MembershipLastHub,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import { hubPage, type MembershipView } from '../src/admin/console/hub.js'
 import {
   ADMIN_HUB_PATH,
@@ -336,7 +336,7 @@ describe('取消确认页保留必要后果与 GET → POST 边界', () => {
     expect(confirm.status).toBe(200)
     expect(confirm.body).not.toContain(relayUrl)
     expect(confirm.body).toContain('wss://entry.dsh.test/?label=&lt;b&gt;&amp;name=&quot;remote&quot;')
-    const command = `dsh-station-connector --relay ${HUB.relayUrl} --slug '<b>bad</b>' --enroll-token '${TOKEN}'`
+    const command = `dsh-remote-connector --relay ${HUB.relayUrl} --slug '<b>bad</b>' --enroll-token '${TOKEN}'`
     const rejected = await postCsrfForm(fixture, {
       path: ADMIN_MEMBERSHIP_JOIN_PATH, host: HOST, origin: `https://${HOST}`,
       sessionCookie: fixture.sessionCookie, csrfPair: confirm.csrfPair,

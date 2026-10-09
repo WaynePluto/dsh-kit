@@ -3,7 +3,7 @@ import {
   type DshRestartStatus,
   type MembershipHub,
   type MembershipLastHub,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import { escapeHtml, type PageAppearance } from '../shared.js'
 import {
   ADMIN_HUB_PATH,
@@ -208,7 +208,7 @@ export function hubPage(options: {
 <p class="hint">到入口机器的「机器」页获取连接命令，完整粘贴到下方。</p>
 <form method="post" action="${ADMIN_MEMBERSHIP_JOIN_PATH}">
 <input type="hidden" name="csrf" value="${escapeHtml(csrf)}">
-<div class="field"><label for="hubCommand">连接命令</label><input class="paste" id="hubCommand" name="command" required maxlength="2048" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="dsh-station-connector --relay wss://… --slug … --enroll-token … --hub-authority …"></div>
+<div class="field"><label for="hubCommand">连接命令</label><input class="paste" id="hubCommand" name="command" required maxlength="2048" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="dsh-remote-connector --relay wss://… --slug … --enroll-token … --hub-authority …"></div>
 <p class="hint">提交后会自动重启 dsh，本机和远程访问会短暂中断。</p>
 <button type="submit">${view.kind === 'joined' ? '改用这个远程入口' : '设为远程入口'}</button></form>`,
   })

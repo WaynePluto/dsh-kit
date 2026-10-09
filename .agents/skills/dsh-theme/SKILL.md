@@ -170,7 +170,7 @@ line-height:1.4; white-space:nowrap`，SVG `display:block; flex:none`。这样�
 `min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))))`；
 依据是 `packages/client/ui-settings-general/src/client/SettingsRoot.module.css`，已按当前源码复核，本地旧 checkout 可能没有 overlay-top 变量。
 独立 relay 管理文档仍需顶部对齐，不能照搬整套居中 modal；壳注入36px标题栏时也不能直接覆盖页面24px padding。
-项目实例用 `--dsh-station-page-top-gap`（窄屏12px）与标题栏占位 calc 相加，未定义变量的dsh回退0；
+项目实例用 `--dsh-remote-page-top-gap`（窄屏12px）与标题栏占位 calc 相加，未定义变量的dsh回退0；
 不要一次读取 computed padding 后写死，否则响应式切换会丢失。保留border-box，防止height:100%链底部裁切。
 真实Chrome + relay页面/实际标题栏脚本验证：宽屏卡片top60、条底36，窄屏top48、条底36；
 普通浏览器仍为24/12px，深浅主题不变、无横向溢出。不代表所有原生弹窗都共享设置面板的高度公式。
@@ -215,7 +215,7 @@ dock 列表行要保证任何内容长度下都单行：行容器去掉 `flexWra
 ## 验证闭环
 
 1. 运行目标插件 test/typecheck/build 和仓库 lint；读实际 diff，确认没有改业务写入逻辑。
-2. **构建后重启对应 dsh，再刷新页面。** dsh-station-web 没有 HMR，浏览器硬刷新也不会让
+2. **构建后重启对应 dsh，再刷新页面。** dsh-remote-web 没有 HMR，浏览器硬刷新也不会让
    宿主重读不可变客户端 bundle。先查服务管理器；用户管理的运行实例不要擅自停掉。
    可启动独立 loopback 验证实例，结束时清理，并明确提醒用户重启日常实例。
 3. 在真实 dsh 页面并排比较内置控件与插件，不用孤立 HTML 预览代替宿主环境。

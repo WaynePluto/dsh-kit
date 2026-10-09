@@ -1,5 +1,5 @@
 import type { RelayConfig } from '../../config.js'
-import { PROBE_INTERVAL_MS } from '@dsh-station/protocol'
+import { PROBE_INTERVAL_MS } from '@dsh-remote/protocol'
 import {
   ENROLL_TOKEN_SHOWN_ONCE_NOTICE,
   ENROLL_TOKEN_SINGLE_USE_NOTICE,
@@ -92,7 +92,7 @@ function machineItem(options: {
   const { device, online, probedAt, now, csrf, config, hostname } = options
   const revoked = device.revokedAt !== null
   // 本机（directSlug）就是运行这个控制台的机器：停止并移除它会
-  // 杀掉它自己的 dsh-station，这个操作没有意义，也不提供入口。
+  // 杀掉它自己的 dsh-remote，这个操作没有意义，也不提供入口。
   const self = device.slug === config.directSlug
   const presence: Presence = online
     ? 'online'
@@ -164,7 +164,7 @@ function connectorCommand(options: {
   // 未知时省略而不是猜测：占位符会被写入另一台机器的 membership.json，
   // 导致其 dsh 无法启动。
   const trust = options.hubAuthority === undefined ? '' : ` --hub-authority ${options.hubAuthority}`
-  return `dsh-station-connector --relay ${wsScheme}://${authority} --slug ${options.slug} --enroll-token ${options.token}${trust}`
+  return `dsh-remote-connector --relay ${wsScheme}://${authority} --slug ${options.slug} --enroll-token ${options.token}${trust}`
 }
 
 function tokenPanel(options: {

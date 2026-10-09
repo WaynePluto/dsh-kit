@@ -1,6 +1,6 @@
 import type { HttpBindings } from '@hono/node-server'
 import type { Hono } from 'hono'
-import { machineSlugSchema } from '@dsh-station/protocol'
+import { machineSlugSchema } from '@dsh-remote/protocol'
 import { issueDeviceEnrollToken } from '../../store/enroll-token.js'
 import type { PageAppearance } from '../shared.js'
 import {
@@ -113,7 +113,7 @@ export function registerMachineRoutes(
           `${device.slug} 的远程访问及现有连接立即断开。`,
           '设备凭据和未使用的注册令牌失效。',
           '该机器的访问端口关闭。',
-          `恢复需新注册令牌，并在 ${device.slug} 上重新启动 DSH 工作站。`,
+          `恢复需新注册令牌，并在 ${device.slug} 上重新启动 DSH Remote。`,
         ]
       : [
           `${device.slug} 的设备凭据和未使用的注册令牌失效，访问端口关闭。`,
@@ -216,7 +216,7 @@ export function registerMachineRoutes(
     const machineId = textField(body.machineId)
     const device = machineId === '' ? undefined : store.getDeviceByMachineId(machineId)
     if (device === undefined) return emptyResponse(404, session.setCookieHeaders)
-    // 防御列表页之外的直接提交：停掉本机会当场杀死运行这个控制台的 dsh-station。
+    // 防御列表页之外的直接提交：停掉本机会当场杀死运行这个控制台的 dsh-remote。
     if (device.slug === config.directSlug) {
       return redirectResponse(ADMIN_PATH_PREFIX, session.setCookieHeaders)
     }

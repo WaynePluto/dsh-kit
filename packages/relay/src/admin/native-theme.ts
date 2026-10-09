@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, mkdirSync, openSync, readSync, watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
-import { MAX_THEME_PROJECTION_BYTES, parseThemeProjection, THEME_FILE_NAME } from '@dsh-station/protocol'
+import { MAX_THEME_PROJECTION_BYTES, parseThemeProjection, THEME_FILE_NAME } from '@dsh-remote/protocol'
 import type { Logger } from 'pino'
 import type { ThemePreference } from './theme.js'
 

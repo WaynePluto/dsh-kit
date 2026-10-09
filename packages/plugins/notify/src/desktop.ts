@@ -22,7 +22,7 @@ export interface DesktopNotice {
 
 /** 尝试把通知转发给桌面壳；返回 false 表示壳不可用，调用方回落 toast。 */
 export function forwardToDesktop(notice: DesktopNotice, environment: NodeJS.ProcessEnv = process.env): boolean {
-  const token = environment.DSH_STATION_NOTIFY_TOKEN
+  const token = environment.DSH_REMOTE_NOTIFY_TOKEN
   if (token === undefined || token === '') return false
   if (Date.now() < unavailableUntil) return false
   if (socket !== undefined && connected && socket.writable) {

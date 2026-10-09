@@ -1,4 +1,4 @@
-# DSH 工作站套件（dsh-station）
+# DSH Remote 套件（dsh-remote）
 
 **简体中文** | [English](README.en.md)
 
@@ -24,16 +24,16 @@
    pnpm plugins:build
    node scripts/build-suite.mjs   # 生成套件 patch 并物化依赖闭包
    ```
-3. dsh → 插件 → 添加插件 → 输入 `packages/plugins/station-suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
+3. dsh → 插件 → 添加插件 → 输入 `packages/plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
    升级：重新构建后卸载再安装。
 
 用一条 GitHub 仓库地址安装的结构已就绪（`file:` 相对依赖），待仓库公开后实测收口。
 
 ## 运行数据与配置
 
-- 数据目录 `~/.dsh-station`：relay 数据库、设备密钥、membership、dsh-token、进程注册表与日志（`logs/`）
-- 配置示例见 [packaging/dsh-station.config.example.json](packaging/dsh-station.config.example.json)
-  （放 `~/.dsh-station/dsh-station.config.json`；未配置时默认局域网模式，relay 端口 30809）
+- 数据目录 `~/.dsh-remote`：relay 数据库、设备密钥、membership、dsh-token、进程注册表与日志（`logs/`）
+- 配置示例见 [packaging/dsh-remote.config.example.json](packaging/dsh-remote.config.example.json)
+  （放 `~/.dsh-remote/dsh-remote.config.json`；未配置时默认局域网模式，relay 端口 30809）
 - 已知边界：更换远程入口后需手动重启 dsh 使新 trustedHosts 生效（插件无法重启宿主）
 
 ## 组件一览

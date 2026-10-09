@@ -13,7 +13,7 @@
 - root/内嵌符号链接沿用原生 `fs.cp` 的不解引用及错误语义；未扩大符号链接依赖。
   真实路径和目标现存祖先校验拒绝自身/子目录复制，包含 `..child` 与 junction 绕行情况。
 - 首个错误发生后停止取新任务，等全部在途操作结束再拒绝；不会在调用方重试或清理后继续写文件。
-- `plugin-lifecycle.ts` 在破坏性修改前写 `.dsh-station-plugin-media.pending`。
+- `plugin-lifecycle.ts` 在破坏性修改前写 `.dsh-remote-plugin-media.pending`。
   复制、官方安装及 manifest/state 提交成功后才清除；异常或进程中断保留标记，下次禁止快路径。
   旧 offered 与用户停用/卸载选择保留，不通过删除整个状态文件强制重装。
 - `onTiming` 回调只包含固定阶段和毫秒数，由 launcher 输出 `插件准备耗时 [phase]: Nms`。
@@ -121,7 +121,7 @@
 
 ## 产物与复核材料
 
-- 新版zip：`release/dsh-station-0.0.2-20260928-win-x64-desktop-lite.zip`。
+- 新版zip：`release/dsh-remote-0.0.2-20260928-win-x64-desktop-lite.zip`。
 - SHA-256：`2ec167fc157367f5425e24e05f43779f9d095e61028a45564bbef2ab97cf7113`。
 - 新版解压目录：`release/benchmark-win-lite-copy8`，真实exe自检通过，使用系统Node、不带Node二进制。
 - 旧版zip保存在 `.agents/bench/node2419/baseline-lite.zip`；旧版解压目录 `release/benchmark-win-lite` 保留作对照。

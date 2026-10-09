@@ -7,7 +7,7 @@ export const NAMESPACE = 'dsh-plugin-web-search-switch'
 export const ENTRY_ID = 'web-search-switch'
 
 /** 本插件的 Bundle 完整包名，也是 plugins.bundle.config keyed 槽的 key。 */
-export const BUNDLE_PACKAGE = '@dsh-station/dsh-plugin-web-search-switch'
+export const BUNDLE_PACKAGE = '@dsh-remote/dsh-plugin-web-search-switch'
 
 /** dsh 官方网页搜索宿主行的模块名（base bundle 行 `web-search-deepseek`）。 */
 export const OFFICIAL_WEB_SEARCH_MODULE = '@deepseek-ai/dsh-web-search-deepseek'

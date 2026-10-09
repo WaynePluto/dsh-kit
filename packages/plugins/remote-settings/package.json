@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-station/dsh-plugin-remote-settings",
+  "name": "@dsh-remote/dsh-plugin-remote-settings",
   "version": "0.0.3-20261008",
   "description": "让通过 relay 认证的浏览器使用完整的 dsh 设置页。",
   "license": "MIT",

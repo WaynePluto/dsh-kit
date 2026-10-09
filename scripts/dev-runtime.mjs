@@ -24,7 +24,7 @@ async function validateOverrides(root, rootBytes, overrides, parseYaml) {
   const hash = createHash('sha256')
   for (const bytes of [rootBytes, workspaceBytes, lockBytes]) hash.update(`${bytes.length}\0`).update(bytes)
   const digest = hash.digest('hex')
-  const path = join(root, 'node_modules', '.cache', 'dsh-station', 'dev-runtime-validation.json')
+  const path = join(root, 'node_modules', '.cache', 'dsh-remote', 'dev-runtime-validation.json')
   const previous = readBuildStamp(path)
   if (previous?.schemaVersion === 1 && previous.digest === digest) return
   const workspace = await parseYaml(workspaceBytes.toString('utf8'))
@@ -62,7 +62,7 @@ export async function ensureDevelopmentRuntime({
     '@deepseek-ai/dsh-tools': '0.2.0-rc.2',
     '@deepseek-ai/dsh-user-approval': '0.2.0-rc.2',
     '@deepseek-ai/schemastery': '3.18.4',
-    '@dsh-station/plugin-ui': `file:${join(root, 'packages', 'plugin-ui')}`,
+    '@dsh-remote/plugin-ui': `file:${join(root, 'packages', 'plugin-ui')}`,
     '@earendil-works/pi-ai': '0.87.1',
     commander: '15.0.0',
     immer: '10.2.0',
@@ -91,7 +91,7 @@ export async function ensureDevelopmentRuntime({
     rmSync(temporary, { recursive: true, force: true })
     mkdirSync(temporary, { recursive: true })
     writeFileSync(join(temporary, 'package.json'), `${JSON.stringify({
-      name: 'dsh-station-development-runtime', private: true, version: '0.0.0',
+      name: 'dsh-remote-development-runtime', private: true, version: '0.0.0',
       dependencies: runtimeDependencies, pnpm: { overrides },
     }, undefined, 2)}\n`)
     const sourcePnpm = join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
@@ -105,7 +105,7 @@ export async function ensureDevelopmentRuntime({
   }
   const descriptor = { fingerprint, runtime, dshBin, installAnchor, pnpmCli }
   writeBuildStamp(join(root, '.dev', 'runtime.json'), descriptor)
-  log(`[dsh-station] 开发运行时：${runtime}`)
+  log(`[dsh-remote] 开发运行时：${runtime}`)
   return descriptor
 }
 

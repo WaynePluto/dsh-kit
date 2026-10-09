@@ -8,7 +8,7 @@
 
 插件 → 已安装 → 网页搜索开关，点开卡片即见「官方网页搜索」开关。
 
-- 开关经 dsh 官方 `pluginManager` 服务把停用/启用写入 `dsh-station-web` profile
+- 开关经 dsh 官方 `pluginManager` 服务把停用/启用写入 `dsh-remote-web` profile
   的用户层 `cordis.patch.yml`（`id: web-search-deepseek` 行加 `disabled`），与 dsh
   原生插件行开关同一机制；本插件不实现第二套插件管理，也不持有自己的状态。
 - 热加载可用时立即生效；需要重启时开关下方提示「已写入配置，重启 dsh 后生效」，
@@ -27,15 +27,15 @@
 
 ## 分发与重装
 
-独立第三方 Bundle（`@dsh-station/dsh-plugin-web-search-switch`），随工作站默认
+独立第三方 Bundle（`@dsh-remote/dsh-plugin-web-search-switch`），随工作站默认
 安装，配套升级自动安装；卸载后不自动补回。重装走官方「添加插件」：发行介质
 `<解压目录>/plugins/web-search-switch`，源码开发用 `<仓库>/.dev/plugins/web-search-switch`。
 
 ## 验证
 
 ```powershell
-pnpm --filter @dsh-station/dsh-plugin-web-search-switch typecheck
-pnpm --filter @dsh-station/dsh-plugin-web-search-switch test
-pnpm --filter @dsh-station/dsh-plugin-web-search-switch build
+pnpm --filter @dsh-remote/dsh-plugin-web-search-switch typecheck
+pnpm --filter @dsh-remote/dsh-plugin-web-search-switch test
+pnpm --filter @dsh-remote/dsh-plugin-web-search-switch build
 node scripts/web-search-switch-check.mjs
 ```

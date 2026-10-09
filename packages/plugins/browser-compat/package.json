@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-station/dsh-plugin-browser-compat",
+  "name": "@dsh-remote/dsh-plugin-browser-compat",
   "version": "0.0.3-20261008",
   "description": "为旧版 WebKit 补齐 dsh 所需浏览器 API，并提供浏览器日志。",
   "license": "MIT",
@@ -38,7 +38,7 @@
     "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
     "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
-    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008",
+    "@dsh-remote/plugin-ui": "workspace:0.0.3-20261008",
     "@types/react": "18.3.31",
     "react": "18.3.1",
     "vitest": "4.1.11"

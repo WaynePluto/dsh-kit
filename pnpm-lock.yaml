@@ -53,82 +53,82 @@ importers:
 
   .:
     devDependencies:
-      '@dsh-station/dsh-plugin-agents-md':
+      '@dsh-remote/dsh-plugin-agents-md':
         specifier: workspace:*
         version: link:packages/plugins/agents-md
-      '@dsh-station/dsh-plugin-browser-compat':
+      '@dsh-remote/dsh-plugin-browser-compat':
         specifier: workspace:*
         version: link:packages/plugins/browser-compat
-      '@dsh-station/dsh-plugin-chat-scroll':
+      '@dsh-remote/dsh-plugin-chat-scroll':
         specifier: workspace:*
         version: link:packages/plugins/chat-scroll
-      '@dsh-station/dsh-plugin-concise-mode':
+      '@dsh-remote/dsh-plugin-concise-mode':
         specifier: workspace:*
         version: link:packages/plugins/concise-mode
-      '@dsh-station/dsh-plugin-conversation-enhancements':
+      '@dsh-remote/dsh-plugin-conversation-enhancements':
         specifier: workspace:0.0.3-20261008
         version: link:packages/plugins/conversation-enhancements
-      '@dsh-station/dsh-plugin-copilot-auth':
+      '@dsh-remote/dsh-plugin-copilot-auth':
         specifier: workspace:*
         version: link:packages/plugins/copilot-auth
-      '@dsh-station/dsh-plugin-development-tools':
+      '@dsh-remote/dsh-plugin-development-tools':
         specifier: workspace:0.0.3-20261008
         version: link:packages/plugins/development-tools
-      '@dsh-station/dsh-plugin-directory-picker-browse':
+      '@dsh-remote/dsh-plugin-directory-picker-browse':
         specifier: workspace:*
         version: link:packages/plugins/directory-picker-browse
-      '@dsh-station/dsh-plugin-favorite-models':
+      '@dsh-remote/dsh-plugin-favorite-models':
         specifier: workspace:*
         version: link:packages/plugins/favorite-models
-      '@dsh-station/dsh-plugin-files':
+      '@dsh-remote/dsh-plugin-files':
         specifier: workspace:*
         version: link:packages/plugins/files
-      '@dsh-station/dsh-plugin-model-capabilities':
+      '@dsh-remote/dsh-plugin-model-capabilities':
         specifier: workspace:*
         version: link:packages/plugins/model-capabilities
-      '@dsh-station/dsh-plugin-model-enhancements':
+      '@dsh-remote/dsh-plugin-model-enhancements':
         specifier: workspace:0.0.3-20261008
         version: link:packages/plugins/model-enhancements
-      '@dsh-station/dsh-plugin-models-catalog':
+      '@dsh-remote/dsh-plugin-models-catalog':
         specifier: workspace:*
         version: link:packages/plugins/models-catalog
-      '@dsh-station/dsh-plugin-notify':
+      '@dsh-remote/dsh-plugin-notify':
         specifier: workspace:*
         version: link:packages/plugins/notify
-      '@dsh-station/dsh-plugin-proxy':
+      '@dsh-remote/dsh-plugin-proxy':
         specifier: workspace:*
         version: link:packages/plugins/proxy
-      '@dsh-station/dsh-plugin-remote-experience':
+      '@dsh-remote/dsh-plugin-remote-experience':
         specifier: workspace:0.0.3-20261008
         version: link:packages/plugins/remote-experience
-      '@dsh-station/dsh-plugin-remote-privileged':
+      '@dsh-remote/dsh-plugin-remote-privileged':
         specifier: workspace:*
         version: link:packages/plugins/remote-privileged
-      '@dsh-station/dsh-plugin-remote-settings':
+      '@dsh-remote/dsh-plugin-remote-settings':
         specifier: workspace:*
         version: link:packages/plugins/remote-settings
-      '@dsh-station/dsh-plugin-services':
+      '@dsh-remote/dsh-plugin-services':
         specifier: workspace:*
         version: link:packages/plugins/services
-      '@dsh-station/dsh-plugin-skills-inspector':
+      '@dsh-remote/dsh-plugin-skills-inspector':
         specifier: workspace:*
         version: link:packages/plugins/skills-inspector
-      '@dsh-station/dsh-plugin-terminal':
+      '@dsh-remote/dsh-plugin-terminal':
         specifier: workspace:*
         version: link:packages/plugins/terminal
-      '@dsh-station/dsh-plugin-tools-inspector':
+      '@dsh-remote/dsh-plugin-tools-inspector':
         specifier: workspace:*
         version: link:packages/plugins/tools-inspector
-      '@dsh-station/dsh-plugin-turn-retry':
+      '@dsh-remote/dsh-plugin-turn-retry':
         specifier: workspace:*
         version: link:packages/plugins/turn-retry
-      '@dsh-station/dsh-plugin-user-message-fork':
+      '@dsh-remote/dsh-plugin-user-message-fork':
         specifier: workspace:*
         version: link:packages/plugins/user-message-fork
-      '@dsh-station/dsh-plugin-web-search-switch':
+      '@dsh-remote/dsh-plugin-web-search-switch':
         specifier: workspace:*
         version: link:packages/plugins/web-search-switch
-      '@dsh-station/dsh-plugin-yolo-mode':
+      '@dsh-remote/dsh-plugin-yolo-mode':
         specifier: workspace:*
         version: link:packages/plugins/yolo-mode
       '@types/node':
@@ -137,9 +137,15 @@ importers:
       husky:
         specifier: 9.1.7
         version: 9.1.7
+      immer:
+        specifier: 10.2.0
+        version: 10.2.0
       oxlint:
         specifier: 1.86.0
         version: 1.86.0
+      pnpm:
+        specifier: 10.17.0
+        version: 10.17.0
       tsdown:
         specifier: 0.23.0
         version: 0.23.0(tsx@4.23.15)(typescript@6.0.3)
@@ -149,10 +155,13 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      zustand:
+        specifier: 4.4.7
+        version: 4.4.7(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1)
 
   packages/connector:
     dependencies:
-      '@dsh-station/protocol':
+      '@dsh-remote/protocol':
         specifier: file:../protocol
         version: link:../protocol
       commander:
@@ -168,7 +177,7 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      '@dsh-station/relay':
+      '@dsh-remote/relay':
         specifier: workspace:*
         version: link:../relay
       '@types/ws':
@@ -217,7 +226,7 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -253,7 +262,7 @@ importers:
       '@deepseek-ai/dsh-host-webserver':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -307,16 +316,16 @@ importers:
 
   packages/plugins/conversation-enhancements:
     dependencies:
-      '@dsh-station/dsh-plugin-chat-scroll':
+      '@dsh-remote/dsh-plugin-chat-scroll':
         specifier: workspace:0.0.3-20261008
         version: link:../chat-scroll
-      '@dsh-station/dsh-plugin-notify':
+      '@dsh-remote/dsh-plugin-notify':
         specifier: workspace:0.0.3-20261008
         version: link:../notify
-      '@dsh-station/dsh-plugin-turn-retry':
+      '@dsh-remote/dsh-plugin-turn-retry':
         specifier: workspace:0.0.3-20261008
         version: link:../turn-retry
-      '@dsh-station/dsh-plugin-user-message-fork':
+      '@dsh-remote/dsh-plugin-user-message-fork':
         specifier: workspace:0.0.3-20261008
         version: link:../user-message-fork
 
@@ -371,16 +380,16 @@ importers:
 
   packages/plugins/development-tools:
     dependencies:
-      '@dsh-station/dsh-plugin-services':
+      '@dsh-remote/dsh-plugin-services':
         specifier: workspace:0.0.3-20261008
         version: link:../services
-      '@dsh-station/dsh-plugin-skills-inspector':
+      '@dsh-remote/dsh-plugin-skills-inspector':
         specifier: workspace:0.0.3-20261008
         version: link:../skills-inspector
-      '@dsh-station/dsh-plugin-terminal':
+      '@dsh-remote/dsh-plugin-terminal':
         specifier: workspace:0.0.3-20261008
         version: link:../terminal
-      '@dsh-station/dsh-plugin-tools-inspector':
+      '@dsh-remote/dsh-plugin-tools-inspector':
         specifier: workspace:0.0.3-20261008
         version: link:../tools-inspector
 
@@ -562,16 +571,16 @@ importers:
 
   packages/plugins/model-enhancements:
     dependencies:
-      '@dsh-station/dsh-plugin-copilot-auth':
+      '@dsh-remote/dsh-plugin-copilot-auth':
         specifier: workspace:0.0.3-20261008
         version: link:../copilot-auth
-      '@dsh-station/dsh-plugin-favorite-models':
+      '@dsh-remote/dsh-plugin-favorite-models':
         specifier: workspace:0.0.3-20261008
         version: link:../favorite-models
-      '@dsh-station/dsh-plugin-model-capabilities':
+      '@dsh-remote/dsh-plugin-model-capabilities':
         specifier: workspace:0.0.3-20261008
         version: link:../model-capabilities
-      '@dsh-station/dsh-plugin-models-catalog':
+      '@dsh-remote/dsh-plugin-models-catalog':
         specifier: workspace:0.0.3-20261008
         version: link:../models-catalog
 
@@ -675,7 +684,7 @@ importers:
       '@deepseek-ai/dsh-user-questions':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent@0.2.0-rc.2(fee0e653b72a3883e0f0da2d9a46bb50))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-session-projection@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))(@deepseek-ai/dsh-typert-protocol@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -727,7 +736,7 @@ importers:
       '@deepseek-ai/dsh-settings':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(558744ad0b2505c8f61f84b8cc031afc)
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -742,10 +751,10 @@ importers:
 
   packages/plugins/remote-experience:
     dependencies:
-      '@dsh-station/dsh-plugin-browser-compat':
+      '@dsh-remote/dsh-plugin-browser-compat':
         specifier: workspace:0.0.3-20261008
         version: link:../browser-compat
-      '@dsh-station/dsh-plugin-remote-settings':
+      '@dsh-remote/dsh-plugin-remote-settings':
         specifier: workspace:0.0.3-20261008
         version: link:../remote-settings
 
@@ -851,7 +860,7 @@ importers:
       '@deepseek-ai/dsh-user-approval':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent@0.2.0-rc.2(fee0e653b72a3883e0f0da2d9a46bb50))(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))(@deepseek-ai/dsh-system-prompt@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -896,7 +905,7 @@ importers:
       '@deepseek-ai/dsh-skill':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -909,81 +918,81 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
-  packages/plugins/station-suite:
+  packages/plugins/suite:
     dependencies:
-      '@dsh-station/connector':
+      '@dsh-remote/connector':
         specifier: file:../../connector
         version: link:../../connector
-      '@dsh-station/dsh-plugin-agents-md':
+      '@dsh-remote/dsh-plugin-agents-md':
         specifier: file:../agents-md
         version: link:../agents-md
-      '@dsh-station/dsh-plugin-browser-compat':
+      '@dsh-remote/dsh-plugin-browser-compat':
         specifier: file:../browser-compat
         version: link:../browser-compat
-      '@dsh-station/dsh-plugin-chat-scroll':
+      '@dsh-remote/dsh-plugin-chat-scroll':
         specifier: file:../chat-scroll
         version: link:../chat-scroll
-      '@dsh-station/dsh-plugin-concise-mode':
+      '@dsh-remote/dsh-plugin-concise-mode':
         specifier: file:../concise-mode
         version: link:../concise-mode
-      '@dsh-station/dsh-plugin-copilot-auth':
+      '@dsh-remote/dsh-plugin-copilot-auth':
         specifier: file:../copilot-auth
         version: file:packages/plugins/copilot-auth
-      '@dsh-station/dsh-plugin-directory-picker-browse':
+      '@dsh-remote/dsh-plugin-directory-picker-browse':
         specifier: file:../directory-picker-browse
         version: link:../directory-picker-browse
-      '@dsh-station/dsh-plugin-favorite-models':
+      '@dsh-remote/dsh-plugin-favorite-models':
         specifier: file:../favorite-models
         version: link:../favorite-models
-      '@dsh-station/dsh-plugin-files':
+      '@dsh-remote/dsh-plugin-files':
         specifier: file:../files
         version: link:../files
-      '@dsh-station/dsh-plugin-model-capabilities':
+      '@dsh-remote/dsh-plugin-model-capabilities':
         specifier: file:../model-capabilities
         version: link:../model-capabilities
-      '@dsh-station/dsh-plugin-models-catalog':
+      '@dsh-remote/dsh-plugin-models-catalog':
         specifier: file:../models-catalog
         version: file:packages/plugins/models-catalog
-      '@dsh-station/dsh-plugin-notify':
+      '@dsh-remote/dsh-plugin-notify':
         specifier: file:../notify
         version: link:../notify
-      '@dsh-station/dsh-plugin-proxy':
+      '@dsh-remote/dsh-plugin-proxy':
         specifier: file:../proxy
         version: link:../proxy
-      '@dsh-station/dsh-plugin-remote-privileged':
+      '@dsh-remote/dsh-plugin-remote-privileged':
         specifier: file:../remote-privileged
         version: link:../remote-privileged
-      '@dsh-station/dsh-plugin-remote-runtime':
+      '@dsh-remote/dsh-plugin-remote-runtime':
         specifier: file:../remote-runtime
         version: link:../remote-runtime
-      '@dsh-station/dsh-plugin-remote-settings':
+      '@dsh-remote/dsh-plugin-remote-settings':
         specifier: file:../remote-settings
         version: link:../remote-settings
-      '@dsh-station/dsh-plugin-services':
+      '@dsh-remote/dsh-plugin-services':
         specifier: file:../services
         version: link:../services
-      '@dsh-station/dsh-plugin-skills-inspector':
+      '@dsh-remote/dsh-plugin-skills-inspector':
         specifier: file:../skills-inspector
         version: link:../skills-inspector
-      '@dsh-station/dsh-plugin-terminal':
+      '@dsh-remote/dsh-plugin-terminal':
         specifier: file:../terminal
         version: file:packages/plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)
-      '@dsh-station/dsh-plugin-tools-inspector':
+      '@dsh-remote/dsh-plugin-tools-inspector':
         specifier: file:../tools-inspector
         version: link:../tools-inspector
-      '@dsh-station/dsh-plugin-turn-retry':
+      '@dsh-remote/dsh-plugin-turn-retry':
         specifier: file:../turn-retry
         version: link:../turn-retry
-      '@dsh-station/dsh-plugin-user-message-fork':
+      '@dsh-remote/dsh-plugin-user-message-fork':
         specifier: file:../user-message-fork
         version: link:../user-message-fork
-      '@dsh-station/dsh-plugin-web-search-switch':
+      '@dsh-remote/dsh-plugin-web-search-switch':
         specifier: file:../web-search-switch
         version: link:../web-search-switch
-      '@dsh-station/dsh-plugin-yolo-mode':
+      '@dsh-remote/dsh-plugin-yolo-mode':
         specifier: file:../yolo-mode
         version: link:../yolo-mode
-      '@dsh-station/relay':
+      '@dsh-remote/relay':
         specifier: file:../../relay
         version: link:../../relay
 
@@ -1041,7 +1050,7 @@ importers:
       '@deepseek-ai/dsh-subprocess-local':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-subprocess@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-http-proxy@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-timeout@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -1086,7 +1095,7 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(52b5a8ab481be2b3d891c22a71641755)
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -1144,7 +1153,7 @@ importers:
       '@deepseek-ai/dsh-session-projection':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
-      '@dsh-station/plugin-ui':
+      '@dsh-remote/plugin-ui':
         specifier: workspace:0.0.3-20261008
         version: link:../../plugin-ui
       '@types/react':
@@ -1231,6 +1240,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-plugin-manager':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(113f44e5f94cc05275c93e1388de4d34)
       '@testing-library/react':
         specifier: 16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1296,7 +1308,7 @@ importers:
 
   packages/relay:
     dependencies:
-      '@dsh-station/protocol':
+      '@dsh-remote/protocol':
         specifier: file:../protocol
         version: link:../protocol
       '@hono/node-server':
@@ -1818,6 +1830,18 @@ packages:
     peerDependencies:
       '@deepseek-ai/cordis': 4.0.4
 
+  '@deepseek-ai/dsh-host-plugin-inventory@0.2.0-rc.2':
+    resolution: {integrity: sha512-l/ESrOGxkk0aemM4t2b8yV3AvMZQ9oxSmgo4b1FSK3CYeaDoPJHC6iKW41DhmnJ0igdLpVIw+rg7R3KN0DREdg==}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/cordis-plugin-loader': ~1.0.5
+      '@deepseek-ai/dsh-agent-preset-registry': 0.2.0-rc.2
+      '@deepseek-ai/dsh-brand': 0.2.0-rc.2
+      '@deepseek-ai/dsh-typert-protocol': 0.2.0-rc.2
+    peerDependenciesMeta:
+      '@deepseek-ai/dsh-agent-preset-registry':
+        optional: true
+
   '@deepseek-ai/dsh-host-webserver@0.2.0-rc.2':
     resolution: {integrity: sha512-0zvI44emJMRr928Tfl//cPJlx/hiTGWfD1zaDlXu35eGIgOATFJlTPkJLApJvJOPVPPAlSOSdhI2L+j1TnzStw==}
     peerDependencies:
@@ -1889,6 +1913,26 @@ packages:
       '@deepseek-ai/dsh-shell': 0.2.0-rc.2
       '@deepseek-ai/dsh-typert-protocol': 0.2.0-rc.2
       '@deepseek-ai/dsh-user-approval': 0.2.0-rc.2
+
+  '@deepseek-ai/dsh-plugin-manager@0.2.0-rc.2':
+    resolution: {integrity: sha512-WnLDgkj3snW8YnOESlAhHTYerLSZBVEqYlup8XHJBXly2SnOTG6GG11phLvngocSDbhvMI6PB3L2oWkFNTYNFQ==}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/cordis-plugin-loader': ~1.0.5
+      '@deepseek-ai/dsh-brand': 0.2.0-rc.2
+      '@deepseek-ai/dsh-hmr': 0.2.0-rc.2
+      '@deepseek-ai/dsh-host-plugin-inventory': 0.2.0-rc.2
+      '@deepseek-ai/dsh-sandbox': 0.2.0-rc.2
+      '@deepseek-ai/dsh-sandbox-policy': 0.2.0-rc.2
+      '@deepseek-ai/dsh-subprocess': 0.2.0-rc.2
+      '@deepseek-ai/dsh-tools': 0.2.0-rc.2
+      '@deepseek-ai/dsh-typert-protocol': 0.2.0-rc.2
+      '@deepseek-ai/dsh-user-approval': 0.2.0-rc.2
+    peerDependenciesMeta:
+      '@deepseek-ai/dsh-hmr':
+        optional: true
+      '@deepseek-ai/dsh-user-approval':
+        optional: true
 
   '@deepseek-ai/dsh-ptc-runtime@0.2.0-rc.2':
     resolution: {integrity: sha512-HR/3h1VFRcNlAAjCtCAxZ4V3F5pViYicXcLBuYLGjzXWpOhr4zKzeFKh9+UMLjsc9XWIarJMoSvxl662nDV/xQ==}
@@ -2256,13 +2300,13 @@ packages:
   '@deepseek-ai/schemastery@3.18.4':
     resolution: {integrity: sha512-SSXO6tYuyrIqKVbmOnIq0s+riUywYzouFMcnBluHF9n4KMo2G8HvEzhCYj6pj2617/glOjbJuVInJ9hfONsjkg==}
 
-  '@dsh-station/dsh-plugin-copilot-auth@file:packages/plugins/copilot-auth':
+  '@dsh-remote/dsh-plugin-copilot-auth@file:packages/plugins/copilot-auth':
     resolution: {directory: packages/plugins/copilot-auth, type: directory}
 
-  '@dsh-station/dsh-plugin-models-catalog@file:packages/plugins/models-catalog':
+  '@dsh-remote/dsh-plugin-models-catalog@file:packages/plugins/models-catalog':
     resolution: {directory: packages/plugins/models-catalog, type: directory}
 
-  '@dsh-station/dsh-plugin-terminal@file:packages/plugins/terminal':
+  '@dsh-remote/dsh-plugin-terminal@file:packages/plugins/terminal':
     resolution: {directory: packages/plugins/terminal, type: directory}
 
   '@earendil-works/pi-ai@0.87.1':
@@ -2701,6 +2745,13 @@ packages:
   '@scure/base@2.4.0':
     resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
 
+  '@sec-ant/readable-stream@0.4.1':
+    resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
+
+  '@sindresorhus/merge-streams@4.0.0':
+    resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
+    engines: {node: '>=18'}
+
   '@smithy/core@3.35.0':
     resolution: {integrity: sha512-zRMhfkByhT2snNdr1si24vJitU6Cr9ix2MikUfWmkAgp4jrNP0GcKSP5YvwQ+TlI8AZXER5QOGJn3JsVtSD9/A==}
     engines: {node: '>=18.0.0'}
@@ -3076,6 +3127,10 @@ packages:
   estree-walker@3.0.3:
     resolution: {integrity: sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==}
 
+  execa@10.1.0:
+    resolution: {integrity: sha512-5HT/600HqXEtmkb9mK/PkTWw+bQSCzPnWiZ4/87wD3Hi0wFzCapOuNT9p4M08PDd+KLHdHvFhKjOWmNx/npRNQ==}
+    engines: {node: '>=22'}
+
   expect-type@1.4.0:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
@@ -3105,6 +3160,10 @@ packages:
     resolution: {integrity: sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==}
     engines: {node: ^12.20 || >= 14.13}
 
+  figures@6.1.0:
+    resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
+    engines: {node: '>=18'}
+
   find-up@4.1.0:
     resolution: {integrity: sha512-PpOwAdQ/YlXQ2vj8a3h8IipDuYRi3wceVQQGYWxNINccq40Anw7BlsEXCMbt1Zt+OLA6Fq9suIpIWD0OsnISlw==}
     engines: {node: '>=8'}
@@ -3129,6 +3188,10 @@ packages:
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
+
+  get-stream@9.0.1:
+    resolution: {integrity: sha512-kVCxPF3vQM/N0B1PmoqVUqgHP+EeVjmZSQn+1oCRPxd2P21P2F19lIgbR3HBosbB1PUhOAoctJnfEn2GbN2eZA==}
+    engines: {node: '>=18'}
 
   get-tsconfig@5.0.0-beta.6:
     resolution: {integrity: sha512-X6fBC0pmImC70gvX2zm56go9hx0MyoGVdG0tUCkg/D+Xnh5TJsOZ7iDbOdI3PvmtrDxnu1YdDufpK2QJX1Meqw==}
@@ -3169,6 +3232,10 @@ packages:
     resolution: {integrity: sha512-ag87y7cJJ9/3+GxFr8Oy4O5faDsGRGnBGsJj/YjOSsSx/5eadKLYTMPlzuR6obgoCDDm0abAAZitXXQkMOPSpA==}
     engines: {node: '>= 20'}
 
+  human-signals@8.0.1:
+    resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
+    engines: {node: '>=18.18.0'}
+
   husky@9.1.7:
     resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
     engines: {node: '>=18'}
@@ -3178,6 +3245,9 @@ packages:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
 
+  immer@10.2.0:
+    resolution: {integrity: sha512-d/+XTN3zfODyjr89gM3mPq1WNX2B8pYsu7eORitdwyA2sBubnTl3laYlBk4sXY5FUa5qTZGBDPJICVbvqzjlbw==}
+
   import-without-cache@0.4.1:
     resolution: {integrity: sha512-vXoV9PjKHEednCUu01e98TkImxy67e3BJXbTIOmIq4Hyzw3IAwYRcuPkfeTzJzwyyts4kjuA73x+pWJLc4f86A==}
     engines: {node: ^22.18.0 || >=24.0.0}
@@ -3186,8 +3256,20 @@ packages:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
 
+  is-plain-obj@4.1.0:
+    resolution: {integrity: sha512-+Pgi+vMuUNkJyExiMBt5IlFoMyKnr5zhJ4Uspz58WOhBF5QoIZkFyNHIbBAtHwzVAgk5RtndVNsDRN61/mmDqg==}
+    engines: {node: '>=12'}
+
   is-potential-custom-element-name@1.0.1:
     resolution: {integrity: sha512-bCYeRA2rVibKZd+s2625gGnGF/t7DSqDs4dP7CrLA1m7jKWz6pps0LpYLJN8Q64HtmPKJ1hrN3nzPNKFEKOUiQ==}
+
+  is-stream@4.0.1:
+    resolution: {integrity: sha512-Dnz92NInDqYckGEUJv689RbRiTSEHCQ7wOVeALbkOz999YpqT46yMRIGtSNl2iCL1waAZSx40+h59NV/EwzV/A==}
+    engines: {node: '>=18'}
+
+  is-unicode-supported@2.1.0:
+    resolution: {integrity: sha512-mE00Gnza5EEB3Ds0HfMyllZzbBrmLOX3vfWoj9A9PEnTfratQ/BcaJOuMhnkhjXvb2+FkY3VuHqtAGpTPmglFQ==}
+    engines: {node: '>=18'}
 
   jose@6.2.12:
     resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
@@ -3364,6 +3446,10 @@ packages:
   node-pty@1.2.0-beta.15:
     resolution: {integrity: sha512-vORSzHXi4Ofl7HemVWpuudLqCPdaQb4LfpRCUpE5HPxhp4JYscl8zZwxh11p26v2wvW24WMwnMfLjhRLixrfxA==}
 
+  npm-run-path@6.0.0:
+    resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
+    engines: {node: '>=18'}
+
   nwsapi@2.2.28:
     resolution: {integrity: sha512-IlVB7OS7qrOsVYlpnFIkETjMwT9jwvmocJmmM+GZU/PAB3uGi9Ezd7vcWhWBUnSc0ya4ppmQITOyP1ez9gg8cg==}
 
@@ -3426,6 +3512,10 @@ packages:
     resolution: {integrity: sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==}
     engines: {node: '>=6'}
 
+  parse-ms@4.0.0:
+    resolution: {integrity: sha512-TXfryirbmq34y8QBwgqCVLi+8oA3oWx2eAnSn62ITyEhEYaWRlVZ2DvMM9eZbMs/RfxPu/PK/aBLyGj4IrqMHw==}
+    engines: {node: '>=18'}
+
   parse5@7.3.0:
     resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==}
 
@@ -3435,6 +3525,10 @@ packages:
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
+
+  path-key@4.0.0:
+    resolution: {integrity: sha512-haREypq7xkM7ErfgIyA0z+Bj4AGKlMSdlQE2jvJo6huWD1EdkKYV+G/T4nq0YEF2vgTT8kqMFKo1uHn950r4SQ==}
+    engines: {node: '>=12'}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -3460,6 +3554,11 @@ packages:
     resolution: {integrity: sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw==}
     engines: {node: '>=10.13.0'}
 
+  pnpm@10.17.0:
+    resolution: {integrity: sha512-/Oij3Smk7S7FZvtT77sE2MRKDwW8bySnMEaRD7nDznr6NaCYBQBmj6NXM0W9ZEZE+pgzj6FoI1yA9KoXqhf77w==}
+    engines: {node: '>=18.12'}
+    hasBin: true
+
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
@@ -3467,6 +3566,10 @@ packages:
   pretty-format@27.5.1:
     resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}
     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
+
+  pretty-ms@9.3.1:
+    resolution: {integrity: sha512-HzMy3Geq23nVALD/M2LliU+F+M+gVNsvkQWWqeBZ8HDiCgzo6YPJ/Omrmtq24EFrIsk0a3EkQGEd7bDOo+IhGA==}
+    engines: {node: '>=18'}
 
   process-warning@5.1.0:
     resolution: {integrity: sha512-jQSaVHsPgtyw60e1rQ/A+/ArPEj/S8pS/vFnyGa/gYFXrKk/6RuDkoqVDQ5NI5MmS01698ltlAk0NoDBNLujRw==}
@@ -3605,6 +3708,10 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
+  signal-exit@4.1.0:
+    resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
+    engines: {node: '>=14'}
+
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
 
@@ -3632,6 +3739,10 @@ packages:
   strip-ansi@6.0.1:
     resolution: {integrity: sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==}
     engines: {node: '>=8'}
+
+  strip-final-newline@4.0.0:
+    resolution: {integrity: sha512-aulFJcD6YK8V1G7iRB5tigAP4TsHBZZrOV8pjV++zdUwmeV8uzbY7yn6h9MswN62adStNZFuCIx4haBnRuMDaw==}
+    engines: {node: '>=18'}
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
@@ -3736,6 +3847,15 @@ packages:
   undici@8.11.2:
     resolution: {integrity: sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ==}
     engines: {node: '>=22.19.0'}
+
+  unicorn-magic@0.3.0:
+    resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
+    engines: {node: '>=18'}
+
+  use-sync-external-store@1.2.0:
+    resolution: {integrity: sha512-eEgnFxGQ1Ife9bzYs6VLi8/4X6CObHMw9Qr9tPY43iKwsPw8xE8+EFsf/2cFZ5S3esXgpWgtSCtLNS41F+sKPA==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -3854,6 +3974,11 @@ packages:
     resolution: {integrity: sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==}
     engines: {node: '>=18'}
 
+  which-command@0.1.0:
+    resolution: {integrity: sha512-XZyoF5/5hZtXitIwzrU4NKK+Wtbb9aB9CezUEw2Q0wlYK8NUYQxC1rRXgNueYLtBAJwXIb+/tFVk4dozciNJMA==}
+    engines: {node: '>=22'}
+    hasBin: true
+
   which-module@2.0.1:
     resolution: {integrity: sha512-iBdZ57RDvnOR9AGBhML2vFZf7h8vmBjhoaZqODJBFWHVtKkDmKuHai3cx5PgVMrX5YDNp27AofYbAwctSS+vhQ==}
 
@@ -3901,6 +4026,10 @@ packages:
     resolution: {integrity: sha512-aePbxDmcYW++PaqBsJ+HYUFwCdv4LVvdnhBy78E57PIor8/OVvhMrADFFEDh8DHDFRv/O9i3lPhsENjO7QX0+A==}
     engines: {node: '>=8'}
 
+  yoctocolors@2.2.0:
+    resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
+    engines: {node: '>=18'}
+
   yuku-ast@0.10.2:
     resolution: {integrity: sha512-UnG9mA6giglCvSErft2/40TVFX750Sj1xgwddPLpG7J7rlr/P1wPADg9G2RK+d/1tNLtRVoLdMMOMVBB9561TQ==}
 
@@ -3912,6 +4041,21 @@ packages:
 
   zod@4.6.5:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+
+  zustand@4.4.7:
+    resolution: {integrity: sha512-QFJWJMdlETcI69paJwhSMJz7PPWjVP8Sjhclxmxmxv/RYI7ZOvR5BHX+ktH0we9gTWQMxcne8q1OY8xxz604gw==}
+    engines: {node: '>=12.7.0'}
+    peerDependencies:
+      '@types/react': '>=16.8'
+      immer: '>=9.0'
+      react: '>=16.8'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
 
 ignoredOptionalDependencies:
   - '*darwin-x64*'
@@ -4508,6 +4652,16 @@ snapshots:
     dependencies:
       '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
 
+  '@deepseek-ai/dsh-host-plugin-inventory@0.2.0-rc.2(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7))(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-typert-protocol@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/cordis-plugin-loader': 1.0.5(@deepseek-ai/cordis@4.0.4)(node-addon-require-builtin@0.1.6)
+      '@deepseek-ai/dsh-brand': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-typert-protocol': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      zod: 4.6.5
+    optionalDependencies:
+      '@deepseek-ai/dsh-agent-preset-registry': 0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7)
+
   '@deepseek-ai/dsh-host-webserver@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)':
     dependencies:
       '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
@@ -4583,6 +4737,34 @@ snapshots:
       '@deepseek-ai/schemastery': 3.18.4
       zod: 4.6.5
     optional: true
+
+  '@deepseek-ai/dsh-plugin-manager@0.2.0-rc.2(113f44e5f94cc05275c93e1388de4d34)':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/cordis-plugin-loader': 1.0.5(@deepseek-ai/cordis@4.0.4)(node-addon-require-builtin@0.1.6)
+      '@deepseek-ai/dsh-app-boot': 0.2.0-rc.2(@deepseek-ai/cordis-plugin-group@1.0.4(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-home-paths@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-launch-environment@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-system-prompt@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
+      '@deepseek-ai/dsh-atomic-write': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-brand': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-host-plugin-inventory': 0.2.0-rc.2(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7))(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-typert-protocol@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
+      '@deepseek-ai/dsh-sandbox': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
+      '@deepseek-ai/dsh-sandbox-policy': 0.2.0-rc.2(7345bc8a170f7b239da92d7a0e490765)
+      '@deepseek-ai/dsh-subprocess': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-http-proxy@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
+      '@deepseek-ai/dsh-tools': 0.2.0-rc.2(52b5a8ab481be2b3d891c22a71641755)
+      '@deepseek-ai/dsh-typert-protocol': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-util-values': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery': 3.18.4
+      execa: 10.1.0
+      yaml: 2.9.1
+      zod: 4.6.5
+    optionalDependencies:
+      '@deepseek-ai/dsh-hmr': 0.2.0-rc.2(acf33c6a147b9f2be564086f152da09e)
+      '@deepseek-ai/dsh-user-approval': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent@0.2.0-rc.2(fee0e653b72a3883e0f0da2d9a46bb50))(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))(@deepseek-ai/dsh-system-prompt@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
+    transitivePeerDependencies:
+      - '@deepseek-ai/cordis-plugin-group'
+      - '@deepseek-ai/cordis-plugin-include'
+      - '@deepseek-ai/dsh-home-paths'
+      - '@deepseek-ai/dsh-launch-environment'
+      - '@deepseek-ai/dsh-system-prompt'
 
   '@deepseek-ai/dsh-ptc-runtime@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-sandbox@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))))':
     dependencies:
@@ -4970,7 +5152,7 @@ snapshots:
       '@deepseek-ai/cosmokit': 1.8.5
       '@standard-schema/spec': 1.1.0
 
-  '@dsh-station/dsh-plugin-copilot-auth@file:packages/plugins/copilot-auth':
+  '@dsh-remote/dsh-plugin-copilot-auth@file:packages/plugins/copilot-auth':
     dependencies:
       '@earendil-works/pi-ai': 0.87.1(ws@8.22.0)(zod@4.6.5)
     transitivePeerDependencies:
@@ -4982,7 +5164,7 @@ snapshots:
       - ws
       - zod
 
-  '@dsh-station/dsh-plugin-models-catalog@file:packages/plugins/models-catalog':
+  '@dsh-remote/dsh-plugin-models-catalog@file:packages/plugins/models-catalog':
     dependencies:
       '@deepseek-ai/schemastery': 3.18.4
       '@earendil-works/pi-ai': 0.87.1(ws@8.22.0)(zod@4.6.5)
@@ -4995,7 +5177,7 @@ snapshots:
       - ws
       - zod
 
-  '@dsh-station/dsh-plugin-terminal@file:packages/plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)':
+  '@dsh-remote/dsh-plugin-terminal@file:packages/plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)':
     dependencies:
       '@deepseek-ai/dsh-terminal': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent@0.2.0-rc.2(fee0e653b72a3883e0f0da2d9a46bb50))(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
       '@deepseek-ai/dsh-terminal-bash': 0.2.0-rc.2(55caffe2f8b8e11a16534e49dcff31fa)
@@ -5294,6 +5476,10 @@ snapshots:
   '@rolldown/pluginutils@1.0.1': {}
 
   '@scure/base@2.4.0': {}
+
+  '@sec-ant/readable-stream@0.4.1': {}
+
+  '@sindresorhus/merge-streams@4.0.0': {}
 
   '@smithy/core@3.35.0':
     dependencies:
@@ -5637,6 +5823,21 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.9
 
+  execa@10.1.0:
+    dependencies:
+      '@sindresorhus/merge-streams': 4.0.0
+      figures: 6.1.0
+      get-stream: 9.0.1
+      human-signals: 8.0.1
+      is-plain-obj: 4.1.0
+      is-stream: 4.0.1
+      npm-run-path: 6.0.0
+      pretty-ms: 9.3.1
+      signal-exit: 4.1.0
+      strip-final-newline: 4.0.0
+      which-command: 0.1.0
+      yoctocolors: 2.2.0
+
   expect-type@1.4.0: {}
 
   extend@3.0.2: {}
@@ -5655,6 +5856,10 @@ snapshots:
     dependencies:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.3.3
+
+  figures@6.1.0:
+    dependencies:
+      is-unicode-supported: 2.1.0
 
   find-up@4.1.0:
     dependencies:
@@ -5685,6 +5890,11 @@ snapshots:
       - supports-color
 
   get-caller-file@2.0.5: {}
+
+  get-stream@9.0.1:
+    dependencies:
+      '@sec-ant/readable-stream': 0.4.1
+      is-stream: 4.0.1
 
   get-tsconfig@5.0.0-beta.6:
     dependencies:
@@ -5743,17 +5953,27 @@ snapshots:
       - kerberos
       - supports-color
 
+  human-signals@8.0.1: {}
+
   husky@9.1.7: {}
 
   iconv-lite@0.6.3:
     dependencies:
       safer-buffer: 2.1.2
 
+  immer@10.2.0: {}
+
   import-without-cache@0.4.1: {}
 
   is-fullwidth-code-point@3.0.0: {}
 
+  is-plain-obj@4.1.0: {}
+
   is-potential-custom-element-name@1.0.1: {}
+
+  is-stream@4.0.1: {}
+
+  is-unicode-supported@2.1.0: {}
 
   jose@6.2.12: {}
 
@@ -5937,6 +6157,11 @@ snapshots:
     dependencies:
       node-addon-api: 7.1.1
 
+  npm-run-path@6.0.0:
+    dependencies:
+      path-key: 4.0.0
+      unicorn-magic: 0.3.0
+
   nwsapi@2.2.28: {}
 
   obug@2.2.1: {}
@@ -5991,6 +6216,8 @@ snapshots:
 
   p-try@2.2.0: {}
 
+  parse-ms@4.0.0: {}
+
   parse5@7.3.0:
     dependencies:
       entities: 6.0.1
@@ -5998,6 +6225,8 @@ snapshots:
   partial-json@0.1.7: {}
 
   path-exists@4.0.0: {}
+
+  path-key@4.0.0: {}
 
   pathe@2.0.3: {}
 
@@ -6027,6 +6256,8 @@ snapshots:
 
   pngjs@5.0.0: {}
 
+  pnpm@10.17.0: {}
+
   postcss@8.5.28:
     dependencies:
       nanoid: 3.3.19
@@ -6038,6 +6269,10 @@ snapshots:
       ansi-regex: 5.0.1
       ansi-styles: 5.2.0
       react-is: 17.0.2
+
+  pretty-ms@9.3.1:
+    dependencies:
+      parse-ms: 4.0.0
 
   process-warning@5.1.0: {}
 
@@ -6154,6 +6389,8 @@ snapshots:
 
   siginfo@2.0.0: {}
 
+  signal-exit@4.1.0: {}
+
   sonic-boom@4.2.1:
     dependencies:
       atomic-sleep: 1.0.0
@@ -6180,6 +6417,8 @@ snapshots:
   strip-ansi@6.0.1:
     dependencies:
       ansi-regex: 5.0.1
+
+  strip-final-newline@4.0.0: {}
 
   symbol-tree@3.2.4: {}
 
@@ -6263,6 +6502,12 @@ snapshots:
 
   undici@8.11.2: {}
 
+  unicorn-magic@0.3.0: {}
+
+  use-sync-external-store@1.2.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+
   vary@1.1.2: {}
 
   verkit@0.4.1: {}
@@ -6329,6 +6574,8 @@ snapshots:
       tr46: 5.1.1
       webidl-conversions: 7.0.0
 
+  which-command@0.1.0: {}
+
   which-module@2.0.1: {}
 
   why-is-node-running@2.3.0:
@@ -6371,6 +6618,8 @@ snapshots:
       y18n: 4.0.3
       yargs-parser: 18.1.3
 
+  yoctocolors@2.2.0: {}
+
   yuku-ast@0.10.2:
     dependencies:
       '@yuku-toolchain/types': 0.10.2
@@ -6399,3 +6648,11 @@ snapshots:
       '@yuku-parser/binding-win32-x64': 0.10.2
 
   zod@4.6.5: {}
+
+  zustand@4.4.7(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1):
+    dependencies:
+      use-sync-external-store: 1.2.0(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 18.3.31
+      immer: 10.2.0
+      react: 18.3.1

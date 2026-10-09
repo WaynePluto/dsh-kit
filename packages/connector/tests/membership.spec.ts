@@ -3,7 +3,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { afterEach, describe, expect, it } from 'vitest'
-import { serializeMembership, type Membership, type MembershipHub } from '@dsh-station/protocol'
+import { serializeMembership, type Membership, type MembershipHub } from '@dsh-remote/protocol'
 import {
   demoteRejectedHub,
   MembershipFileError,
@@ -31,7 +31,7 @@ const TEST_TEMP_DIR = process.platform === 'win32'
   : tmpdir()
 
 function newHome(): string {
-  const home = mkdtempSync(join(TEST_TEMP_DIR, 'dsh-station-membership-'))
+  const home = mkdtempSync(join(TEST_TEMP_DIR, 'dsh-remote-membership-'))
   homes.push(home)
   return home
 }
@@ -45,8 +45,8 @@ afterEach(() => {
 })
 
 describe('membership file', () => {
-  it('resolves the dsh-station home next to the device key', () => {
-    expect(defaultDshStationHome()).toMatch(/[\\/]\.dsh-station$/)
+  it('resolves the dsh-remote home next to the device key', () => {
+    expect(defaultDshStationHome()).toMatch(/[\\/]\.dsh-remote$/)
     expect(membershipFilePath('/tmp/home')).toMatch(/membership\.json$/)
   })
 

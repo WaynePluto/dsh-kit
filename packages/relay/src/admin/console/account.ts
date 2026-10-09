@@ -104,6 +104,6 @@ export function accountUnavailablePage(options: {
     intro: '无法确定唯一的管理员账号。',
     username: options.username,
     appearance: options.appearance,
-    body: '<p class="empty">请用 <strong>dsh-station-relay</strong> 命令行检查管理员账号后刷新。</p>',
+    body: '<p class="empty">请用 <strong>dsh-remote-relay</strong> 命令行检查管理员账号后刷新。</p>',
   })
 }

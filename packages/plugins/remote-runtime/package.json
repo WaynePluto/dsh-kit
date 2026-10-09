@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-station/dsh-plugin-remote-runtime",
+  "name": "@dsh-remote/dsh-plugin-remote-runtime",
   "version": "0.0.3-20261008",
   "description": "在 dsh 宿主内托管 relay 与 connector：提供 trustedHosts 投影服务、写入 dsh 登录令牌文件、以两级启动器拉起并认领远程子进程。",
   "license": "MIT",

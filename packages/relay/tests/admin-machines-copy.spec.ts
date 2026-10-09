@@ -200,7 +200,7 @@ describe('concise machine page', () => {
     const html = render({ host: '127.0.0.1:30809', issued: { slug: 'pc2', token: 'once<token>&"' } })
     const visible = outsideDetails(html)
     const token = 'once&lt;token&gt;&amp;&quot;'
-    expect(visible).toContain(`<p class="cmd">dsh-station-connector --relay wss://dsh.test --slug pc2 --enroll-token ${token} --hub-authority pc2.dsh.test</p>`)
+    expect(visible).toContain(`<p class="cmd">dsh-remote-connector --relay wss://dsh.test --slug pc2 --enroll-token ${token} --hub-authority pc2.dsh.test</p>`)
     expect(visible).toContain('在 pc2 的「远程入口」页粘贴完整连接命令')
     expect(visible.split(ENROLL_TOKEN_SHOWN_ONCE_NOTICE)).toHaveLength(2)
     expect(visible.split(ENROLL_TOKEN_SINGLE_USE_NOTICE)).toHaveLength(2)
@@ -257,7 +257,7 @@ describe('machine removal confirmation copy', () => {
       expect(page.body).toContain('<h1>停止 pc2 并移除？</h1>')
       expect(page.body).toContain('停止 pc2 的连接及工作站托管的 dsh')
       expect(page.body).toContain('远程访问及现有连接立即断开')
-      expect(page.body).toContain('在 pc2 上重新启动 DSH 工作站')
+      expect(page.body).toContain('在 pc2 上重新启动 DSH Remote')
     } else {
       expect(page.body).toContain('<h1>移除 pc2？</h1>')
       expect(page.body).toContain('当前离线：仅移除设备身份，不停止该机服务')

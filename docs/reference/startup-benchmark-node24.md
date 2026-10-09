@@ -31,7 +31,7 @@
 
 测试子进程的 `USERPROFILE`、`DSH_HOME`、`APPDATA` 指向 `.agents/bench/node2419/` 下各自的隔离目录，
 不使用日常会话、凭据和插件配置。固定 `GOPATH`、`GOCACHE` 复用原工具链缓存。
-实际 WebView2 数据目录为隔离 `APPDATA/desktop-dev.exe` 或 `APPDATA/dsh-station.exe`，已检查创建成功。
+实际 WebView2 数据目录为隔离 `APPDATA/desktop-dev.exe` 或 `APPDATA/dsh-remote.exe`，已检查创建成功。
 
 原环境设置了 `NODE_TLS_REJECT_UNAUTHORIZED=0`；仅测试和打包子进程改为 `1`，未修改全局环境。
 正式测试期间不执行构建或其他基准任务；后台计时结束后才进行 CIM 查询、UIA 与截图。
@@ -111,11 +111,11 @@ node node_modules/pnpm/bin/pnpm.cjs run dev:desktop
 构建入口：`node node_modules/pnpm/bin/pnpm.cjs run release:win:lite`，全仓构建与打包内置检查通过。
 未改变版本、创建 tag 或发布远程 Release。
 
-- 当时便携包：`release/dsh-station-0.0.2-20260928-win-x64-desktop-lite.zip`；优化前原包现存于 `.agents/bench/node2419/baseline-lite.zip`，release 同名文件已由后续优化版替换。
+- 当时便携包：`release/dsh-remote-0.0.2-20260928-win-x64-desktop-lite.zip`；优化前原包现存于 `.agents/bench/node2419/baseline-lite.zip`，release 同名文件已由后续优化版替换。
 - 大小：99,799,784 字节，约 95.2 MiB。
 - SHA-256：`9e883025d1b2619b41fbc298dcada5ad2e83616df0016b7941892295b905d9ef`。
 - 实际从 zip 解压到 `release/benchmark-win-lite` 后测试，不直接使用打包 staging。
-- `dsh-station.exe --selfcheck` 通过，报告系统 Node、`随包=false`；运行中再复核 Node 24.19.0。
+- `dsh-remote.exe --selfcheck` 通过，报告系统 Node、`随包=false`；运行中再复核 Node 24.19.0。
 - 介质 manifest 的 `node` 字段仍取全量工具链清单的 24.21.0，不能据此判断 lite 实际运行版本。
 - 本机无 `makensis`，脚本明确跳过 NSIS setup；**本次只产出并验证便携 zip**，未安装额外工具。
 - 两个正式首次样本均已检查窗口截图：工作台与内测声明显示正常；不涵盖后续发消息、托盘操作、深浅主题或跨平台验收。

@@ -1,6 +1,6 @@
-# DSH 工作站套件（station-suite）
+# DSH Remote 套件（suite）
 
-dsh-station 的全量单一分发包：在官方 dsh（桌面版或 web 版）的插件管理页
+dsh-remote 的全量单一分发包：在官方 dsh（桌面版或 web 版）的插件管理页
 「+ 添加插件」输入**一条路径**（本目录）即可安装或升级全部内容——
 21 个功能组件、远程运行时（relay/connector 宿主内托管）、模型启动屏障与主题投影。
 套件被停用或卸载时全部组件行一并禁用（组合包官方 disabled 表达式约定）。
@@ -28,9 +28,9 @@ dsh-station 的全量单一分发包：在官方 dsh（桌面版或 web 版）�
 
 ## 行为要点（实测于官方桌面 0.2.0-rc.2）
 
-- remote-runtime 组件在宿主激活时：写 `~/.dsh-station/dsh-token`
+- remote-runtime 组件在宿主激活时：写 `~/.dsh-remote/dsh-token`
   （`ctx.connection.authenticatedUrl()`），以两级分离启动器拉起 relay 与
-  connector（日志在 `~/.dsh-station/logs/`，pid 注册表在 `processes/`）。
+  connector（日志在 `~/.dsh-remote/logs/`，pid 注册表在 `processes/`）。
 - relay 首访 401 时从 token 文件兜底发起一次 `?token=` 重定向
   （无 launcher 时代的帧上报替代路径）。
 - 入口 authority 变化（更换远程入口）后需手动重启 dsh 应用新 trustedHosts；

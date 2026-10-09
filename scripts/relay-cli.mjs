@@ -1,9 +1,9 @@
 /**
- * 使用开发栈 home（~/.dsh-station-dev）中的数据库运行 relay CLI。
+ * 使用开发栈 home（~/.dsh-remote-dev）中的数据库运行 relay CLI。
  *
  * `node scripts/relay-cli.mjs <subcommand> [...args]` 将所有内容转发给
- * `dsh-station-relay`，并默认使用开发 home 中的 `relay.db`。生产环境中相同的
- * 子命令也可以直接通过已安装的 `dsh-station-relay` 可执行文件使用；
+ * `dsh-remote-relay`，并默认使用开发 home 中的 `relay.db`。生产环境中相同的
+ * 子命令也可以直接通过已安装的 `dsh-remote-relay` 可执行文件使用；
  * 需要面向其他数据库时显式传 `--data`（显式值优先）。
  */
 

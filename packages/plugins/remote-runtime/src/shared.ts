@@ -4,9 +4,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir, hostname, networkInterfaces } from 'node:os'
 import { dirname, join } from 'node:path'
 
-/** 与 connector/relay 的默认一致（D24：数据目录 ~/.dsh-station）。 */
+/** 与 connector/relay 的默认一致（D24：数据目录 ~/.dsh-remote）。 */
 export function defaultStationHome(): string {
-  return process.env.DSH_STATION_HOME ?? join(homedir(), '.dsh-station')
+  return process.env.DSH_REMOTE_HOME ?? join(homedir(), '.dsh-remote')
 }
 
 /** 这台机器在 relay 控制台上的名称；与 launcher/connector 的推导保持一致。 */
@@ -14,7 +14,7 @@ export function defaultMachineSlug(host: string = hostname()): string {
   const label = host.toLowerCase().replaceAll(/[^a-z0-9-]+/gu, '-').slice(0, 63).replace(/^-+|-+$/gu, '')
   return /^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$/u.test(label) || /^[a-z0-9]$/u.test(label)
     ? label
-    : 'dsh-station-machine'
+    : 'dsh-remote-machine'
 }
 
 /** 这台机器的第一个非内部、非 APIPA 的 IPv4 地址。 */
@@ -57,7 +57,7 @@ export function trustedAuthorities(options: {
   return [...new Set(values.map(value => value.toLowerCase()))]
 }
 
-/** dsh-station home 内的插件时代配置；不存在时使用内置默认（局域网模式）。 */
+/** dsh-remote home 内的插件时代配置；不存在时使用内置默认（局域网模式）。 */
 export interface StationRuntimeConfig {
   readonly home: string
   readonly relayPort: number
@@ -67,7 +67,7 @@ export interface StationRuntimeConfig {
 export function readStationConfig(home: string = defaultStationHome()): StationRuntimeConfig {
   let raw: unknown
   try {
-    raw = JSON.parse(readFileSync(join(home, 'dsh-station.config.json'), 'utf8'))
+    raw = JSON.parse(readFileSync(join(home, 'dsh-remote.config.json'), 'utf8'))
   } catch {
     return { home, relayPort: 30_809, domain: undefined }
   }
@@ -167,7 +167,7 @@ export function tokenFromAuthenticatedUrl(url: string): string | undefined {
 
 /**
  * 读取（不存在则生成）relay 的 JWT 签名密钥。移植自 launcher 的 jwt-secret：
- * 32 字节随机数的 base64url；文件落在 dsh-station home。
+ * 32 字节随机数的 base64url；文件落在 dsh-remote home。
  */
 export function ensureJwtSecret(home: string): string {
   const path = join(home, 'relay-jwt.secret')

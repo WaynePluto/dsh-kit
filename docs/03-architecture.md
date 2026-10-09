@@ -4,7 +4,7 @@
 
 完整远程模式下，每台机器运行自己的 dsh、relay 和 connector。任意机器都可以提供远程入口；
 一台机器最多配置一个远程入口，开放关系是单向的。
-dsh 由官方应用（桌面版/web 版）启动；station-suite 套件经官方「添加插件」一条路径安装（D27）。
+dsh 由官方应用（桌面版/web 版）启动；suite 套件经官方「添加插件」一条路径安装（D27）。
 remote-runtime 组件在宿主激活时写 dsh 令牌文件并以两级分离启动器拉起 relay/connector，
 宿主重启后按 pid 注册表认领仍存活的子进程。
 
@@ -29,14 +29,14 @@ flowchart LR
 | `packages/connector` | 拨出隧道、设备签名认证、回拨数据流、重连 |
 | `packages/relay` | 浏览器认证、设备认证、管理页、机器路由与字节转发 |
 | `packages/plugins` | 通过 dsh 插件扩展功能；见 [插件索引](plugins.md) |
-| `packages/plugins`（装载） | 全部功能组件随 station-suite 单包分发（D27）；connection 覆写、模型 HMR 屏障与主题投影进入套件 patch 层；launcher 与 plugin-catalog 的旧分发流程仅剩开发栈过渡使用 |
+| `packages/plugins`（装载） | 全部功能组件随 suite 单包分发（D27）；connection 覆写、模型 HMR 屏障与主题投影进入套件 patch 层；launcher 与 plugin-catalog 的旧分发流程仅剩开发栈过渡使用 |
 
 dsh 是官方 npm 依赖，不 fork、不改源码。浏览器使用 dsh 自带 UI，relay 提供自己的登录和管理页。
 
 ### Home 与 Profile
 
 沿用标准 `$DSH_HOME`（默认 `~/.dsh`），共享设置、凭据、会话和用户全局 patch。
-内置扩展只加载到 `dsh-station-web`：
+内置扩展只加载到 `dsh-remote-web`：
 
 ```text
 dsh-base → dsh-web-app → 已启用的第三方 Bundle（默认 10 个分发包）
@@ -45,7 +45,7 @@ dsh-base → dsh-web-app → 已启用的第三方 Bundle（默认 10 个分发�
 
 concise-mode 在 Bundle patch 内联声明两个 Agent preset 行，不使用 preset root 或 locator entry；
 子代理深度由 dsh 原生界面控制，默认 1。
-station-suite 是唯一分发包：官方「添加插件」一条路径安装/升级，卸载即整体移除（D27）；
+suite 是唯一分发包：官方「添加插件」一条路径安装/升级，卸载即整体移除（D27）；
 launcher 多包分发与配套升级机制已随 launcher 退役删除。
 
 ### 插件 Bundle 与壳级 overlay 装载
@@ -71,7 +71,7 @@ remote-privileged（壳级、不可停），负责 connection 注入、模型 Bu
 第三方 Bundle 使用官方命令：
 
 ```powershell
-dsh plugin --profile dsh-station-web add <bundle-package>
+dsh plugin --profile dsh-remote-web add <bundle-package>
 ```
 
 此 profile 没有 HMR；改动插件后必须构建并重启 dsh。
@@ -124,7 +124,7 @@ relay 原样转发 Host/Origin；dsh 需要的 trusted host 由套件的 dshRemo
 条目必须是裸 host 或 host:port，错误格式会导致 dsh 启动失败。
 远程设置能力由 [remote-settings](../packages/plugins/remote-settings/README.md) 提供。
 
-remote-runtime 经 `ctx.connection.authenticatedUrl()` 取得启动 token 写入 `~/.dsh-station/dsh-token`，relay 首访 401 时读取该文件发起一次重定向。
+remote-runtime 经 `ctx.connection.authenticatedUrl()` 取得启动 token 写入 `~/.dsh-remote/dsh-token`，relay 首访 401 时读取该文件发起一次重定向。
 仅当 dsh 对首页返回 401，relay 才返回一次 `?token=` 重定向，让 dsh 自己交换 cookie。
 已带 token 的请求不重定向，API 的 401 原样透传；relay 登录始终在此前完成。
 

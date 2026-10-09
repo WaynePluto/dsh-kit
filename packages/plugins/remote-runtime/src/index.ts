@@ -61,7 +61,7 @@ const L1_PROGRAM = [
 
 function resolveWorkspaceCli(packageName: 'relay' | 'connector'): string {
   const require = createRequire(import.meta.url)
-  const manifest = require.resolve(`${packageName === 'relay' ? '@dsh-station/relay' : '@dsh-station/connector'}/package.json`)
+  const manifest = require.resolve(`${packageName === 'relay' ? '@dsh-remote/relay' : '@dsh-remote/connector'}/package.json`)
   return join(dirname(manifest), 'dist', 'cli.js')
 }
 
@@ -98,7 +98,7 @@ function ensureProcess(name: ProcessRecord['name'], cli: string, args: readonly 
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      DSH_STATION_JWT_SECRET: ensureJwtSecret(home),
+      DSH_REMOTE_JWT_SECRET: ensureJwtSecret(home),
     },
   })
   l1.unref()

@@ -91,7 +91,7 @@ html{scrollbar-gutter:stable}
 const PAGE_STYLE = `
 ${TOKEN_STYLE}
 /* 页面留白与桌面标题栏占位分开；窄屏时变量也随媒体查询更新。 */
-body{--dsh-station-page-top-gap:24px;margin:0;min-height:100dvh;display:grid;place-items:center;padding:var(--dsh-station-page-top-gap) 16px 24px;background:var(--page);color:var(--ink);font-family:var(--font);font-size:14px;line-height:22px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{--dsh-remote-page-top-gap:24px;margin:0;min-height:100dvh;display:grid;place-items:center;padding:var(--dsh-remote-page-top-gap) 16px 24px;background:var(--page);color:var(--ink);font-family:var(--font);font-size:14px;line-height:22px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 main{width:min(100%,440px);border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 24px 0;font-size:13px;line-height:20px;font-weight:500;color:var(--ink-2)}
 .mark{display:inline-flex;align-items:center;gap:8px;min-width:0}
@@ -124,7 +124,7 @@ button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .empty{margin:12px 0 0;padding:14px;border:1px dashed var(--line-strong);border-radius:12px;font-size:13px;line-height:20px;color:var(--ink-3)}
 .cmd,.secret,.otp{margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--inset);font-family:var(--mono);font-size:13px;line-height:20px;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}
 .foot{margin:20px 0 0;padding-top:14px;border-top:1px solid var(--line);font-size:12px;line-height:18px;color:var(--caption)}
-@media(max-width:460px){body{--dsh-station-page-top-gap:12px;padding:var(--dsh-station-page-top-gap) 8px 12px}.brand{padding:16px 18px 0}.panel{padding:14px 18px 20px}.theme a{padding:2px 6px}}
+@media(max-width:460px){body{--dsh-remote-page-top-gap:12px;padding:var(--dsh-remote-page-top-gap) 8px 12px}.brand{padding:16px 18px 0}.panel{padding:14px 18px 20px}.theme a{padding:2px 6px}}
 `.trim()
 
 /**
@@ -134,9 +134,9 @@ button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
  * 使用 `/_icon` 命名空间而不是常规 `/favicon.ico`，避免 relay 遮蔽隧道中 dsh 前端拥有的路径。
  */
 export const ICON_PATH_PREFIX = '/_icon'
-export const ICON_SVG_PATH = `${ICON_PATH_PREFIX}/dsh-station.svg`
-export const ICON_ICO_PATH = `${ICON_PATH_PREFIX}/dsh-station.ico`
-export const ICON_PNG_PATH = `${ICON_PATH_PREFIX}/dsh-station.png`
+export const ICON_SVG_PATH = `${ICON_PATH_PREFIX}/dsh-remote.svg`
+export const ICON_ICO_PATH = `${ICON_PATH_PREFIX}/dsh-remote.ico`
+export const ICON_PNG_PATH = `${ICON_PATH_PREFIX}/dsh-remote.png`
 
 /** 每个 relay 页面都携带的 <link> 区块。 */
 const ICON_LINKS = [
@@ -221,7 +221,7 @@ ${PAGE_STYLE}${extra}
 </style>
 </head>
 <body><main>
-<header class="brand"><span class="mark"><img src="${ICON_SVG_PATH}" alt="" width="22" height="22">DSH 工作站</span>${options.nativeTheme ? '' : themeSwitcher(appearance)}</header>
+<header class="brand"><span class="mark"><img src="${ICON_SVG_PATH}" alt="" width="22" height="22">DSH Remote</span>${options.nativeTheme ? '' : themeSwitcher(appearance)}</header>
 <section class="panel">
 ${options.body}
 </section></main>${options.nativeTheme ? `<script>${ADMIN_THEME_SCRIPT}</script>` : ''}</body></html>`
@@ -276,7 +276,7 @@ export function renderSplashPage(appearance: PageAppearance): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <noscript><meta http-equiv="refresh" content="1"></noscript>
-<title>DSH 工作站</title>
+<title>DSH Remote</title>
 ${ICON_LINKS}
 <style>
 ${TOKEN_STYLE}
@@ -294,7 +294,7 @@ body{display:grid;place-items:center;background:var(--page);color:var(--ink);fon
 <div class="card">
 <div class="wordmark">HARNESS</div>
 <div class="spin" aria-hidden="true"></div>
-<div class="hint" role="status">正在启动 DSH 工作站…</div>
+<div class="hint" role="status">正在启动 DSH Remote…</div>
 </div>
 <script>${SPLASH_SCRIPT}</script>
 </body></html>`

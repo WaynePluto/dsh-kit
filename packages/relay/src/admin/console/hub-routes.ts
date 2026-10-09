@@ -6,7 +6,7 @@ import {
   machineSlugSchema,
   type Membership,
   type MembershipHub,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import {
   clearMembershipFile,
   isSelfHub,

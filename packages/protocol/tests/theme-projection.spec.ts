@@ -7,7 +7,7 @@ import {
 describe('theme projection contract', () => {
   it('固定安全投影文件名和环境变量', () => {
     expect(THEME_FILE_NAME).toBe('dsh-theme.json')
-    expect(THEME_FILE_ENV_NAME).toBe('DSH_STATION_THEME_FILE')
+    expect(THEME_FILE_ENV_NAME).toBe('DSH_REMOTE_THEME_FILE')
     expect(MAX_THEME_PROJECTION_BYTES).toBe(1024)
   })
 

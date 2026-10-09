@@ -1,6 +1,6 @@
 import { isIP } from 'node:net'
 import { z } from 'zod'
-import { machineSlugSchema } from '@dsh-station/protocol'
+import { machineSlugSchema } from '@dsh-remote/protocol'
 import { isLoopbackAddress } from './auth/loopback.js'
 import { defaultDshStationHome } from './membership/paths.js'
 

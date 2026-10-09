@@ -1,4 +1,4 @@
-import { RECONNECT_BACKOFF } from '@dsh-station/protocol'
+import { RECONNECT_BACKOFF } from '@dsh-remote/protocol'
 
 export interface BackoffOptions {
   readonly initialMs: number

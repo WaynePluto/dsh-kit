@@ -13,7 +13,7 @@ import {
   decodeControlFrame,
   deviceChallengeMessage,
   type RelayToConnectorFrame,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import {
   ACCESS_TOKEN_TTL_MS,
   BrowserCookiePolicy,

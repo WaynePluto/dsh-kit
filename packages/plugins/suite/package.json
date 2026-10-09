@@ -1,0 +1,48 @@
+{
+  "name": "@dsh-remote/dsh-plugin-suite",
+  "version": "0.0.3-20261008",
+  "description": "dsh-remote 全量套件：一个包安装全部功能组件与远程运行时（relay/connector 托管）。本地安装路径即本目录；依赖以 file: 相对路径指向仓库内组件。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dependencies": {
+    "@dsh-remote/connector": "file:../../connector",
+    "@dsh-remote/dsh-plugin-agents-md": "file:../agents-md",
+    "@dsh-remote/dsh-plugin-browser-compat": "file:../browser-compat",
+    "@dsh-remote/dsh-plugin-chat-scroll": "file:../chat-scroll",
+    "@dsh-remote/dsh-plugin-concise-mode": "file:../concise-mode",
+    "@dsh-remote/dsh-plugin-copilot-auth": "file:../copilot-auth",
+    "@dsh-remote/dsh-plugin-directory-picker-browse": "file:../directory-picker-browse",
+    "@dsh-remote/dsh-plugin-favorite-models": "file:../favorite-models",
+    "@dsh-remote/dsh-plugin-files": "file:../files",
+    "@dsh-remote/dsh-plugin-model-capabilities": "file:../model-capabilities",
+    "@dsh-remote/dsh-plugin-models-catalog": "file:../models-catalog",
+    "@dsh-remote/dsh-plugin-notify": "file:../notify",
+    "@dsh-remote/dsh-plugin-proxy": "file:../proxy",
+    "@dsh-remote/dsh-plugin-remote-privileged": "file:../remote-privileged",
+    "@dsh-remote/dsh-plugin-remote-runtime": "file:../remote-runtime",
+    "@dsh-remote/dsh-plugin-remote-settings": "file:../remote-settings",
+    "@dsh-remote/dsh-plugin-services": "file:../services",
+    "@dsh-remote/dsh-plugin-skills-inspector": "file:../skills-inspector",
+    "@dsh-remote/dsh-plugin-terminal": "file:../terminal",
+    "@dsh-remote/dsh-plugin-tools-inspector": "file:../tools-inspector",
+    "@dsh-remote/dsh-plugin-turn-retry": "file:../turn-retry",
+    "@dsh-remote/dsh-plugin-user-message-fork": "file:../user-message-fork",
+    "@dsh-remote/dsh-plugin-web-search-switch": "file:../web-search-switch",
+    "@dsh-remote/dsh-plugin-yolo-mode": "file:../yolo-mode",
+    "@dsh-remote/relay": "file:../../relay"
+  }
+}

@@ -10,7 +10,7 @@ import {
   STREAM_TOKEN_TTL_MS,
   type ErrorFrame,
   type OpenStreamFrame,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 
 export interface RegisteredMachine {
   readonly machineId: string

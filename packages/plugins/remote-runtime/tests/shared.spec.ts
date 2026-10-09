@@ -39,7 +39,7 @@ describe('isBareAuthority / trustedAuthorities', () => {
 
 describe('computeTrust', () => {
   it('域名模式使用子域名并忽略局域网地址', () => {
-    writeFileSync(join(home, 'dsh-station.config.json'), JSON.stringify({ relay: { domain: 'dsh.example.com' } }))
+    writeFileSync(join(home, 'dsh-remote.config.json'), JSON.stringify({ relay: { domain: 'dsh.example.com' } }))
     const authorities = computeTrust(home).authorities
     expect(authorities).toContain(`${defaultMachineSlug()}.dsh.example.com`)
     expect(authorities).not.toContain('127.0.0.1:0')

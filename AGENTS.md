@@ -1,6 +1,6 @@
 # AGENTS.md
 
-适用于本仓库中的 AI 编码助手。本项目 dsh-station（用户文案「DSH 工作站」）是官方
+适用于本仓库中的 AI 编码助手。本项目 dsh-remote（用户文案「DSH Remote」）是官方
 DeepSeek Harness (dsh) 的完整封装工作站：桌面应用与绿色/服务介质内置并托管 dsh，
 带认证的反向隧道提供远程能力；`remote` 一词只指远程能力（远程入口、remote-* 插件），
 不再是项目名。
@@ -21,11 +21,11 @@ DeepSeek Harness (dsh) 的完整封装工作站：桌面应用与绿色/服务�
 - 一台机器独立 origin，公网用子域名，局域网可用每机器端口，不能挂子路径。
 - connector、relay 与 remote-runtime 组件不引入原生模块，持久化用 node:sqlite，密码哈希用 node:crypto scrypt。
 - 优先成熟依赖，所有直接依赖固定版本，不使用范围、dist-tag 或隐式升级。
-- 与官方 dsh 共用标准 DSH_HOME，仅在 dsh-station-web profile 安装项目功能插件。
+- 与官方 dsh 共用标准 DSH_HOME，仅在 dsh-remote-web profile 安装项目功能插件。
   不写 home 级 patch、不修改官方 web profile，不实现第二套插件管理器。
-- 普通插件位于 packages/plugins/<名字>，包名 @dsh-station/dsh-plugin-<名字>，
+- 普通插件位于 packages/plugins/<名字>，包名 @dsh-remote/dsh-plugin-<名字>，
   包根 overlay 用 ./dist/index.js；plugins:build 与 build-suite 都要检查宿主和浏览器产物。
-- 全部功能组件按 station-suite 单包分发（D27）：官方「添加插件」一条路径安装/升级，套件 patch 由 `scripts/build-suite.mjs` 生成；plugin-catalog/launcher 旧分发流程仅为开发栈过渡，不再产出发行介质。
+- 全部功能组件按 suite 单包分发（D27）：官方「添加插件」一条路径安装/升级，套件 patch 由 `scripts/build-suite.mjs` 生成；plugin-catalog/launcher 旧分发流程仅为开发栈过渡，不再产出发行介质。
 - `remote-privileged` 的 connection/webServer 注入、模型 HMR 启动屏障与原生主题只读投影作为不可卸载的壳级基础设施；模型屏障服务挂在 root fiber，避免 Bundle 在线启停重启 `llm-pi-ai`。管理页主题单向消费工作站自有投影，不读写原生profile或通过公开主题GET回写宿主。
 - concise-mode（用户文案「简洁模式」）是独立第三方 Profile Bundle，位于 dsh-web-app 后；patch 内联声明两个 `@deepseek-ai/dsh-agent-preset` 行，不加载 preset root 或 locator entry；子代理深度沿用 dsh 原生配置（默认 1）。
 - 中文文案使用决策中的词表，页面使用机器真名；hub、membership、slug 等代码标识符不随文案改名。
@@ -89,7 +89,7 @@ services 与 terminal 共用 IconApiOutlineMedium。
 
 - 插件使用说明放包根 README，docs/plugins.md 做索引；源码契约按 docs/dsh 的主题归属维护。
 - docs 每个文件最多 600 行，只保留现行行为与明确待办，不追加旧方案或调试过程。
-- 修改插件任何一半后都要构建并重启 dsh，dsh-station-web 没有 HMR，刷新页面不会更新产物。
+- 修改插件任何一半后都要构建并重启 dsh，dsh-remote-web 没有 HMR，刷新页面不会更新产物。
 - 安全活动写 relay.db 的 audit_log 与 pino，没有管理页面；查询加载 relay-audit skill。
 - 上游源码引用使用相对 dsh 根路径，不在其他文件记录本地绝对路径。
 - 未记录的架构决策先向用户确认，不猜 dsh 行为。

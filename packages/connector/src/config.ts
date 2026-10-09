@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { z } from 'zod'
-import { dshWebTokenSchema, machineIdSchema, machineSlugSchema, PROBE_INTERVAL_MS } from '@dsh-station/protocol'
+import { dshWebTokenSchema, machineIdSchema, machineSlugSchema, PROBE_INTERVAL_MS } from '@dsh-remote/protocol'
 import { DEVICE_KEY_FILE_NAME } from './device-key.js'
 import { defaultDshStationHome } from './membership.js'
 import { CONNECTOR_VERSION } from './version.js'

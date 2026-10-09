@@ -73,9 +73,9 @@ export function apply(ctx: Context): void {
       const sessionId = (event as CustomEvent<string>).detail
       if (typeof sessionId === 'string' && sessionId !== '') ctx.uiWorkspace.openSession(sessionId as SessionId)
     }
-    window.addEventListener('dsh-station:open-session', open)
+    window.addEventListener('dsh-remote:open-session', open)
     const requested = new URLSearchParams(window.location.search).get('open-session')
     if (requested !== null && requested !== '') ctx.uiWorkspace.openSession(requested as SessionId)
-    return () => window.removeEventListener('dsh-station:open-session', open)
+    return () => window.removeEventListener('dsh-remote:open-session', open)
   }, 'notify: desktop session navigation')
 }

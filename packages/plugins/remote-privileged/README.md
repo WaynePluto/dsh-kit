@@ -9,7 +9,7 @@
 ## 主题投影
 
 `theme-projection.mjs` 为无外部依赖的宿主插件。launcher 和开发栈通过环境变量
-`DSH_STATION_THEME_FILE` 指定工作站 home 下 `dsh-theme.json` 的绝对路径；未指定则不启用。
+`DSH_REMOTE_THEME_FILE` 指定工作站 home 下 `dsh-theme.json` 的绝对路径；未指定则不启用。
 
 插件等待 loader 就绪，读取顶层活跃 `ui-theme` 行的 volatile `preference`，订阅
 `app-boot/config-reload` 的成功提交点。原子输出严格的 `{version:1,preference}`，
@@ -21,9 +21,9 @@
 
 ## 检查
 
-- `pnpm --filter @dsh-station/dsh-plugin-remote-privileged test`
-- `pnpm --filter @dsh-station/protocol test`
-- `pnpm --filter @dsh-station/relay test`
+- `pnpm --filter @dsh-remote/dsh-plugin-remote-privileged test`
+- `pnpm --filter @dsh-remote/protocol test`
+- `pnpm --filter @dsh-remote/relay test`
 - 升级dsh时复核loader entry/config形状与重载提交事件，并用隔离profile验证原生
   light/dark/system修改→投影→管理页事件更新；非法配置拒绝后投影应保持不变。
 - overlay及两个 `.mjs` 文件由launcher、开发栈和发行包清单检查，不依赖浏览器构建产物。

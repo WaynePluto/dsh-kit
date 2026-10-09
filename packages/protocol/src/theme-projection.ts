@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 /** 工作站自有的只读主题交接文件，不是原生 profile 配置。 */
 export const THEME_FILE_NAME = 'dsh-theme.json'
-export const THEME_FILE_ENV_NAME = 'DSH_STATION_THEME_FILE'
+export const THEME_FILE_ENV_NAME = 'DSH_REMOTE_THEME_FILE'
 export const MAX_THEME_PROJECTION_BYTES = 1024
 
 export const themeProjectionSchema = z.strictObject({

@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-station/dsh-plugin-notify",
+  "name": "@dsh-remote/dsh-plugin-notify",
   "version": "0.0.3-20261008",
   "description": "在 Windows 桌面通知任务完成或等待用户输入。",
   "license": "MIT",
@@ -50,7 +50,7 @@
     "@deepseek-ai/dsh-settings": "0.2.0-rc.2",
     "@deepseek-ai/dsh-user-approval": "0.2.0-rc.2",
     "@deepseek-ai/dsh-user-questions": "0.2.0-rc.2",
-    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008",
+    "@dsh-remote/plugin-ui": "workspace:0.0.3-20261008",
     "@types/react": "18.3.31",
     "react": "18.3.1",
     "vitest": "4.1.11"

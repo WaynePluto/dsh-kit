@@ -1,5 +1,5 @@
 {
-  "name": "@dsh-station/dsh-plugin-proxy",
+  "name": "@dsh-remote/dsh-plugin-proxy",
   "version": "0.0.3-20261008",
   "description": "在 dsh 设置中配置模型、OAuth 与插件请求共用的出网代理。",
   "license": "MIT",
@@ -45,7 +45,7 @@
     "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
     "@deepseek-ai/dsh-settings": "0.2.0-rc.2",
-    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008",
+    "@dsh-remote/plugin-ui": "workspace:0.0.3-20261008",
     "@types/react": "18.3.31",
     "react": "18.3.1",
     "vitest": "4.1.11"

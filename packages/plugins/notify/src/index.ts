@@ -35,7 +35,7 @@ export {
 export type { Notice, Notifier } from './toast.js'
 
 /** 出现在 dsh 插件树和诊断信息中的 Cordis 插件名。 */
-export const name = 'dsh-station-notify'
+export const name = 'dsh-remote-notify'
 
 /**
  * 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。（涉及：`agents`）

@@ -18,7 +18,7 @@ import {
 const temporaryDirectories: string[] = []
 
 function temporaryDirectory(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'dsh-station-store-'))
+  const directory = mkdtempSync(join(tmpdir(), 'dsh-remote-store-'))
   temporaryDirectories.push(directory)
   return directory
 }

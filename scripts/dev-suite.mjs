@@ -1,7 +1,7 @@
 // 开发入口（替代已退役的 dev-stack）：准备隔离 dsh 运行时 → 构建套件 →
-// 在隔离 home 准备开发 profile（base + web-app + station-suite）→ 启动 dsh web。
+// 在隔离 home 准备开发 profile（base + web-app + suite）→ 启动 dsh web。
 //
-// 与正式实例互不干扰：DSH_HOME=~/.dsh-dev、station home=~/.dsh-station-dev、
+// 与正式实例互不干扰：DSH_HOME=~/.dsh-dev、station home=~/.dsh-remote-dev、
 // dsh 端口 3180、relay 端口 31809（经 dev home 的配置文件下发）。
 // 用法：node scripts/dev-suite.mjs [--built]（--built 跳过插件构建，仅复用现有产物）。
 import { spawn, spawnSync } from 'node:child_process'
@@ -13,13 +13,13 @@ import { ensureDevelopmentRuntime } from './dev-runtime.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DSH_HOME = join(homedir(), '.dsh-dev')
-const STATION_HOME = join(homedir(), '.dsh-station-dev')
-const PROFILE = 'dsh-station-dev'
+const STATION_HOME = join(homedir(), '.dsh-remote-dev')
+const PROFILE = 'dsh-remote-dev'
 const DSH_PORT = 3180
 const RELAY_PORT = 31_809
-const SUITE_DIRECTORY = join(ROOT, 'packages', 'plugins', 'station-suite')
+const SUITE_DIRECTORY = join(ROOT, 'packages', 'plugins', 'suite')
 const DSH_VERSION = '0.2.0-rc.2'
-const SUITE_PACKAGE = '@dsh-station/dsh-plugin-station-suite'
+const SUITE_PACKAGE = '@dsh-remote/dsh-plugin-suite'
 
 const runtime = await ensureDevelopmentRuntime()
 const dshEnv = { ...process.env, DSH_HOME }
@@ -65,14 +65,14 @@ writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
 
 // dev 的 relay 端口与正式实例（30809）错开，经 station home 配置文件下发。
 mkdirSync(STATION_HOME, { recursive: true })
-const stationConfigPath = join(STATION_HOME, 'dsh-station.config.json')
+const stationConfigPath = join(STATION_HOME, 'dsh-remote.config.json')
 if (!existsSync(stationConfigPath)) {
   writeFileSync(stationConfigPath, `${JSON.stringify({ relay: { port: RELAY_PORT } }, undefined, 2)}\n`)
 }
 
 process.stdout.write(`开发实例：profile=${PROFILE} dsh=http://127.0.0.1:${DSH_PORT} relay 端口=${RELAY_PORT}\n`)
 const child = spawn(process.execPath, [runtime.dshBin, PROFILE, `--port=${DSH_PORT}`, '--no-open'], {
-  cwd: ROOT, stdio: 'inherit', env: { ...dshEnv, DSH_STATION_HOME: STATION_HOME },
+  cwd: ROOT, stdio: 'inherit', env: { ...dshEnv, DSH_REMOTE_HOME: STATION_HOME },
 })
 child.on('close', code => process.exit(code ?? 0))
 for (const signal of ['SIGINT', 'SIGTERM']) {

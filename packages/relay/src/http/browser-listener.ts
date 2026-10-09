@@ -6,7 +6,7 @@ import type { Logger } from 'pino'
 import {
   TUNNEL_CONTROL_PATH,
   TUNNEL_STREAM_PATH,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import { AUTH_PATH_PREFIX } from '../admin/auth-app.js'
 import {
   ADMIN_PATH_PREFIX,

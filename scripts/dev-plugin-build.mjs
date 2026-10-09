@@ -93,10 +93,10 @@ export function pluginArtifactsIntact(root) {
 }
 
 export async function ensurePluginBuild({ root, runRootScript, log = console.log }) {
-  const path = join(root, 'node_modules', '.cache', 'dsh-station', 'dev-plugin-build.json')
+  const path = join(root, 'node_modules', '.cache', 'dsh-remote', 'dev-plugin-build.json')
   const stamp = computePluginBuildStamp(root)
   if (JSON.stringify(readBuildStamp(path)) === JSON.stringify(stamp) && pluginArtifactsIntact(root)) {
-    log('[dsh-station] 插件源码未变化，跳过构建与介质刷新（.dev/plugins 沿用）。')
+    log('[dsh-remote] 插件源码未变化，跳过构建与介质刷新（.dev/plugins 沿用）。')
     return false
   }
   await runRootScript('plugins:build')

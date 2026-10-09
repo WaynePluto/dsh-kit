@@ -14,7 +14,7 @@ import {
   deviceChallengeMessage,
   type AuthFrame,
   type ConnectorToRelayFrame,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import { resolveConnectorConfig, toSessionConfig, type SessionConfig } from '../src/config.js'
 import { loadOrCreateDeviceKey } from '../src/device-key.js'
 import { runControlSession } from '../src/control.js'
@@ -24,7 +24,7 @@ const NONCE = 'test-challenge-nonce-0123456789'
 const MACHINE_ID = 'machine-01'
 const SLUG = 'pc1'
 
-const keyDirectory = mkdtempSync(join(tmpdir(), 'dsh-station-control-'))
+const keyDirectory = mkdtempSync(join(tmpdir(), 'dsh-remote-control-'))
 const deviceKey = loadOrCreateDeviceKey({ path: join(keyDirectory, 'device.key') })
 
 afterAll(() => {

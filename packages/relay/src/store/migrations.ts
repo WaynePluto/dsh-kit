@@ -19,7 +19,7 @@ export class StoreMigrationError extends Error {
 }
 
 /**
- * version 1 一次性创建最终 schema：改名 dsh-station 时把历史 v2–v4 的
+ * version 1 一次性创建最终 schema：改名 dsh-remote 时把历史 v2–v4 的
  * 增量（browser_port、enroll_tokens.used_at 移除、wakeup_requested_at）
  * 全部并入 CREATE，版本号随之归一为 1。不保留空迁移占位：携带旧
  * user_version（2–4）的数据库会被「比支持版本更新」检查拒绝，其
@@ -49,7 +49,7 @@ export const STORE_MIGRATIONS: readonly StoreMigration[] = Object.freeze([
         display_name TEXT,
         public_key TEXT NOT NULL,
         revoked_at INTEGER,
-        -- dsh-station 名下的浏览器成员端口（D16 路由键之二）。
+        -- dsh-remote 名下的浏览器成员端口（D16 路由键之二）。
         browser_port INTEGER,
         -- 机器页发起的唤醒请求；机器上线时清除，按 TTL 过期。
         wakeup_requested_at INTEGER,

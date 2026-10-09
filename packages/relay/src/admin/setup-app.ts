@@ -99,7 +99,7 @@ function passwordPage(options: {
   error?: string
 }): string {
   return renderPage({
-    title: '初始设置 · DSH 工作站',
+    title: '初始设置 · DSH Remote',
     extraStyle: SETUP_STYLE,
     appearance: options.appearance,
     body: `<p class="eyebrow">初始设置</p><h1>创建管理员账号</h1>
@@ -123,7 +123,7 @@ function enrollmentPage(options: {
   error?: string
 }): string {
   return renderPage({
-    title: '绑定验证器 · DSH 工作站',
+    title: '绑定验证器 · DSH Remote',
     extraStyle: SETUP_STYLE,
     appearance: options.appearance,
     body: `<p class="eyebrow">初始设置</p><h1>绑定验证器</h1>
@@ -150,7 +150,7 @@ export function renderSetupRequiredPage(
   appearance: PageAppearance,
 ): string {
   return renderPage({
-    title: '尚未完成初始设置 · DSH 工作站',
+    title: '尚未完成初始设置 · DSH Remote',
     extraStyle: SETUP_STYLE,
     appearance,
     body: `<p class="eyebrow">初始设置</p><h1>请先创建管理员账号</h1>

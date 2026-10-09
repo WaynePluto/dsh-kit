@@ -3,7 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 
 /** dsh 诊断信息中显示的 Cordis 插件名。 */
-export const name = 'dsh-station-web-search-switch'
+export const name = 'dsh-remote-web-search-switch'
 
 /** 挂载刻意为空的宿主半。 */
 export function apply(_ctx: Context): void {

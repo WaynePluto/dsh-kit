@@ -7,7 +7,7 @@ import {
   STREAM_CONNECT_TIMEOUT_MS,
   TUNNEL_STREAM_PATH,
   type OpenStreamFrame,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 
 export interface WorkStreamDeps {
   /** 规范化后的 relay WebSocket origin。 */

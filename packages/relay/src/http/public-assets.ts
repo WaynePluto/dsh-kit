@@ -13,8 +13,8 @@ export const MANIFEST_PATH = '/manifest.webmanifest'
  */
 const RELAY_MANIFEST = `${JSON.stringify({
   id: '/',
-  name: 'dsh-station',
-  short_name: 'dsh-station',
+  name: 'dsh-remote',
+  short_name: 'dsh-remote',
   start_url: '/',
   scope: '/',
   display: 'standalone',

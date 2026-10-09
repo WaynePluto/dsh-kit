@@ -166,9 +166,9 @@ describe('M2.5 admin console', () => {
     expect(body).toContain('href="https://pc1.dsh.test/"')
     expect(body).toContain('<span class="badge off">离线</span>')
     // 桌面占位由壳叠加，普通浏览器仍保留原来的24px/窄屏12px留白。
-    expect(body).toContain('body{--dsh-station-page-top-gap:24px;')
-    expect(body).toContain('padding:var(--dsh-station-page-top-gap) 16px 24px')
-    expect(body).toContain('@media(max-width:460px){body{--dsh-station-page-top-gap:12px;padding:var(--dsh-station-page-top-gap) 8px 12px}')
+    expect(body).toContain('body{--dsh-remote-page-top-gap:24px;')
+    expect(body).toContain('padding:var(--dsh-remote-page-top-gap) 16px 24px')
+    expect(body).toContain('@media(max-width:460px){body{--dsh-remote-page-top-gap:12px;padding:var(--dsh-remote-page-top-gap) 8px 12px}')
     expect(body).toContain('body{place-items:start center}')
     // 离线机器没有可链接的访问入口。
     expect(body).not.toContain('href="https://srv.dsh.test/"')
@@ -273,7 +273,7 @@ describe('M2.5 admin console', () => {
     // 令牌，以及 dsh 必须信任的 authority（模式 A 原样转发
     // 浏览器 Host；使用公网域名时它就是该机器的子域名）。
     expect(issued.body)
-      .toContain(`dsh-station-connector --relay wss://dsh.test --slug pc9 --enroll-token ${token} --hub-authority pc9.dsh.test`)
+      .toContain(`dsh-remote-connector --relay wss://dsh.test --slug pc9 --enroll-token ${token} --hub-authority pc9.dsh.test`)
 
     const tokenId = lastIssuedTokenId(fixture.store)
     if (tokenId === undefined) throw new Error('the console wrote no audit row for the token')
@@ -324,7 +324,7 @@ describe('M2.5 admin console', () => {
       fields: { csrf: localPage.csrf, slug: 'pc9', name: '' },
     })
     expect(issued.status, issued.body).toBe(200)
-    expect(issued.body).toContain('dsh-station-connector --relay wss://dsh.test')
+    expect(issued.body).toContain('dsh-remote-connector --relay wss://dsh.test')
   })
 
   it('rejects a malformed slug without issuing anything', async () => {
@@ -340,7 +340,7 @@ describe('M2.5 admin console', () => {
 
   it('shows local loopback visitors a minimal splash instead of the console-styled offline page', async () => {
     // directSlug 让 127.0.0.1 Host 解析到机器（生产 launcher 总是传它）；
-    // home 指到临时目录，避免 relay 的自挂条目写进真实 dsh-station home。
+    // home 指到临时目录，避免 relay 的自挂条目写进真实 dsh-remote home。
     const home = await mkdtemp(join(tmpdir(), 'relay-splash-'))
     const fixture = await startAuthenticatedRelayFixture({
       jwtSecret: JWT_SECRET,
@@ -370,7 +370,7 @@ describe('M2.5 admin console', () => {
       })
       expect(local.status).toBe(502)
       expect(local.headers['content-type']).toContain('text/html')
-      expect(local.body).toContain('正在启动 DSH 工作站')
+      expect(local.body).toContain('正在启动 DSH Remote')
       expect(local.body).toContain('class="spin"')
       expect(local.body).toContain('<noscript><meta http-equiv="refresh" content="1"></noscript>')
       expect(local.body).not.toContain('content="0.2"')

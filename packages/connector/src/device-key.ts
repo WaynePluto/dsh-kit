@@ -37,10 +37,10 @@ export interface DeviceKey {
   sign(message: Uint8Array): string
 }
 
-/** dsh-station home 中 Ed25519 身份的文件名。 */
+/** dsh-remote home 中 Ed25519 身份的文件名。 */
 export const DEVICE_KEY_FILE_NAME = 'device.key'
 
-/** `~/.dsh-station/device.key`；每个 OS 用户一个身份，而不是每个 checkout 一个。 */
+/** `~/.dsh-remote/device.key`；每个 OS 用户一个身份，而不是每个 checkout 一个。 */
 export function defaultDeviceKeyPath(): string {
   return join(defaultDshStationHome(), DEVICE_KEY_FILE_NAME)
 }

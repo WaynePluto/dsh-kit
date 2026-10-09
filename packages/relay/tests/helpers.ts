@@ -14,7 +14,7 @@ import {
   decodeControlFrame,
   deviceChallengeMessage,
   type RelayToConnectorFrame,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 import {
   BrowserCookiePolicy,
   createAuthenticationService,

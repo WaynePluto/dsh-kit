@@ -6,7 +6,7 @@ import { once } from 'node:events'
 import { Buffer } from 'node:buffer'
 import pino from 'pino'
 import { afterEach, describe, expect, it } from 'vitest'
-import { TUNNEL_CONTROL_PATH } from '@dsh-station/protocol'
+import { TUNNEL_CONTROL_PATH } from '@dsh-remote/protocol'
 import {
   BrowserCookiePolicy,
   createAuthenticationService,

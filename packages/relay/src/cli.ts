@@ -70,7 +70,7 @@ function cliAuditLogger(): Logger {
 
 async function hiddenPrompt(label: string): Promise<string> {
   if (!process.stdin.isTTY || !process.stdout.isTTY || process.stdin.setRawMode === undefined) {
-    throw new Error('interactive password input needs a TTY; use DSH_STATION_ADMIN_PASSWORD for automation')
+    throw new Error('interactive password input needs a TTY; use DSH_REMOTE_ADMIN_PASSWORD for automation')
   }
   process.stdout.write(label)
   process.stdin.setEncoding('utf8')
@@ -129,13 +129,13 @@ function reportExpectedError(error: unknown): void {
 }
 
 async function newAdminPassword(): Promise<string> {
-  const fromEnvironment = process.env.DSH_STATION_ADMIN_PASSWORD
+  const fromEnvironment = process.env.DSH_REMOTE_ADMIN_PASSWORD
   if (fromEnvironment !== undefined) {
     try {
       validateNewPassword(fromEnvironment)
     } catch (error) {
       if (error instanceof PasswordPolicyError) {
-        throw new CliUserError(`DSH_STATION_ADMIN_PASSWORD 不符合要求：${error.message}`)
+        throw new CliUserError(`DSH_REMOTE_ADMIN_PASSWORD 不符合要求：${error.message}`)
       }
       throw error
     }
@@ -193,9 +193,9 @@ async function serveRelay(options: ServeOptions, command: Command): Promise<void
   try {
     let authentication
     if (browserAuth !== undefined) {
-      const encodedSecret = process.env.DSH_STATION_JWT_SECRET
+      const encodedSecret = process.env.DSH_REMOTE_JWT_SECRET
       if (encodedSecret === undefined) {
-        command.error('browser authentication requires DSH_STATION_JWT_SECRET (32+ random base64url bytes)')
+        command.error('browser authentication requires DSH_REMOTE_JWT_SECRET (32+ random base64url bytes)')
       }
       // 尚无管理员是正常的首次运行状态，不是错误：relay
       // 会提供 loopback 设置向导，直到有人创建账号。
@@ -242,14 +242,14 @@ async function serveRelay(options: ServeOptions, command: Command): Promise<void
 }
 
 const program = new Command()
-  .name('dsh-station-relay')
-  .description('authenticated dsh-station reverse-tunnel relay')
+  .name('dsh-remote-relay')
+  .description('authenticated dsh-remote reverse-tunnel relay')
 
 program.command('serve', { isDefault: true })
   .description('run the relay')
   .option('--domain <domain>', 'multi-machine public domain, e.g. dsh.example.com')
   .option('--direct-slug <slug>', 'route IP/localhost browser traffic to one machine')
-  .option('--home <path>', `this machine's dsh-station state directory (default: ${defaultDshStationHome()})`)
+  .option('--home <path>', `this machine's dsh-remote state directory (default: ${defaultDshStationHome()})`)
   .option('--host <address>', 'listen address', bindHost, '127.0.0.1')
   .option('--port <port>', 'listen port', port, 30_809)
   .option('--member-port-base <port>', 'first per-machine browser port (default: main port + 1)', port)

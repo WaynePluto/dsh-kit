@@ -155,7 +155,7 @@ export function consolePage(options: {
     ? ''
     : `<a class="open" href="${LOGOUT_PATH}?returnTo=${encodeURIComponent(options.current)}">退出登录</a>`
   return renderPage({
-    title: `${options.title} · ${options.machine} · DSH 工作站`,
+    title: `${options.title} · ${options.machine} · DSH Remote`,
     extraStyle: CONSOLE_STYLE,
     nativeTheme: true,
     appearance: options.appearance,
@@ -195,7 +195,7 @@ export function confirmPage(options: {
     : `
 <input type="hidden" name="machineId" value="${escapeHtml(options.machineId)}">`
   return renderPage({
-    title: `${options.title} · ${options.machine} · DSH 工作站`,
+    title: `${options.title} · ${options.machine} · DSH Remote`,
     extraStyle: CONSOLE_STYLE,
     nativeTheme: true,
     appearance: options.appearance,
@@ -223,7 +223,7 @@ export function confirmPage(options: {
  */
 export function renderOfflinePage(slug: string, appearance: PageAppearance): string {
   return renderPage({
-    title: '机器离线 · DSH 工作站',
+    title: '机器离线 · DSH Remote',
     extraStyle: `${CONSOLE_STYLE}
 .wait{display:flex;align-items:center;gap:10px}
 .spin{flex:none;width:20px;height:20px;border:2px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:offline-spin 1s linear infinite}
@@ -237,8 +237,8 @@ export function renderOfflinePage(slug: string, appearance: PageAppearance): str
     body: `<div class="wait"><span class="spin" aria-hidden="true"></span><p class="eyebrow">等待机器上线</p></div><h1>${escapeHtml(slug)} 当前离线</h1>
 <p class="intro">${escapeHtml(slug)} 上的 connector 没有连过来，所以现在没法把请求送到它的 dsh。</p>
 <div class="bar" aria-hidden="true"></div>
-<p class="empty">本页每秒自动重试：机器正在启动时无需任何操作，connector 连上后会自动进入工作台；如果那台机器已经关机，开机并启动 DSH 工作站 即可，不需要在这里做任何设置。</p>
+<p class="empty">本页每秒自动重试：机器正在启动时无需任何操作，connector 连上后会自动进入工作台；如果那台机器已经关机，开机并启动 DSH Remote 即可，不需要在这里做任何设置。</p>
 <div class="actions"><a class="open" href="${ADMIN_PATH_PREFIX}">看看能打开哪些机器 →</a></div>
-<p class="foot">DSH 工作站 / relay</p>`,
+<p class="foot">DSH Remote / relay</p>`,
   })
 }

@@ -2,7 +2,7 @@
 
 核实于 dsh-v0.2.0-rc.2（git `639ed01539`）。源码路径相对 dsh 仓库根。
 本项目不依赖官方桌面版运行，本页只记录其启动时序的查证结论，作为
-dsh-station 桌面启动优化的对照基线；行为变化在升级 dsh 时复核。
+dsh-remote 桌面启动优化的对照基线；行为变化在升级 dsh 时复核。
 
 ## 架构
 
@@ -40,7 +40,7 @@ dsh-station 桌面启动优化的对照基线；行为变化在升级 dsh 时复
 6. 关窗即隐藏，宿主常驻；再次双击走 single-instance 只 focus
    （`main.ts` "Closing hides" 注释与 `single-instance.ts`）。
 
-## 对 dsh-station 的对照结论
+## 对 dsh-remote 的对照结论
 
 - 官方快 = `max(Electron 启动 + 本地前端加载, asar 内宿主 boot 约 2.6s) + 一次 IPC`，
   冷启动到可用约 3s（实测本机）；其中 asar 化的运行时树是散装布局没有的

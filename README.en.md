@@ -1,4 +1,4 @@
-# DSH Station suite (dsh-station)
+# DSH Station suite (dsh-remote)
 
 [简体中文](README.md) | **English**
 
@@ -29,7 +29,7 @@ official dsh plugin manager ("+ Add plugin").
    pnpm plugins:build
    node scripts/build-suite.mjs   # generates the suite patch and materializes deps
    ```
-3. dsh → Plugins → Add plugin → enter the absolute path of `packages/plugins/station-suite`
+3. dsh → Plugins → Add plugin → enter the absolute path of `packages/plugins/suite`
    → Install → Enable → restart dsh. To upgrade, rebuild, then uninstall and reinstall.
 
 Installing from a single GitHub repository URL is structurally ready (`file:` relative
@@ -37,10 +37,10 @@ dependencies) and will be verified once the repository is public.
 
 ## Runtime data and configuration
 
-- Data directory `~/.dsh-station`: relay database, device keys, membership, dsh-token,
+- Data directory `~/.dsh-remote`: relay database, device keys, membership, dsh-token,
   process registry and logs (`logs/`)
-- See [packaging/dsh-station.config.example.json](packaging/dsh-station.config.example.json)
-  (place at `~/.dsh-station/dsh-station.config.json`; LAN mode and relay port 30809 by default)
+- See [packaging/dsh-remote.config.example.json](packaging/dsh-remote.config.example.json)
+  (place at `~/.dsh-remote/dsh-remote.config.json`; LAN mode and relay port 30809 by default)
 - Known limitation: after changing the remote entry, restart dsh manually so the new
   trustedHosts take effect (a plugin cannot restart its own host)
 

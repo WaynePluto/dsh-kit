@@ -5,6 +5,10 @@
 
 ## 已实现
 
+- [x] 全仓更名 dsh-remote（2026-10-09，D28）：包 scope/环境变量（DSH_REMOTE_*）/数据目录（~/.dsh-remote）/
+配置文件/机器名回退值/CLI 程序名全部替换（309 文件）；套件包定名 @dsh-remote/dsh-plugin-suite（目录 packages/plugins/suite）；
+pnpm/zustand/immer 固定为根 devDependencies（原由 launcher 传递提供）、web-search-switch 补 dsh-plugin-manager 类型 devDep；
+全仓 build/typecheck/test/lint/check:dependencies 通过。旧数据目录与旧套件安装需手动迁移（见 D28）。
 - [x] launcher 退役（2026-10-09，D27 第二轮）：删除 packages/launcher 与 dev-stack/dev-profile；
 运行时依赖清单内联到 dev-runtime.mjs（可注入以保持测试可控），解析锚点改根 package.json，
 media-stamp 迁 scripts/lib；开发入口改为 scripts/dev-suite.mjs（隔离 home/端口 + 套件安装 + dsh web），

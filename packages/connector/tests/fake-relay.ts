@@ -18,7 +18,7 @@ import {
   type ErrorFrame,
   type HelloFrame,
   type ProtocolErrorCode,
-} from '@dsh-station/protocol'
+} from '@dsh-remote/protocol'
 
 /**
  * Connector 测试使用的 relay 替身：它使用真实控制协议，并

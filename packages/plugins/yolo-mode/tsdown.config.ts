@@ -3,10 +3,10 @@ import { createPluginBuildConfig } from '../../plugin-build/index.mjs'
 
 export default defineConfig(
   createPluginBuildConfig({
-    id: '@dsh-station/dsh-plugin-yolo-mode',
+    id: '@dsh-remote/dsh-plugin-yolo-mode',
     entry: ['src/index.ts'],
     hostDeps: { neverBundle: [/^@deepseek-ai\//] },
     client: false,
-    hostName: '@dsh-station/dsh-plugin-yolo-mode',
+    hostName: '@dsh-remote/dsh-plugin-yolo-mode',
   }),
 )
