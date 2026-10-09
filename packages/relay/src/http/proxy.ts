@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import http, {
   type IncomingHttpHeaders,
   type IncomingMessage,
@@ -129,6 +130,21 @@ function sendDshLoginRedirect(
   res.end()
 }
 
+/**
+ * 读取宿主内 remote-runtime 插件写入的 dsh 登录令牌文件。
+ * 插件时代没有 launcher 截获 stdout 后经 connector 上报的帧，此文件是唯一来源；
+ * 文件缺失或不可读时返回 undefined，保持原有的 401 原样透传行为。
+ */
+function readDshTokenFile(path: string | undefined): string | undefined {
+  if (path === undefined) return undefined
+  try {
+    const token = readFileSync(path, 'utf8').trim()
+    return token.length > 0 && token.length <= 512 ? token : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export async function proxyHttpRequest(options: {
   req: IncomingMessage
   res: ServerResponse
@@ -138,6 +154,8 @@ export async function proxyHttpRequest(options: {
   /** 离线页面使用的外观；这是此处唯一能渲染的页面。 */
   appearance: PageAppearance
   setCookieHeaders?: readonly string[]
+  /** dsh 登录令牌文件（remote-runtime 插件写入）；注册表没有新令牌时兜底。 */
+  dshTokenFile?: string | undefined
 }): Promise<void> {
   const { req, res, slug, registry, logger } = options
   const setCookieHeaders = options.setCookieHeaders ?? []
@@ -175,7 +193,7 @@ export async function proxyHttpRequest(options: {
     // dsh 自己的浏览器认证：将 index 的 401 换成一次令牌交换；
     // 该交换会签发 dsh cookie 并返回干净 URL。
     if (upstreamResponse.statusCode === 401) {
-      const location = dshLoginRedirect(req, registry.getBySlug(slug)?.dshToken)
+      const location = dshLoginRedirect(req, registry.getBySlug(slug)?.dshToken ?? readDshTokenFile(options.dshTokenFile))
       if (location !== undefined) {
         upstreamResponse.resume()
         upstreamResponse.once('end', () => tunnel.destroy())

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Remote runtime",
+    "description": "Hosts relay and connector inside dsh for remote access"
+  }
+}

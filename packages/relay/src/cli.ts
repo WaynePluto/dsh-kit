@@ -1,3 +1,7 @@
+// Electron 的 node 模式会在启动后改写 process.argv（Chromium 风格化），
+// commander 稍后解析时会看到被重写的参数；在模块顶部快照用户参数。
+const userArgv = process.argv.slice(2)
+
 import { isIP } from 'node:net'
 import process from 'node:process'
 import { Command, InvalidArgumentError } from 'commander'
@@ -329,4 +333,4 @@ totp.command('reset')
     }
   })
 
-await program.parseAsync()
+await program.parseAsync(userArgv, { from: 'user' })

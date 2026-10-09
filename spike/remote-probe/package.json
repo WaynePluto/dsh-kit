@@ -1,0 +1,21 @@
+{
+  "name": "@dsh-station/dsh-plugin-remote-probe",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Spike: validate third-party bundle trustedHosts override, authenticatedUrl token access, and detached child re-claim inside the official dsh desktop host.",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ]
+}

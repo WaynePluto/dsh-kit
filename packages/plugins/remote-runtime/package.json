@@ -1,0 +1,35 @@
+{
+  "name": "@dsh-station/dsh-plugin-remote-runtime",
+  "version": "0.0.3-20261008",
+  "description": "在 dsh 宿主内托管 relay 与 connector：提供 trustedHosts 投影服务、写入 dsh 登录令牌文件、以两级启动器拉起并认领远程子进程。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./bootstrap": "./dist/bootstrap.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-client-connection": "0.2.0-rc.2",
+    "vitest": "4.1.11"
+  }
+}

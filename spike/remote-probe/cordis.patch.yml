@@ -1,0 +1,21 @@
+# Spike patch layer, loaded because package.json declares dsh.bundle.patch here
+# and `dsh plugin add` appends this bundle after dsh-web-app in the profile.
+#
+# Row 1 restates the connection row exactly as dsh-web-app's own patch declares
+# it (a patch replaces the targeted row's whole config), changing only the
+# trustedHosts expression to the officially documented concatenation pattern.
+# NOTE: !!js is a SCALAR tag — the expression must be quoted (a bare [ after the
+# tag is a flow sequence, which the schema rejects as an unknown tag).
+# Expected effect: requests carrying `Host: probe.invalid` pass the browser-trust
+# fence (401 instead of 403) while loopback keeps working unchanged.
+#
+# Row 2 loads this package's host half. No dsh.client / ./client export is
+# declared, so no browser bundle is requested.
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject: [webRuntime]
+  config:
+    trustedHosts: !!js "['probe.invalid', ...ctx.webRuntime.trustedHosts]"
+- insert:
+    - id: remote-probe
+      name: './dist/index.js'

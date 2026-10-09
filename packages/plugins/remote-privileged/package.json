@@ -18,6 +18,8 @@
   },
   "exports": {
     "./package.json": "./package.json",
-    "./locale/*.json": "./locale/*.json"
+    "./locale/*.json": "./locale/*.json",
+    "./model-bootstrap.mjs": "./model-bootstrap.mjs",
+    "./theme-projection.mjs": "./theme-projection.mjs"
   }
 }

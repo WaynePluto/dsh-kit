@@ -5,6 +5,7 @@
 
 ## 已实现
 
+- [x] 插件化单包分发与远程运行时宿主托管（2026-10-09，官方桌面 0.2.0-rc.2 实测）：新增 station-suite 全量套件包（一条本地路径经官方「添加插件」安装/启用/卸载，22 组件行 + connection 覆写 + 屏障/投影行，`scripts/build-suite.mjs` 生成并物化依赖闭包）与 remote-runtime 组件（dshRemoteTrust 信任服务、authenticatedUrl 写 `~/.dsh-station/dsh-token`、两级分离启动器拉起并认领 relay/connector，日志 `~/.dsh-station/logs/`）；relay 增加令牌文件兜底（browser-listener/proxy 接线）；relay/connector CLI 顶部快照 argv（Electron node 模式启动后会重写 process.argv，实测 commander 会读到被复制的参数）。桌面实测：安装→启用→重启后 relay 30809 监听并回 303、connector 自挂上线、token 文件与宿主一致、fence 对 LAN Host 由 403 变 401；杀桌面进程树后子进程存活。已知问题：宿主重启偶尔未认领仍存活子进程而重复拉起（新 relay 因端口冲突自然退出，功能无损，原因待查）；GitHub 仓库地址安装待仓库公开后实测；proxy 的 undici 与宿主同实例契约在桌面 asar 语境待验证。spike 记录见 spike/remote-probe/README.md。
 - [x] HTTP/WebSocket 反向隧道，原样转发 Host/Origin，断线退避重连。
 - [x] Ed25519 设备注册与认证、一次性注册令牌、停止机器并移除。
 - [x] 密码与 TOTP、JWT/refresh cookie、登录限流、会话吊销和安全审计。

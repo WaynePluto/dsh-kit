@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { join } from 'node:path'
 import http, { type IncomingMessage, type ServerResponse } from 'node:http'
 import type { Duplex } from 'node:stream'
 import type { Logger } from 'pino'
@@ -301,6 +302,7 @@ export function createBrowserServer(
       logger,
       appearance,
       setCookieHeaders,
+      dshTokenFile: join(config.home, 'dsh-token'),
     })
   }
 

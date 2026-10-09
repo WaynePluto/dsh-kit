@@ -26,6 +26,10 @@ function defaultMachineId(slug: string | undefined): string {
   return slug === undefined ? host : `${host}-${slug}`
 }
 
+// Electron 的 node 模式会在启动后改写 process.argv（Chromium 风格化），
+// commander 稍后解析时会看到被重写的参数；在模块顶部快照用户参数。
+const userArgv = process.argv.slice(2)
+
 const program = new Command()
   .name('dsh-station-connector')
   .description('dsh-station reverse-tunnel connector')
@@ -40,7 +44,7 @@ const program = new Command()
   .option('--dsh-port <port>', 'local dsh port', port, 3080)
   .option('--dsh-token <token>', 'dsh web login token printed by dsh on start-up (prefer DSH_STATION_DSH_TOKEN)')
 
-program.parse()
+program.parse(userArgv, { from: 'user' })
 const options = program.opts<{
   relay?: string
   slug?: string

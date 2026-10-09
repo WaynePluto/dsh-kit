@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./package.json": "./package.json",
     ".": "./src/index.ts"
   },
   "bin": {
@@ -17,7 +18,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@dsh-station/protocol": "workspace:*",
+    "@dsh-station/protocol": "file:../protocol",
     "commander": "15.0.0",
     "pino": "10.3.1",
     "ws": "8.22.0",

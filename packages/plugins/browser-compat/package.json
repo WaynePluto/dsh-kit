@@ -25,9 +25,6 @@
     "cordis.patch.yml",
     "locale"
   ],
-  "dependencies": {
-    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008"
-  },
   "scripts": {
     "build": "tsdown",
     "test": "vitest run",
@@ -41,6 +38,7 @@
     "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
     "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
+    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008",
     "@types/react": "18.3.31",
     "react": "18.3.1",
     "vitest": "4.1.11"

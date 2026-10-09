@@ -1,0 +1,48 @@
+{
+  "name": "@dsh-station/dsh-plugin-station-suite",
+  "version": "0.0.3-20261008",
+  "description": "dsh-station 全量套件：一个包安装全部功能组件与远程运行时（relay/connector 托管）。本地安装路径即本目录；依赖以 file: 相对路径指向仓库内组件。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dependencies": {
+    "@dsh-station/connector": "file:../../connector",
+    "@dsh-station/dsh-plugin-agents-md": "file:../agents-md",
+    "@dsh-station/dsh-plugin-browser-compat": "file:../browser-compat",
+    "@dsh-station/dsh-plugin-chat-scroll": "file:../chat-scroll",
+    "@dsh-station/dsh-plugin-concise-mode": "file:../concise-mode",
+    "@dsh-station/dsh-plugin-copilot-auth": "file:../copilot-auth",
+    "@dsh-station/dsh-plugin-directory-picker-browse": "file:../directory-picker-browse",
+    "@dsh-station/dsh-plugin-favorite-models": "file:../favorite-models",
+    "@dsh-station/dsh-plugin-files": "file:../files",
+    "@dsh-station/dsh-plugin-model-capabilities": "file:../model-capabilities",
+    "@dsh-station/dsh-plugin-models-catalog": "file:../models-catalog",
+    "@dsh-station/dsh-plugin-notify": "file:../notify",
+    "@dsh-station/dsh-plugin-proxy": "file:../proxy",
+    "@dsh-station/dsh-plugin-remote-privileged": "file:../remote-privileged",
+    "@dsh-station/dsh-plugin-remote-runtime": "file:../remote-runtime",
+    "@dsh-station/dsh-plugin-remote-settings": "file:../remote-settings",
+    "@dsh-station/dsh-plugin-services": "file:../services",
+    "@dsh-station/dsh-plugin-skills-inspector": "file:../skills-inspector",
+    "@dsh-station/dsh-plugin-terminal": "file:../terminal",
+    "@dsh-station/dsh-plugin-tools-inspector": "file:../tools-inspector",
+    "@dsh-station/dsh-plugin-turn-retry": "file:../turn-retry",
+    "@dsh-station/dsh-plugin-user-message-fork": "file:../user-message-fork",
+    "@dsh-station/dsh-plugin-web-search-switch": "file:../web-search-switch",
+    "@dsh-station/dsh-plugin-yolo-mode": "file:../yolo-mode",
+    "@dsh-station/relay": "file:../../relay"
+  }
+}

@@ -31,8 +31,7 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "3.18.4",
-    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008"
+    "@deepseek-ai/schemastery": "3.18.4"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
@@ -51,6 +50,7 @@
     "@deepseek-ai/dsh-settings": "0.2.0-rc.2",
     "@deepseek-ai/dsh-user-approval": "0.2.0-rc.2",
     "@deepseek-ai/dsh-user-questions": "0.2.0-rc.2",
+    "@dsh-station/plugin-ui": "workspace:0.0.3-20261008",
     "@types/react": "18.3.31",
     "react": "18.3.1",
     "vitest": "4.1.11"
