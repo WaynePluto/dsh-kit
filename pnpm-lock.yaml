@@ -517,6 +517,8 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/plugins/model-bootstrap: {}
+
   packages/plugins/model-capabilities:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -697,6 +699,18 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/plugins/preset-concise:
+    dependencies:
+      '@deepseek-ai/dsh-agent-preset':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7))
+
+  packages/plugins/preset-concise-ptc:
+    dependencies:
+      '@deepseek-ai/dsh-agent-preset':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7))
+
   packages/plugins/proxy:
     dependencies:
       '@deepseek-ai/dsh-http-proxy':
@@ -808,6 +822,8 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/plugins/remote-trust: {}
 
   packages/plugins/services:
     dependencies:
@@ -926,9 +942,6 @@ importers:
       '@dsh-remote/dsh-plugin-agents-md':
         specifier: file:../agents-md
         version: link:../agents-md
-      '@dsh-remote/dsh-plugin-browser-compat':
-        specifier: file:../browser-compat
-        version: link:../browser-compat
       '@dsh-remote/dsh-plugin-chat-scroll':
         specifier: file:../chat-scroll
         version: link:../chat-scroll
@@ -947,6 +960,9 @@ importers:
       '@dsh-remote/dsh-plugin-files':
         specifier: file:../files
         version: link:../files
+      '@dsh-remote/dsh-plugin-model-bootstrap':
+        specifier: file:../model-bootstrap
+        version: link:../model-bootstrap
       '@dsh-remote/dsh-plugin-model-capabilities':
         specifier: file:../model-capabilities
         version: link:../model-capabilities
@@ -956,6 +972,12 @@ importers:
       '@dsh-remote/dsh-plugin-notify':
         specifier: file:../notify
         version: link:../notify
+      '@dsh-remote/dsh-plugin-preset-concise':
+        specifier: file:../preset-concise
+        version: link:../preset-concise
+      '@dsh-remote/dsh-plugin-preset-concise-ptc':
+        specifier: file:../preset-concise-ptc
+        version: link:../preset-concise-ptc
       '@dsh-remote/dsh-plugin-proxy':
         specifier: file:../proxy
         version: link:../proxy
@@ -968,6 +990,9 @@ importers:
       '@dsh-remote/dsh-plugin-remote-settings':
         specifier: file:../remote-settings
         version: link:../remote-settings
+      '@dsh-remote/dsh-plugin-remote-trust':
+        specifier: file:../remote-trust
+        version: link:../remote-trust
       '@dsh-remote/dsh-plugin-services':
         specifier: file:../services
         version: link:../services
@@ -977,6 +1002,9 @@ importers:
       '@dsh-remote/dsh-plugin-terminal':
         specifier: file:../terminal
         version: file:packages/plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)
+      '@dsh-remote/dsh-plugin-theme-projection':
+        specifier: file:../theme-projection
+        version: link:../theme-projection
       '@dsh-remote/dsh-plugin-tools-inspector':
         specifier: file:../tools-inspector
         version: link:../tools-inspector
@@ -1062,6 +1090,8 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/plugins/theme-projection: {}
 
   packages/plugins/tools-inspector:
     devDependencies:
@@ -1549,6 +1579,13 @@ packages:
       '@deepseek-ai/dsh-system-prompt': 0.2.0-rc.2
       '@deepseek-ai/dsh-tools': 0.2.0-rc.2
       '@deepseek-ai/dsh-typert-protocol': 0.2.0-rc.2
+
+  '@deepseek-ai/dsh-agent-preset@0.2.0-rc.2':
+    resolution: {integrity: sha512-hrRWLO0ow0lVWqDL0nWPPZqsjUR+J05JgDoTuz1qJrpvGbXMykayOx+ZkKWy64ErkqW2pMIgT4JGYeOPoH7kmA==}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/cordis-plugin-loader': ~1.0.5
+      '@deepseek-ai/dsh-agent-preset-registry': 0.2.0-rc.2
 
   '@deepseek-ai/dsh-agent@0.2.0-rc.2':
     resolution: {integrity: sha512-CUkbU+c1G0ETXkpoLkpAFo5midz66FQGtlgQOP9pzvU9H3zJQVl4H5LrhhGVbEXKLFgdbtQiOynEW8hpWn3y0Q==}
@@ -4363,6 +4400,13 @@ snapshots:
       - '@deepseek-ai/cordis-plugin-group'
       - '@deepseek-ai/dsh-home-paths'
       - '@deepseek-ai/dsh-launch-environment'
+
+  '@deepseek-ai/dsh-agent-preset@0.2.0-rc.2(@deepseek-ai/cordis-plugin-loader@1.0.5)(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7))':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/cordis-plugin-loader': 1.0.5(@deepseek-ai/cordis@4.0.4)(node-addon-require-builtin@0.1.6)
+      '@deepseek-ai/dsh-agent-preset-registry': 0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7)
+      '@deepseek-ai/schemastery': 3.18.4
 
   '@deepseek-ai/dsh-agent@0.2.0-rc.2(fee0e653b72a3883e0f0da2d9a46bb50)':
     dependencies:

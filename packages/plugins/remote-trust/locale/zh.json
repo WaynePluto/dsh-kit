@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "远程信任引导",
+    "description": "从 membership 与本机地址计算 dsh 需要信任的 authority 集合。"
+  }
+}

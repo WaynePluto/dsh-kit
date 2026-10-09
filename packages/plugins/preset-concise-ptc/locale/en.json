@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Concise PTC mode",
+    "description": "Composes file, search, skill, subagent, ask-user and task-progress tools in one TypeScript program."
+  }
+}

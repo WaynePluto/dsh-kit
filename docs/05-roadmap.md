@@ -5,6 +5,11 @@
 
 ## 已实现
 
+- [x] 套件组件清单元数据统一中文（2026-10-09）：dsh 插件管理器只为裸包名行解析 locale meta
+（相对路径行退化为完整文件 URL、官方包只有英文）。新增 5 个显示壳微包（preset-concise/-ptc、
+model-bootstrap、theme-projection、remote-trust，裸包名 + 中文 locale + re-export 目标模块；
+preset 包需同时转发 default 导出），build-suite 的行改写逐行处理多 id/name 块并按缩进门控
+disabled 插入（嵌套 preset 组合行不插）。桌面实测 24/24 行中文标题+描述。
 - [x] 官方桌面「正在加载设置」卡死修复（2026-10-09）：双元凶——browser-compat 的旧 WebKit 全局垫片
 （Promise/Iterator）垫坏 Chromium 连接层；remote-settings 的静态 `__DSH_TRANSPORT__={ownsHost:true}`
 违反 dsh 契约（只有自组装 transport 的壳可设置，被服务页面绝不携带），抢占官方桌面注入语义致页面

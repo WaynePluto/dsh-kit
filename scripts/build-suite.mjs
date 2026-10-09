@@ -29,11 +29,14 @@ const COMBO_PACKAGES = new Set([
 const FIRST = ['proxy']
 const LAST = ['yolo-mode']
 
+// 显示壳微包：无自身 patch（行来自套件模板/组件 patch 的名称改写），只物化、不迭代。
+const DISPLAY_PACKAGE_DIRS = ['model-bootstrap', 'theme-projection', 'remote-trust', 'preset-concise', 'preset-concise-ptc']
+
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .map(entry => entry.name)
-    .filter(name => !COMBO_PACKAGES.has(name))
+    .filter(name => !COMBO_PACKAGES.has(name) && !DISPLAY_PACKAGE_DIRS.includes(name))
     .sort((a, b) => {
       const rank = name => (FIRST.includes(name) ? 0 : LAST.includes(name) ? 2 : 1)
       return rank(a) - rank(b) || a.localeCompare(b)
@@ -65,30 +68,66 @@ function topLevelEntries(text) {
   }).filter(block => block.length > 0)
 }
 
+// 非 './dist/*' 形态行的显示改写：preset 行换成本套件生成的显示壳微包，
+// remote-runtime 的 bootstrap 子路径行同理（相对路径行拿不到插件管理器元数据）。
+const ROW_NAME_OVERRIDES = new Map([
+  ['preset-concise', '@dsh-remote/dsh-plugin-preset-concise'],
+  ['preset-concise-ptc', '@dsh-remote/dsh-plugin-preset-concise-ptc'],
+])
+const SUBPATH_DISPLAY_PACKAGES = new Map([
+  ['@dsh-remote/dsh-plugin-remote-runtime/bootstrap.js', '@dsh-remote/dsh-plugin-remote-trust'],
+])
+
+function suiteDisabledExpr(indent) {
+  return `${indent}disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("${SUITE_PACKAGE}")'`
+}
+
+/** 逐行改写一个顶层条目块；同一 insert 块可含多行（如 concise-mode 的两个 preset），各自独立处理。 */
 function transformEntry(block, packageName) {
-  const nameIndex = block.findIndex(line => /^(\s*)name: '\.\/(dist\/[^']+)'$/u.test(line))
-  if (nameIndex === -1) return block.join('\n')
-  const match = /^(\s*)name: '\.\/(dist\/[^']+)'$/u.exec(block[nameIndex])
-  const indent = match[1]
-  const file = match[2]
-  // 主入口用裸包名（loader 经 node 解析命中组件包的 exports）；
-  // 其他 dist 文件（如 remote-runtime 的 bootstrap）用相对套件的 node_modules 路径，
-  // 因为 loader 对裸子路径名按当前包内相对路径解析（实测）。
-  block[nameIndex] = file === 'dist/index.js'
-    ? `${indent}name: '${packageName}'`
-    : `${indent}name: './node_modules/${packageName}/${file}'`
-  const idIndex = block.findIndex(line => /^\s*- id: /u.test(line))
-  if (idIndex === -1) throw new Error(`${packageName} 的插入行缺少 id，无法追加 disabled 表达式`)
-  const expr = `'!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("${SUITE_PACKAGE}")'`
-  // 组件自己的行可能已带 disabled 表达式（如 yolo-mode 键于自己的分发包名）：
-  // 改写其中的包名常量为套件名；没有的才在 id 行后新插一行。
-  const disabledIndex = block.findIndex(line => /^\s*disabled: !!js '.*includes\("/u.test(line))
-  if (disabledIndex !== -1) {
-    block[disabledIndex] = block[disabledIndex].replace(/includes\("[^"]*"\)/u, `includes("${SUITE_PACKAGE}")`)
-  } else {
-    block.splice(idIndex + 1, 0, `${indent}disabled: !!js ${expr}`)
+  const out = []
+  let rowId
+  for (let index = 0; index < block.length; index += 1) {
+    const line = block[index]
+    const idMatch = /^(\s*)- id: (.+)$/u.exec(line)
+    if (idMatch !== null) {
+      rowId = idMatch[2].trim()
+      out.push(line)
+      // 只给装载层行（顶层覆盖行缩进 0、insert 成员行缩进 4）补套件 disabled 表达式；
+      // preset 组合等嵌套行（缩进 ≥6）随父行生死，不单独插。行内已有 disabled
+      // （可能排在 name 之后，如 yolo-mode）时改写其 includes 常量、不重复插。
+      const loaderLevel = idMatch[1] === '' || idMatch[1] === '    '
+      let hasDisabled = false
+      for (let scan = index + 1; scan < block.length; scan += 1) {
+        if (/^\s*- id: /u.test(block[scan])) break
+        if (/^\s*disabled: /u.test(block[scan])) { hasDisabled = true; break }
+      }
+      if (loaderLevel && !hasDisabled) {
+        out.push(suiteDisabledExpr(`${idMatch[1]}  `))
+      }
+      continue
+    }
+    const nameMatch = /^(\s*)name: '([^']+)'$/u.exec(line)
+    if (nameMatch !== null) {
+      const indent = nameMatch[1]
+      const current = nameMatch[2]
+      let replacement
+      if (ROW_NAME_OVERRIDES.has(rowId)) {
+        replacement = ROW_NAME_OVERRIDES.get(rowId)
+      } else if (current.startsWith('./dist/')) {
+        const file = current.slice('./dist/'.length)
+        const display = SUBPATH_DISPLAY_PACKAGES.get(`${packageName}/${file}`)
+        replacement = display ?? (file === 'index.js' ? packageName : `./node_modules/${packageName}/${file}`)
+      }
+      out.push(replacement === undefined ? line : `${indent}name: '${replacement}'`)
+      continue
+    }
+    if (/^\s*disabled: !!js '/u.test(line) && line.includes('includes("')) {
+      out.push(line.replace(/includes\("[^"]*"\)/u, `includes("${SUITE_PACKAGE}")`))
+      continue
+    }
+    out.push(line)
   }
-  return block.join('\n')
+  return out.join('\n')
 }
 
 function componentSection() {
@@ -130,13 +169,14 @@ const header = `# dsh-remote 全量套件 Bundle（本文件由 scripts/build-su
 
 # 壳级常驻行：模型屏障占位与原生主题只读投影（原 --patch overlay 内容，转入
 # 套件层）。trust bootstrap 行由 remote-runtime 组件自己的 patch 提供，保持常驻。
-# 注意：loader 对裸子路径名按「当前包内相对路径」解析（实测），因此这里一律用
-# 相对本 patch 的路径形式（与官方组合包一致）。
+# 这三行与简洁预设行都通过生成的「显示壳」微包装载（裸包名 + 中文 locale meta）：
+# 插件管理器只给裸包名行解析元数据，相对路径行会退化为显示完整文件 URL，
+# 非套件的官方包（如 @deepseek-ai/dsh-agent-preset）则只会显示英文包名与描述。
 - insert:
     - id: dsh-remote-model-bootstrap-fallback
-      name: './node_modules/@dsh-remote/dsh-plugin-remote-privileged/model-bootstrap.mjs'
+      name: '@dsh-remote/dsh-plugin-model-bootstrap'
     - id: dsh-remote-theme-projection
-      name: './node_modules/@dsh-remote/dsh-plugin-remote-privileged/theme-projection.mjs'
+      name: '@dsh-remote/dsh-plugin-theme-projection'
 `
 
 const output = `${header}\n${componentSection()}\n`
@@ -205,7 +245,7 @@ function materializeSuiteModules() {
   rmSync(SUITE_MODULES, { recursive: true, force: true })
   mkdirSync(join(SUITE_MODULES, '@dsh-remote'), { recursive: true })
   const registrySeeds = new Set()
-  const componentDirs = [...componentDirectories(), 'remote-privileged']
+  const componentDirs = [...componentDirectories(), 'remote-privileged', ...DISPLAY_PACKAGE_DIRS]
   for (const dir of componentDirs) {
     const source = join(PLUGINS, dir)
     const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1]))

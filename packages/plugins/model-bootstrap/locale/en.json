@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Model startup barrier",
+    "description": "Pins llm-pi-ai startup dependencies so model components toggle without hot restarts."
+  }
+}
