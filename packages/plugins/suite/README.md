@@ -18,6 +18,14 @@ dsh-remote 的全量单一分发包：在官方 dsh（桌面版或 web 版）的
 **git 地址安装尚未实测**（待仓库公开后验证 `file:./packages/...` 在 git
 依赖语境的解析基准）。
 
+## 不含的组件
+
+- **browser-compat**：旧 WebKit 垫片（dsh-station 壳时代产物），其全局 Promise/Iterator 垫片会
+  垫坏官方桌面（Chromium）的连接客户端——页面 /api 永久重连失败（2026-10-09 实测）。包保留在
+  仓库中，需要老设备兼容的用户可单独安装并自担风险。
+- remote-settings 保留在套件内，但其 ownsHost 注入改为条件 script（仅 HTTP(S) 页面生效），
+  不再干扰官方桌面的 dsh-app:// 页面。
+
 ## 组成
 
 - `cordis.patch.yml`（生成物，勿手改）：

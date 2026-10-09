@@ -5,6 +5,14 @@
 
 ## 已实现
 
+- [x] 官方桌面「正在加载设置」卡死修复（2026-10-09）：双元凶——browser-compat 的旧 WebKit 全局垫片
+（Promise/Iterator）垫坏 Chromium 连接层；remote-settings 的静态 `__DSH_TRANSPORT__={ownsHost:true}`
+违反 dsh 契约（只有自组装 transport 的壳可设置，被服务页面绝不携带），抢占官方桌面注入语义致页面
+/api/WS 永久重连 → onboarding 永久 loading。修复：browser-compat 移出套件（包保留，供老设备单独装）；
+remote-settings 改为条件 script 注入（仅 HTTP(S) 页面设 ownsHost，dsh-app:// 协议页跳过）。
+诊断手段：ELECTRON_ENABLE_LOGGING 捕获渲染进程 console + 摘除套件二分。桌面实测恢复（0 重连失败、
+账号/简洁模式/常驻服务/模型目录全部正常）。遗留：客户端 combo 只装载部分套件条目（2~4/17，
+非确定性，疑 dsh client-modules 首扫竞态，需向上游定位）。
 - [x] 全仓更名 dsh-remote（2026-10-09，D28）：包 scope/环境变量（DSH_REMOTE_*）/数据目录（~/.dsh-remote）/
 配置文件/机器名回退值/CLI 程序名全部替换（309 文件）；套件包定名 @dsh-remote/dsh-plugin-suite（目录 packages/plugins/suite）；
 pnpm/zustand/immer 固定为根 devDependencies（原由 launcher 传递提供）、web-search-switch 补 dsh-plugin-manager 类型 devDep；

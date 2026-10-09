@@ -9,7 +9,17 @@ export const inject = ['webServer', 'connection']
 export const TRANSPORT_GLOBAL = '__DSH_TRANSPORT__'
 
 export function transportInjection(): IndexInjection {
-  return { kind: 'global', name: TRANSPORT_GLOBAL, value: { ownsHost: true } }
+  // __DSH_TRANSPORT__ 的 dsh 契约：只有自组装 transport 的壳可以设置，被服务的页面
+  // 绝不携带（见 dsh client-connection 源码注释）。静态 global 会抢占官方桌面
+  // （dsh-app:// 自定义协议页）的注入语义，使页面 /api/WS 永久重连失败
+  // （2026-10-09 官方桌面实测二分确认）。改为运行时条件脚本：只在经 HTTP(S)
+  // 服务的页面（relay 远程入口、局域网直连）注入 ownsHost；自定义协议页跳过
+  // （壳自己负责），本机 loopback 直连页的 location.hostname 本就是 loopback。
+  return {
+    kind: 'script',
+    placement: 'head',
+    text: "if (location.protocol === 'https:' || location.protocol === 'http:') { window.__DSH_TRANSPORT__ = Object.assign({}, window.__DSH_TRANSPORT__, { ownsHost: true }) }",
+  }
 }
 
 export function installWindowsOpenCompatibility(

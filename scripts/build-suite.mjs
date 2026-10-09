@@ -13,6 +13,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLUGINS = join(ROOT, 'packages', 'plugins')
 const SUITE_PACKAGE = '@dsh-remote/dsh-plugin-suite'
 const COMBO_PACKAGES = new Set([
+  // browser-compat 是旧 WebKit 垫片（dsh-station 壳时代产物）：其全局 Promise/Iterator
+  // 垫片会垫坏官方桌面（Chromium）的连接客户端，导致页面 /api 永久重连失败
+  // （2026-10-09 实测二分确认），不进入套件；包保留供老设备单独安装。
+  'browser-compat',
   'remote-experience',
   'model-enhancements',
   'conversation-enhancements',

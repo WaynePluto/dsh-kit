@@ -42,12 +42,6 @@
       disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-remote/dsh-plugin-suite")'
       name: '@dsh-remote/dsh-plugin-agents-md'
 
-# ── @dsh-remote/dsh-plugin-browser-compat ──
-- insert:
-    - id: browser-compat
-      disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-remote/dsh-plugin-suite")'
-      name: '@dsh-remote/dsh-plugin-browser-compat'
-
 # ── @dsh-remote/dsh-plugin-chat-scroll ──
 - insert:
     - id: chat-scroll

@@ -1,19 +1,37 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
 import { describe, expect, it, vi } from 'vitest'
-import { apply, inject, name, TRANSPORT_GLOBAL, transportInjection } from '../src/index.js'
+import { apply, inject, name, transportInjection } from '../src/index.js'
 import { CHANNEL } from '../src/shared.js'
 
 const packageRoot = fileURLToPath(new URL('..', import.meta.url))
 
+/** 收窄 IndexInjection 到 script 行；非 script 行让测试响亮失败。 */
+function assertRow(
+  row: IndexInjection,
+  run: (script: Extract<IndexInjection, { kind: 'script' }>) => void,
+): void {
+  expect(row.kind).toBe('script')
+  if (row.kind === 'script') run(row)
+  else throw new Error(`expected a script injection row, got ${String(row.kind)}`)
+}
+
 describe('dsh-remote-remote-settings', () => {
   it('contributes exactly the ownsHost global and no transport override', () => {
     const row = transportInjection()
-    expect(row).toEqual({ kind: 'global', name: TRANSPORT_GLOBAL, value: { ownsHost: true } })
-    // 其他字段会替换页面自己的 HTTP/WebSocket carrier，
-    // 而 relay 正是转发这些 carrier。
-    expect(Object.keys(row.kind === 'global' ? row.value as object : {})).toEqual(['ownsHost'])
+    // 条件脚本：只在 HTTP(S) 页面注入 ownsHost（自定义协议页由其壳负责）。
+    assertRow(row, row => {
+      expect(row.placement).toBe('head')
+      expect(row.text).toContain("location.protocol === 'https:'")
+      expect(row.text).toContain('ownsHost: true')
+      // 其他字段会替换页面自己的 HTTP/WebSocket carrier，
+      // 而 relay 正是转发这些 carrier；脚本只允许设置 ownsHost 一个键。
+      expect(row.text.match(/ownsHost/gu)).toHaveLength(1)
+      expect(row.text).not.toContain('loadBundle')
+      expect(row.text).not.toContain('streamBaseUrl')
+    })
   })
 
   it('pushes its row onto every collected injection table', () => {

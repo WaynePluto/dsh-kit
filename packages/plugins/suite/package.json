@@ -21,7 +21,6 @@
   "dependencies": {
     "@dsh-remote/connector": "file:../../connector",
     "@dsh-remote/dsh-plugin-agents-md": "file:../agents-md",
-    "@dsh-remote/dsh-plugin-browser-compat": "file:../browser-compat",
     "@dsh-remote/dsh-plugin-chat-scroll": "file:../chat-scroll",
     "@dsh-remote/dsh-plugin-concise-mode": "file:../concise-mode",
     "@dsh-remote/dsh-plugin-copilot-auth": "file:../copilot-auth",
