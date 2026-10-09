@@ -5,7 +5,7 @@
 
 ## 1. 范围与粒度
 
-- pnpm workspace：4 个基础包、1 个纯浏览器构建期 UI 包、21 个功能组件包、4 个纯组合 Bundle 包，以及 1 个壳级 overlay 包（remote-privileged），合计 26 个插件目录；另有独立 Go module `packages/desktop/`（Wails 桌面应用），根目录负责现有开发、检查和交付。
+- pnpm workspace：4 个基础包（protocol/relay/connector/launcher，launcher 仅剩开发栈职责）、1 个纯浏览器构建期 UI 包、22 个功能组件包（含 remote-runtime）、1 个套件聚合包（station-suite）与 1 个原壳级包（remote-privileged，内容并入套件 patch）；根目录负责开发与检查（D27 删壳后无发行管线）。
 - 扫描 `packages/*/src`、插件入口/README/manifest、`scripts` 和 `packaging`。
 - 不将 `node_modules`、`dist`、`release`、`.dev`、锁文件及生成图标当作手写模块。
 - 以包/模块组为粒度，不把全部插件、React 组件和工具逐个塞入同一张图。
@@ -24,12 +24,9 @@
 | 会话插件（3） | `packages/plugins/{turn-retry,chat-scroll,user-message-fork}` | 重试、滚动、用户消息分叉 | dsh 会话/投影/浏览器 UI；仅 turn-retry 有实质宿主业务 |
 | 工作区与工具插件（5） | `packages/plugins/{services,terminal,tools-inspector,skills-inspector,files}` | 常驻服务、交互终端、工具/技能历史、右侧 Sidebar 只读文件浏览 | dsh live Agent、工具、PTY、RPC、Sidebar slots；services 自有 Node 进程管理引擎 |
 | 环境与预设（7） | `packages/plugins/{remote-settings,remote-privileged,browser-compat,directory-picker-browse,yolo-mode,concise-mode,web-search-switch}` | 远程设置（ownsHost、顶部 Open In… Explorer 立即返回与置前增强）、旧 WebKit API 垫片与临时浏览器诊断、网页目录选择、固定 YOLO、精简预设、官方网页搜索启停开关；remote-privileged 携带壳级 connection 注入、模型 HMR 启动屏障与原生主题只读投影 | 功能组件进入第三方分发 Bundle；remote-privileged 由壳常驻加载 |
-| 开发与验证脚本 | `scripts/dev-stack.mjs`、`dev-runtime.mjs`、`plugin-distributions.mjs`、`prepare-desktop.mjs`、`local-config.mjs`、`*-check.mjs` | 本地全链路、隔离 dsh 运行时、开发插件介质、插件契约冒烟与依赖检查 | launcher/relay 源码模块、Node；脚本各自声明环境前提 |
-| 发行打包 | `scripts/release.mjs`（统一入口）、`scripts/pack.mjs`（服务版 zip，仅 linux-x64）、`scripts/pack-desktop.mjs`（桌面 setup/portable）、`packaging/`、`.github/workflows/` | 四个发布端介质（D22：win/mac/linux 桌面版 + Linux 服务版，各 lite/full；桌面再分 setup/portable）、构建一次串行打包、产物检查、启动脚本、图标、CI | archiver、pnpm、Go 工具链；服务版不带 Node 二进制 |
-| Windows 托盘（已退役） | `packaging/win-launcher/*.go` | 菜单、单实例、自启动、日志轮转、Node launcher 生命周期；win 服务版退役（D22）后不再随介质构建，syso 资源仍供桌面壳，去留见路线图 | Go 标准库、Win32 API；同一 `package main`，无第三方 Go 包 |
-| 桌面应用 | `packages/desktop/{main,config,bootstrap,statuspage,backend,backend_events,remote,remote_control,remote_navigation,navigation,startup_loading,admin_loading,loading_stream,loading_client,discover,notifypipe,about}.go`、`tray_windows.go`、`windowposition_windows.go` | Wails v2 单窗口：独立模式托管自有 launcher 后台（`--desktop` 状态行契约 + 实例锁 + 随包/系统 Node 发现），attach 模式附着开发栈；受管模式 AssetServer 立即 302 到临时 loopback 启动页，就绪后顶层交接真实 origin；Win32 托盘含显示/浏览器打开/启用、停止、重启远程/退出；`remote.go`/`remote_control.go`/`navigation.go` 提供状态、应答跟踪与共享动作，管理入口先打开 `admin_loading.go` 的临时只读加载页；`about.go` 按需解析并缓存工作站/dsh/Node/Wails/Go 版本，供标题栏「关于」原生弹窗；`windowposition_windows.go` 在窗口显示前把越出工作区顶部的初始位置夹回（Wails 垂直居中在高缩放/低分辨率屏上会算出负 top）；开发桌面同样受管，仅显式 attach 只读；通知管道带共享令牌 | 独立 Go module `github.com/wailsapp/wails/v2@v2.16.0`；原生网络/权限隔离（S1.3）仍未实现，mac/Linux 托盘与实机验收待 S10 |
+| 开发与验证脚本 | `scripts/dev-stack.mjs`（过渡）、`dev-runtime.mjs`、`build-suite.mjs`、`plugin-distributions.mjs`、`local-config.mjs`、`*-check.mjs` | 隔离 dsh 运行时、套件产物生成、旧开发插件介质（过渡）、插件契约冒烟与依赖检查 | launcher/relay 源码模块、Node；脚本各自声明环境前提 |
 
-21 个功能组件按 `plugin-catalog.json` 分发为 4 个组合包与 7 个独立第三方 Bundle；首次默认安装，仍安装项随 dsh-station 配套升级，卸载后不自动补回。唯一随 `--patch` 传入的是 remote-privileged 的壳级 overlay，包含 connection 注入和模型 HMR 启动屏障，不属于第三方插件生命周期。`@dsh-station/plugin-ui` 是构建期辅助，也不进入分发清单。
+全部功能组件按 station-suite 单包分发（D27）：`scripts/build-suite.mjs` 生成套件 patch（组件行 + connection 覆写 + 屏障/投影）并把依赖闭包物化进套件 `node_modules/`。plugin-catalog/launcher 的多包分发流程仅剩开发栈过渡使用。`@dsh-station/plugin-ui` 是构建期辅助，也不进入分发清单。
 具体功能及使用限制见 [插件索引](docs/plugins.md) 和各包 README。
 
 ## 3. 源码依赖关系图
@@ -52,8 +49,6 @@ graph TD
   Relay --> Zod
   Connector --> Zod
   Protocol --> Zod
-  Pack[scripts/pack·pack-desktop] --> Archiver[archiver]
-  DesktopPreview[desktop 预览壳] --> Wails[Wails v2]
 ```
 
 ### 边的源码证据
@@ -70,8 +65,6 @@ graph TD
 | plugin-ui → React | `packages/plugin-ui/src/dialog-pointer.tsx`、`navigation-glyph.ts`、`inspector.tsx`、`dock-styles.ts` |
 | plugins → undici | `packages/plugins/proxy/src/dispatcher.ts:22` |
 | launcher/relay/connector/protocol → zod | 各包的 `src/config.ts`（protocol 为 `src/frames.ts`） |
-| pack → archiver | `scripts/pack.mjs:42`（经 `pack/archive.mjs`）、`scripts/pack-desktop.mjs:34` |
-| desktop → Wails | `packages/desktop/main.go`：Wails app、托盘回调与模式选择；`bootstrap.go`（attach 引导 302）/`startup_loading.go`（受管启动加载与认证交接）/`statuspage.go`（资产故障兜底）；`backend.go` 托管 launcher 子进程并解析 `@@DSH_STATION` 状态行 |
 
 这些核心包级生产 import 边未形成环；未发现插件相互 import/re-export。
 补充 TypeScript AST 扫描覆盖 377 个 TS/TSX/MJS 文件，可解析的本地相对路径值导入图也未发现环。
@@ -102,14 +95,6 @@ graph TD
 - launcher 不实现账号管理页面；`relay-admin.ts` 只读数据库判断是否已有管理员。
 - dsh、relay、connector 是 launcher **spawn 的独立进程**，不是 launcher import 后在进程内运行。
 - 标准 `DSH_HOME` 保存 dsh 设置/会话；dsh-station home 保存设备身份、membership、relay 数据，二者独立。
-
-### 桌面预览与后台所有权
-
-- 默认发行桌面与 `dev:desktop` 共用 `backendManager` 托管 launcher，默认只起 dsh。开发通过 `--dev-root` 运行 `scripts/dev-desktop-backend.mjs`：准备 runtime、复用 `dev-plugin-build.mjs` 指纹缓存，再启动同一构建产物；只桥接状态/控制，不复制进程编排。开发 home、端口与单实例独立。显式 `--attach` 才附着外部完整栈，不接管或启用它。
-- 开发准备在独立可取消的子进程中直接调用 `dev-runtime.mjs` 的 `ensureDevelopmentRuntime()`，不再启动第二层runtime进程；runtime模块导入无副作用，CLI入口保留。根manifest/workspace/lock每次按完整原始字节摘要核对成功校验缓存，变化才重新解析YAML；运行时依赖指纹、产物检测、先准备后加载local-config的顺序不变。
-- `remote_control.go` 通过 stdin 发送远程启停命令并保留应答；停止/重启收到 stopping 后才接受终态，避免旧 ready 提前解锁菜单。`navigation.go` 以事件订阅等待结果（启用/停止25秒，重启45秒）；关闭远程前经 `remote_navigation.go` 请求条件回退，只将精确relay来源的内置页面替换为已校验的dsh直连认证入口。停止后OnDomReady复核迟到导航，直连工作台与外部浏览器不强制切换，不增加Go绑定或HTTP控制接口。
-- `navigation.go` 统一托盘和标题栏管理动作：先创建/打开临时 loopback 能力加载页，再异步发送启用命令；`admin_loading.go` 只读状态，不提供启动 HTTP 接口或代理业务。Wails 仅放行无凭据配置握手中的 dsh/relay 精确 origin，加载页不获得 Go 绑定。
-- `startup_loading.go` 在受管模式让 AssetServer 立即 302 到能力保护的临时 loopback 文档，展示动画/阶段；与管理页共用 `admin_loading.go` 的安全/生命周期限制。`backend_events.go` 原子快照订阅驱动 `loading_stream.go` 的单次 NDJSON 流，`loading_client.go` 共用有界客户端解析；无定时查询。认证入口就绪即经固定 `/enter` 返回无正文 token 重定向，由原生加载页/工作台接管，不保留项目 overlay 或等待动画。状态不含 token，业务始终直连 dsh，加载服务不提前启动 relay。仅服务创建失败时使用资产故障页。显式 attach 仍持有 `/` 等 relay 后 302。壳在 WebView2 的 OnStartup 就绪时显示，不等首次导航完成。HTTP/WS、认证和插件资源均从真实 dsh/relay origin 加载，仅提供窗口控制、固定工作台/管理入口导航与「关于」版本弹窗的无参 Go Bindings。桌面介质由 `scripts/pack-desktop.mjs` 在对应平台产出（win NSIS setup + 便携 zip、mac DMG + .app 便携 zip、linux deb + 便携 zip，统一入口 `scripts/release.mjs`），随包 Node 清单在 `packaging/desktop-node.json`。**没有原生网络/系统权限隔离（S1.3）**；参数校验只限定初始地址，风险及构建方式见 `packages/desktop/README.md`。
 
 ### 插件双端与运行期协作
 

@@ -8,7 +8,6 @@
 | [架构](03-architecture.md) | 组件职责、路由、协议与请求顺序 |
 | [安全与认证](04-security.md) | 认证、部署要求、审计与接受的风险 |
 | [当前进度](05-roadmap.md) | 已实现能力、待验收项和后续任务 |
-| [打包与分发](06-packaging.md) | 平台目标、启动器、配置与构建 |
 | [插件索引](plugins.md) | 全部插件的功能与各包 README |
 | [dsh 源码依据](02-dsh-facts.md) | 按主题拆分的上游契约与升级检查 |
 | [联调验收](reference/acceptance.md) | 局域网、手机、认证和恢复测试 |

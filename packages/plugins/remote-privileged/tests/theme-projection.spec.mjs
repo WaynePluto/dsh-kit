@@ -4,7 +4,6 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as protocol from '../../../protocol/src/theme-projection.ts'
-import { SHELL_OVERLAY_FILES } from '../../../../scripts/pack/manifest.mjs'
 import * as plugin from '../theme-projection.mjs'
 
 const faults = vi.hoisted(() => ({ write: false, rename: false }))
@@ -91,7 +90,7 @@ describe('native theme projection', () => {
     expect(manifest.files).toContain('theme-projection.mjs')
     expect(manifest.dependencies).toBeUndefined()
     expect(readFileSync(join(root, 'dsh-overlay.yml'), 'utf8')).toContain("name: './theme-projection.mjs'")
-    expect(SHELL_OVERLAY_FILES).toContain('node_modules/@dsh-station/dsh-plugin-remote-privileged/theme-projection.mjs')
+    // 打包清单已随发布管线删除（D27）；产物存在性由套件物化（scripts/build-suite.mjs）保证。
   })
 
   it('无环境变量不读取配置、不订阅、不猜 home', async () => {

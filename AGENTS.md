@@ -25,7 +25,7 @@ DeepSeek Harness (dsh) 的完整封装工作站：桌面应用与绿色/服务�
   不写 home 级 patch、不修改官方 web profile，不实现第二套插件管理器。
 - 普通插件位于 packages/plugins/<名字>，包名 @dsh-station/dsh-plugin-<名字>，
   包根 overlay 用 ./dist/index.js；launcher、dev-stack、pack 都要检查宿主和浏览器产物。
-- 21 个功能组件按 `plugin-catalog.json` 分发为 4 个组合包和 7 个独立包：首次默认安装，后续配套升级仍安装项并保留 Bundle/组件停用状态，卸载后不自动补回；开发与发行介质分别位于 `.dev/plugins/` 和 `plugins/`。
+- 全部功能组件按 station-suite 单包分发（D27）：官方「添加插件」一条路径安装/升级，套件 patch 由 `scripts/build-suite.mjs` 生成；plugin-catalog/launcher 旧分发流程仅为开发栈过渡，不再产出发行介质。
 - `remote-privileged` 的 connection/webServer 注入、模型 HMR 启动屏障与原生主题只读投影作为不可卸载的壳级基础设施；模型屏障服务挂在 root fiber，避免 Bundle 在线启停重启 `llm-pi-ai`。管理页主题单向消费工作站自有投影，不读写原生profile或通过公开主题GET回写宿主。
 - concise-mode（用户文案「简洁模式」）是独立第三方 Profile Bundle，位于 dsh-web-app 后；patch 内联声明两个 `@deepseek-ai/dsh-agent-preset` 行，不加载 preset root 或 locator entry；子代理深度沿用 dsh 原生配置（默认 1）。
 - 中文文案使用决策中的词表，页面使用机器真名；hub、membership、slug 等代码标识符不随文案改名。
@@ -39,7 +39,7 @@ TypeScript + ESM + pnpm workspace，构建 tsdown，开发 tsx，测试 Vitest�
 项目模块架构见 [ARCHITECTURE.md](ARCHITECTURE.md)；修改模块结构后请更新该文件。
 
 常用检查：pnpm check:dependencies、pnpm lint、pnpm typecheck、pnpm build、pnpm test。
-依赖更新加载 update-dependencies skill；版本发布（预发布/正式、清理旧预发布）加载 release-version skill；
+依赖更新加载 update-dependencies skill；
 提交前钩子检查固定版本并清理 lockfile 内部镜像 tarball 地址。
 
 ## 按任务阅读
