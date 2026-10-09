@@ -40,24 +40,31 @@ export const INTERACTIVE_TERMINAL_DESCRIPTION =
 /** 已废弃别名；使用 {@link INTERACTIVE_TERMINAL_DESCRIPTION}。 */
 export const INTERACTIVE_TERMINAL_OPEN_DESCRIPTION = INTERACTIVE_TERMINAL_DESCRIPTION
 
-/** interactive_terminal 的扁平 action schema，便于模型调用。 */
+/**
+ * interactive_terminal 的参数 JSON Schema。必须对象根：原始注册不经过 defineTool 的属性表编译，
+ * parameters 会原样进入模型请求并被上游服务端校验，扁平属性表会被判为工具定义不合规、整轮失败。
+ */
 export const INTERACTIVE_TERMINAL_PARAMETERS = {
-  action: {
-    type: 'string', required: true, enum: [...INTERACTIVE_TERMINAL_ACTIONS],
-    description: 'start: run a command expected to need human input; read: get later output; list: show sessions; interrupt: send Ctrl-C; close: end a session.',
+  type: 'object',
+  properties: {
+    action: {
+      type: 'string', enum: [...INTERACTIVE_TERMINAL_ACTIONS],
+      description: 'start: run a command expected to need human input; read: get later output; list: show sessions; interrupt: send Ctrl-C; close: end a session.',
+    },
+    command: {
+      type: 'string',
+      description: 'Command for start. Required for start. Use pwsh or bash when the command does not need direct human input.',
+    },
+    terminalId: {
+      type: 'string',
+      description: 'Terminal session id. Required for read, interrupt, and close; optional for start to reuse a session from list.',
+    },
+    name: { type: 'string', description: 'Optional owner-local name for a new session in start.' },
+    cwd: { type: 'string', description: 'Optional initial working directory for a new session in start.' },
+    offset: { type: 'number', description: 'Optional newest-relative line offset for read.' },
+    count: { type: 'number', description: 'Optional line count for read.' },
   },
-  command: {
-    type: 'string',
-    description: 'Command for start. Required for start. Use pwsh or bash when the command does not need direct human input.',
-  },
-  terminalId: {
-    type: 'string',
-    description: 'Terminal session id. Required for read, interrupt, and close; optional for start to reuse a session from list.',
-  },
-  name: { type: 'string', description: 'Optional owner-local name for a new session in start.' },
-  cwd: { type: 'string', description: 'Optional initial working directory for a new session in start.' },
-  offset: { type: 'number', description: 'Optional newest-relative line offset for read.' },
-  count: { type: 'number', description: 'Optional line count for read.' },
+  required: ['action'],
 } as const
 
 /** 上游工具注册定义的最小捕获形状。 */

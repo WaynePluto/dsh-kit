@@ -461,6 +461,23 @@ describe('interactive terminal tool wrapper', () => {
     expect(tool.description).toBe(INTERACTIVE_TERMINAL_DESCRIPTION)
     expect(sections).toHaveLength(1)
   })
+  it('publishes an object-rooted parameter schema for server-side tool validation', () => {
+    const { ctx, tools } = recordingContext()
+    applyInteractiveTerminalTools(ctx)
+    const parameters = tools[0]!.parameters as {
+      type?: unknown
+      required?: unknown
+      properties?: Record<string, { type?: unknown, required?: unknown }>
+    }
+    expect(parameters.type).toBe('object')
+    expect(parameters.required).toStrictEqual(['action'])
+    expect(Object.keys(parameters.properties ?? {})).toStrictEqual(['action', 'command', 'terminalId', 'name', 'cwd', 'offset', 'count'])
+    for (const node of Object.values(parameters.properties ?? {})) {
+      // 裸注册时 parameters 不再经过 defineTool 编译：属性级 required 简写必须已在构造期消失
+      expect(typeof node.type).toBe('string')
+      expect(node.required).toBeUndefined()
+    }
+  })
   it('describes the human-input boundary and directs ordinary work to pwsh/bash', () => {
     const { ctx, tools, sections } = recordingContext()
     applyInteractiveTerminalTools(ctx)

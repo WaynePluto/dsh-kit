@@ -457,3 +457,9 @@ dsh `0.1.5-rc.2` 将通用文件图标统一为 `FileTypeIcon`（用 `path` 或 
   `reportSkippedBundles` 每次启动向 stderr 打一次 `dsh: skipping profile bundle "<包名>": <原因>`。
   launcher 在 dsh 输出行里检测该诊断并响亮警告（`skippedBundleFromLine`）；分发管线的
   「缺少宿主/浏览器产物」预检因此仍是必要的前置防线。
+- **工具参数 schema**：`ctx.tools.register` 收原始 JSON Schema，只有 `defineTool` 会把属性表简写
+  编译成对象根 schema（`parameterSchemaSpecToJsonSchema`，`packages/core/tools/src/schema.ts`）。
+  裸注册的 `parameters` 必须自己写全 `type: 'object'` 与 `properties`，属性级 `required: true`
+  简写在那里不生效；扁平属性表会原样进入模型请求，被服务端工具定义校验拒绝整轮请求
+  （2026-10-09 实测：DeepSeek 返回 400 `invalid_function_parameters`，本地网关包装成
+  503 `no_healthy_account`，与被测模型无关；terminal 插件因此改回对象根 schema）。
