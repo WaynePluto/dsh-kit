@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir, hostname, networkInterfaces } from 'node:os'
 import { dirname, join } from 'node:path'
+import type { RemoteRuntimeStatus } from './contract.js'
 
 /** 与 connector/relay 的默认一致（D24：数据目录 ~/.dsh-remote）。 */
 export function defaultStationHome(): string {
@@ -105,6 +106,39 @@ export function computeTrust(home: string): { authorities: string[] } {
   }
 }
 
+/** 设置页「远程」分区经 `/remote-runtime/status` 读取的只读投影。 */
+export type { RemoteRuntimeStatus } from './contract.js'
+
+/**
+ * 汇总本机远程运行时状态。进程存活按 pid 注册表探测；地址推导与
+ * computeTrust 同源（域名 → 公网子域名，无域名 → 局域网 IP）。
+ */
+export function runtimeStatus(home: string = defaultStationHome()): RemoteRuntimeStatus {
+  const config = readStationConfig(home)
+  const relay = readProcessRecord(home, 'relay')
+  const connector = readProcessRecord(home, 'connector')
+  const lan = lanAddress()
+  if (config.domain !== undefined) {
+    const domain = config.domain
+    return {
+      relayRunning: relay !== undefined && isProcessAlive(relay.pid),
+      connectorRunning: connector !== undefined && isProcessAlive(connector.pid),
+      adminUrl: `https://${domain}/_admin`,
+      entryUrl: `https://${defaultMachineSlug()}.${domain}`,
+      mode: 'domain',
+    }
+  }
+  const port = String(config.relayPort)
+  const host = lan ?? '127.0.0.1'
+  return {
+    relayRunning: relay !== undefined && isProcessAlive(relay.pid),
+    connectorRunning: connector !== undefined && isProcessAlive(connector.pid),
+    adminUrl: `http://127.0.0.1:${port}/_admin`,
+    entryUrl: `http://${host}:${port}`,
+    mode: 'lan',
+  }
+}
+
 /** relay/connector 子进程注册表条目。 */
 export interface ProcessRecord {
   readonly name: 'relay' | 'connector'
@@ -118,9 +152,11 @@ export function processRecordPath(home: string, name: ProcessRecord['name']): st
 
 export function readProcessRecord(home: string, name: ProcessRecord['name']): ProcessRecord | undefined {
   try {
+    // L1 内联脚本只写 {pid, startedAtMs}；name 由文件路径编码，不做字段校验
+    // （旧实现校验 value.name，导致每条记录都判无效：认领失效、重复拉起与状态误报）。
     const value = JSON.parse(readFileSync(processRecordPath(home, name), 'utf8')) as Partial<ProcessRecord>
     const { pid, startedAtMs } = value
-    if (value.name !== name || typeof pid !== 'number' || !Number.isInteger(pid)
+    if (typeof pid !== 'number' || !Number.isInteger(pid)
       || typeof startedAtMs !== 'number' || !Number.isSafeInteger(startedAtMs)) {
       return undefined
     }

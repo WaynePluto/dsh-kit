@@ -44,6 +44,7 @@
     "@dsh-remote/dsh-plugin-remote-experience": "workspace:0.0.3-20261008",
     "@dsh-remote/dsh-plugin-remote-privileged": "workspace:*",
     "@dsh-remote/dsh-plugin-remote-settings": "workspace:*",
+    "@dsh-remote/dsh-plugin-run-code": "workspace:*",
     "@dsh-remote/dsh-plugin-services": "workspace:*",
     "@dsh-remote/dsh-plugin-skills-inspector": "workspace:*",
     "@dsh-remote/dsh-plugin-terminal": "workspace:*",

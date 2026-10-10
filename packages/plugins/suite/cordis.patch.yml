@@ -57,92 +57,8 @@
       config:
         id: concise
         name: 简洁模式
-        description: 极简提示词加上文件、搜索、技能、子代理、提问和任务进度工具。
+        description: 文件、搜索、技能、子代理、提问和任务进度工具；可直呼，也可写 run_code 程序组合调用。
         order: 2
-        plugins:
-          - id: persona
-            name: '@deepseek-ai/dsh-persona'
-            config:
-              prefix: You are a helpful software engineer assistant.
-              complete: true
-              includeRuntimeContext: false
-
-          - id: agent-instructions
-            name: '@deepseek-ai/dsh-agent-instructions'
-            config:
-              maxBytes: 65536
-
-          - id: tool-bash
-            name: '@deepseek-ai/dsh-tool-bash'
-            disabled: !!js process.platform === 'win32'
-            config:
-              enableRunInBackground: false
-
-          - id: tool-pwsh
-            name: '@deepseek-ai/dsh-tool-pwsh'
-            disabled: !!js process.platform !== 'win32'
-            config:
-              enableRunInBackground: false
-
-          - id: tool-fs
-            name: '@deepseek-ai/dsh-tool-fs'
-
-          - id: tool-fs-search
-            name: '@deepseek-ai/dsh-tool-fs-search'
-            config:
-              sampleOverCapGlobResults: false
-
-          - id: skill-filesystem
-            name: '@deepseek-ai/dsh-skill-filesystem'
-
-          - id: tool-skill
-            name: '@deepseek-ai/dsh-tool-skill'
-
-          - id: tool-subagent
-            name: '@deepseek-ai/dsh-tool-subagent'
-            config:
-              provider: spawn
-              toolName: subagent
-              modelSelectionSettings: false
-              enableRunInBackground: false
-              backgroundMode: one-shot
-
-          - id: tool-ask-user
-            name: '@deepseek-ai/dsh-tool-ask-user'
-
-          - id: tool-todo
-            name: '@deepseek-ai/dsh-tool-todo'
-            config:
-              allowParallelInProgress: true
-
-          - id: compaction
-            name: cordis:group
-            group: true
-            isolate:
-              compaction: true
-              toolResultPruner: true
-            config:
-              - id: compaction-basic
-                name: '@deepseek-ai/dsh-compaction-basic'
-
-              - id: command-compact
-                name: '@deepseek-ai/dsh-command-compact'
-
-              - id: tool-result-pruner
-                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
-                config:
-                  thresholdChars: 8192
-                  headChars: 4096
-                  tailChars: 1024
-
-    - id: preset-concise-ptc
-      disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-remote/dsh-plugin-suite")'
-      name: '@dsh-remote/dsh-plugin-preset-concise-ptc'
-      config:
-        id: concise-ptc
-        name: 简洁 PTC 模式
-        description: 使用一个 TypeScript 程序组合文件、搜索、技能、子代理、提问和任务进度工具。
-        order: 3
         plugins:
           - id: persona
             name: '@deepseek-ai/dsh-persona'
@@ -219,10 +135,10 @@
                   headChars: 4096
                   tailChars: 1024
 
-          - id: tool-presentation
-            name: '@deepseek-ai/dsh-agent-tool-presentation'
-            config:
-              mode: ptc
+          # run_code 双通道（both）：原生工具直呼与 run_code 程序并存，模型自主选择。
+          # 该行要求 persona complete:false，否则 tools:sdk 的 SDK 声明会被完整 persona 过滤。
+          - id: run-code
+            name: '@dsh-remote/dsh-plugin-run-code'
 
 # ── @dsh-remote/dsh-plugin-copilot-auth ──
 - insert:

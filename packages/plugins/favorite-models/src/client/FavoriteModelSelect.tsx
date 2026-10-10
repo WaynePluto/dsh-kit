@@ -9,7 +9,7 @@ import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selec
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   IconCheckOutlineMedium, IconChevronDownOutlineMedium, IconChevronRightOutlineMedium,
-  IconWarningOutlineMedium, Toast,
+  IconWarningOutlineMedium, MenuGroup, MenuSurface, observeStickyMenuGroups, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { filterFavoriteGroups } from '../filter.js'
 import { DEFAULT_SETTINGS } from '../shared.js'
@@ -58,6 +58,7 @@ export function FavoriteModelSelect({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const groupsRef = useRef<HTMLDivElement | null>(null)
   const [menuPos, setMenuPos] = useState<CSSProperties | null>(null)
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const id = useId()
@@ -155,6 +156,13 @@ export function FavoriteModelSelect({
       itemRefs.current[0]?.focus()
     }
   }, [available, open, pane])
+  // 组头滚动到顶时由官方观察器加 data-stuck（背景从不透明填充切换）；与官方
+  // ModelSelect 相同的接法，组集合或面板切换时重建观察。
+  useEffect(() => {
+    const viewport = groupsRef.current
+    if (viewport === null) return undefined
+    return observeStickyMenuGroups(viewport)
+  }, [open, pane, groups])
   if (!available) return null
 
   const show = (): void => {
@@ -278,7 +286,9 @@ export function FavoriteModelSelect({
       </button>
 
       {open && createPortal(
-        <div
+        // MenuSurface 提供 0.2.0 的官方菜单材质（半透明填充 + backdrop-filter 磨砂层）；
+        // 自绘 background 会退化成无模糊的纯透明（见 selector-styles 的 .menu 注释）。
+        <MenuSurface
           ref={menuRef}
           id={`${id}-menu`}
           className={selectorClasses.menu}
@@ -325,10 +335,9 @@ export function FavoriteModelSelect({
                       <button type="button" className={selectorClasses.retry} onClick={reload}>{translate(t, 'retry')}</button>
                     </div>
                   ))}
-                  <div className={selectorClasses.groups}>
+                  <div className={selectorClasses.groups} ref={groupsRef}>
                     {groups.map(group => (
-                      <section role="group" aria-label={group.name} className={selectorClasses.group} key={group.id}>
-                        <div className={selectorClasses.groupTitle}>{group.name}</div>
+                      <MenuGroup label={group.name} key={group.id}>
                         {group.models.map(model => {
                           const selected = state.current?.provider === group.id && state.current.model === model.id
                           return (
@@ -348,7 +357,7 @@ export function FavoriteModelSelect({
                             </button>
                           )
                         })}
-                      </section>
+                      </MenuGroup>
                     ))}
                   </div>
                   {state.status === 'ready' && choices.length === 0 ? <div className={selectorClasses.empty}>{translate(t, 'emptyModels')}</div> : null}
@@ -386,7 +395,7 @@ export function FavoriteModelSelect({
                 </>
               )
               : null}
-        </div>,
+        </MenuSurface>,
         document.body,
       )}
       {toast !== null

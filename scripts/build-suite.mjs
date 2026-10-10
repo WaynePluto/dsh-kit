@@ -29,8 +29,9 @@ const COMBO_PACKAGES = new Set([
 const FIRST = ['proxy']
 const LAST = ['yolo-mode']
 
-// 显示壳微包：无自身 patch（行来自套件模板/组件 patch 的名称改写），只物化、不迭代。
-const DISPLAY_PACKAGE_DIRS = ['model-bootstrap', 'theme-projection', 'remote-trust', 'preset-concise', 'preset-concise-ptc']
+// 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。preset-concise
+// 是显示壳微包（行名改写目标）；run-code 由 concise 预设的嵌套行按裸包名引用。
+const DISPLAY_PACKAGE_DIRS = ['model-bootstrap', 'theme-projection', 'remote-trust', 'preset-concise', 'run-code']
 
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
@@ -72,7 +73,6 @@ function topLevelEntries(text) {
 // remote-runtime 的 bootstrap 子路径行同理（相对路径行拿不到插件管理器元数据）。
 const ROW_NAME_OVERRIDES = new Map([
   ['preset-concise', '@dsh-remote/dsh-plugin-preset-concise'],
-  ['preset-concise-ptc', '@dsh-remote/dsh-plugin-preset-concise-ptc'],
 ])
 const SUBPATH_DISPLAY_PACKAGES = new Map([
   ['@dsh-remote/dsh-plugin-remote-runtime/bootstrap.js', '@dsh-remote/dsh-plugin-remote-trust'],

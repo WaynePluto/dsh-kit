@@ -5,7 +5,9 @@ export default defineConfig(
   createPluginBuildConfig({
     id: '@dsh-remote/dsh-plugin-remote-runtime',
     entry: ['src/index.ts', 'src/bootstrap.ts'],
+    client: true,
+    clientEntry: { client: 'src/client/index.tsx' },
     hostDeps: { neverBundle: [/^@deepseek-ai\//] },
-    client: false,
+    
   }),
 )

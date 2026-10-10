@@ -9,6 +9,7 @@ import {
   processRecordPath,
   readProcessRecord,
   readStationConfig,
+  runtimeStatus,
   tokenFromAuthenticatedUrl,
   trustedAuthorities,
   writeProcessRecord,
@@ -69,6 +70,12 @@ describe('进程注册表与令牌文件', () => {
     expect(processRecordPath(home, 'relay')).toContain(join('processes', 'relay.json'))
   })
 
+  it('L1 写入的无 name 记录可读取（认领与状态依赖此格式）', () => {
+    writeFileSync(processRecordPath(home, 'relay'), '{"pid":424242,"startedAtMs":1791562832189}')
+    expect(readProcessRecord(home, 'relay')).toEqual({ name: 'relay', pid: 424_242, startedAtMs: 1_791_562_832_189 })
+    rmSync(processRecordPath(home, 'relay'))
+  })
+
   it('令牌仅在变化时写入', () => {
     expect(writeTokenFile(home, 'token-a')).toBe(true)
     expect(writeTokenFile(home, 'token-a')).toBe(false)
@@ -81,5 +88,26 @@ describe('tokenFromAuthenticatedUrl', () => {
     expect(tokenFromAuthenticatedUrl('http://127.0.0.1:3199/?token=abc')).toBe('abc')
     expect(tokenFromAuthenticatedUrl('http://127.0.0.1:3199/')).toBeUndefined()
     expect(tokenFromAuthenticatedUrl('not a url')).toBeUndefined()
+  })
+})
+
+describe('runtimeStatus', () => {
+  it('无进程记录时报告未运行，局域网模式给出 loopback 管理页', () => {
+    rmSync(join(home, 'dsh-remote.config.json'), { force: true })
+    const status = runtimeStatus(home)
+    expect(status.relayRunning).toBe(false)
+    expect(status.connectorRunning).toBe(false)
+    expect(status.mode).toBe('lan')
+    expect(status.adminUrl).toBe(`http://127.0.0.1:${String(readStationConfig(home).relayPort)}/_admin`)
+    expect(status.entryUrl).toMatch(/^http:\/\/[^/]+:\d+$/u)
+  })
+
+  it('域名模式给出公网管理页与本机子域名入口', () => {
+    writeFileSync(join(home, 'dsh-remote.config.json'), JSON.stringify({ relay: { port: 30809, domain: 'dsh.example.com' } }), 'utf8')
+    const status = runtimeStatus(home)
+    expect(status.mode).toBe('domain')
+    expect(status.adminUrl).toBe('https://dsh.example.com/_admin')
+    expect(status.entryUrl).toBe(`https://${defaultMachineSlug()}.dsh.example.com`)
+    rmSync(join(home, 'dsh-remote.config.json'))
   })
 })

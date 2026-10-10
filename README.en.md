@@ -47,7 +47,7 @@ dependencies) and will be verified once the repository is public.
 ## Components
 
 Remote settings, model catalog/capabilities/favorites, Copilot login, egress proxy,
-global prompt, conversation retry/scroll/fork, concise mode (concise / concise-ptc),
+global prompt, conversation retry/scroll/fork, concise mode (native tools plus run_code programs),
 pinned YOLO, resident services, interactive terminal, tool/skill history, file browsing,
 web directory picker, browser-compat shims, desktop notifications, web-search switch.
 See the [plugin index](docs/plugins.md) (Chinese).

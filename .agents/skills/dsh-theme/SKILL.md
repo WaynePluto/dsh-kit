@@ -130,6 +130,36 @@ description: 编写或调整 dsh 插件的主题样式，处理表单焦点、�
 remote-settings 仅保留宿主 ownsHost 注入，没有浏览器菜单扩展。
 此导航例外核对于 0.1.6-alpha.2 产物，0.1.7-rc.1 待复测；不代表所有 list 槽的 owner 都有同样行为。
 
+### 0.2.0 菜单面是 MenuSurface 半透明磨砂，不要自绘背景
+
+dsh 0.2.0 起菜单/下拉表面是半透明磨砂设计：`--dsw-specific-menu`（= `--dsw-menu-surface-fill`，
+浅色 rgba(248,249,250,.58)/深色 rgba(67,69,74,.45)）必须搭配 primitives `MenuSurface` 组件内的
+`z-index:-1` 材质层（`backdrop-filter: var(--dsw-menu-backdrop-filter)` = blur(40px) saturate(150%)，
+定义在 ui-theme `gradient-shadow-text.css`；macOS 另有 body 侧 opaque backing 应对原生 vibrancy）。
+插件自绘 `background: var(--dsw-specific-menu)` 而不用 MenuSurface = 无模糊纯透明，内容直接透出
+（2026-10-10 实机定位 favorite-models 弹窗"变透明"）。正确做法：弹层根用 `<MenuSurface className={几何类}>`
+（几何/阴影类保留，删自绘 background 与 border-radius——radius 由 MenuSurface 的 radius-lg 提供）；
+分组列表用 `MenuGroup` + `observeStickyMenuGroups(viewport)`（组头 stuck 时由官方切
+`--dsw-alias-menu-group-header-fill` 94% 不透明，viewport 须无 padding 直接子级为 MenuGroup）。
+验证方式：与同页官方菜单（如账号菜单）对比材质层 computed 值应逐项一致。实例：
+`packages/plugins/favorite-models/src/client/FavoriteModelSelect.tsx`。
+
+### 独立 React 根的 body 宿主必须零尺寸
+
+插件自建 React 根（`react-dom/client` 的 `createRoot`）挂进 `document.body` 时，宿主 div 若留在文档流内，
+哪怕只渲染一个空锚点 `<span aria-hidden>`，行盒也会把 body 撑高一行、触发页面滚动条——打开弹层的瞬间
+整个工作台横移一个滚动条宽度（2026-10-10 桌面实测 5px，`bodyClientWidth` 1280→1275）。宿主必须
+`position:fixed; top:0; left:0; width:0; height:0; overflow:hidden`；portal 弹层本身是 fixed 定位不受影响。
+实例：`packages/plugins/files/src/client/nativeFilesAdapter.tsx` 的 menuHost，回归断言在
+`packages/plugins/files/tests/nativeFilesAdapter.spec.ts`。
+
+### 设置分区组件与 Button 原语
+
+设置 `settings.section` 的正文组件沿用 agents-md 实例模式：inline CSSProperties + dsw token
+（`--dsw-alias-label-secondary` 等），文字 13px；primitives `Button` 的紧凑档是 `size="sm"`
+（无 `compact` 属性，2026-10-10 按 0.2.0-rc.2 类型核对），复制类操作用 `writeClipboard`。
+实例：`packages/plugins/remote-runtime/src/client/RemoteSection.tsx`。
+
 ### 设置导航的插件图标
 
 当前 dsh `settings.section` 没有 icon 字段，`ui-settings-general` 在导航 cell 内直接渲染一个 SVG。

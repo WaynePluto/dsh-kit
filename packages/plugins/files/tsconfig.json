@@ -1,5 +1,20 @@
 {
   "extends": "../../../tsconfig.base.json",
-  "compilerOptions": { "types": ["node"], "lib": ["ES2023", "DOM"] },
-  "include": ["src/index.ts", "src/git.ts", "src/shared.ts", "tests/**/*.ts", "tsdown.config.ts"]
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ]
+  },
+  "include": [
+    "src/index.ts",
+    "src/git.ts",
+    "src/shared.ts",
+    "tsdown.config.ts",
+    "tests/host.spec.ts",
+    "tests/security.spec.ts"
+  ]
 }

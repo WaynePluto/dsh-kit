@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (path: string): string => readFileSync(join(root, path), 'utf8')
 
 describe('concise mode profile bundle', () => {
-  it('declares a pure bundle whose presets are inline agent-preset rows', () => {
+  it('declares a pure bundle with one inline agent-preset row', () => {
     const manifest = JSON.parse(read('package.json')) as {
       main?: string
       files?: string[]
@@ -20,7 +20,7 @@ describe('concise mode profile bundle', () => {
     // dsh 0.1.7：预设是一行 `@deepseek-ai/dsh-agent-preset` 声明，config.plugins 即子插件行。
     expect(patch).toContain(`name: '@deepseek-ai/dsh-agent-preset'`)
     expect(patch).toContain('id: concise')
-    expect(patch).toContain('id: concise-ptc')
+    expect(patch).not.toContain('concise-ptc')
     // 绿色包可移植性：不携带开发机绝对路径，也不引用本包 dist。
     expect(patch).not.toMatch(/[A-Za-z]:\\/)
     expect(patch).not.toContain('dshStationConcisePresetRoot')
@@ -57,36 +57,26 @@ const omittedRows = [
   'maxDepth:',
 ]
 
-/** 从 patch 里取出一个预设行的 config.plugins 段（到下一个 preset 行为止）。 */
+/** 从 patch 里取出 concise 预设行的 config.plugins 段（到文件尾为止）。 */
 function presetSection(patch: string, id: string): string {
   const start = patch.indexOf(`        id: ${id}`)
-  const end = patch.indexOf(`    - id: preset-`, start + 1)
+  const end = patch.indexOf('    - id: preset-', start + 1)
   return patch.slice(start, end === -1 ? undefined : end)
 }
 
-describe('concise compositions', () => {
+describe('concise composition', () => {
   const patch = read('cordis.patch.yml')
 
-  it('publishes the selected native concise composition without heavyweight groups', () => {
+  it('keeps native tools callable and adds run_code side by side (both)', () => {
     const section = presetSection(patch, 'concise')
-    for (const row of [...selectedRows, 'complete: true']) expect(section).toContain(row)
-    for (const omitted of [...omittedRows, '@deepseek-ai/dsh-agent-tool-presentation']) {
+    for (const row of selectedRows) expect(section).toContain(row)
+    for (const omitted of [...omittedRows, 'mode: ptc', 'complete: true']) {
       expect(section).not.toContain(omitted)
     }
     expect(section).toContain('name: 简洁模式')
-  })
-
-  it('publishes a separate pure-PTC concise composition with the same capability boundary', () => {
-    const section = presetSection(patch, 'concise-ptc')
-    for (const row of [
-      ...selectedRows,
-      'complete: false',
-      '@deepseek-ai/dsh-agent-tool-presentation',
-      'mode: ptc',
-    ]) expect(section).toContain(row)
-    for (const omitted of [...omittedRows, 'mode: both', 'complete: true']) {
-      expect(section).not.toContain(omitted)
-    }
-    expect(section).toContain('name: 简洁 PTC 模式')
+    // run_code 双通道由嵌套行 run-code 提供；persona 必须 complete:false，
+    // 否则 tools:sdk 的 SDK 声明会被完整 persona 过滤。
+    expect(section).toContain('complete: false')
+    expect(section).toContain(`name: '@dsh-remote/dsh-plugin-run-code'`)
   })
 })

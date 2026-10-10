@@ -1,6 +1,5 @@
-import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
 import type {
-  ISidebarRight, PaneId, SidebarRightTabInfo,
+  ISidebarRight, PaneId,
 } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
@@ -11,6 +10,16 @@ export const DUAL_PANE_MIN_VIEWPORT = 701
 export interface PreviewPaneRef {
   current: PaneId | undefined
   pending?: () => void
+}
+
+/**
+ * What a caller must know about the files tree that originated a navigation:
+ * the pane holding it, and whether that tree is still mounted (its tab has not
+ * closed). DOM-level enhancement derives both from the live tree root.
+ */
+export interface PaneNavigationContext {
+  readonly panelId: PaneId
+  readonly isLive: () => boolean
 }
 
 /**
@@ -39,21 +48,17 @@ export function otherLiveDockedPane(current: PaneId): PaneId | undefined {
  */
 export function openInPreviewPane(
   sidebar: ISidebarRight,
-  tabInfo: SidebarRightTabInfo,
+  nav: PaneNavigationContext,
   sessionId: SessionId,
   workspaceRoot: string,
   absolutePath: string,
   pane: PreviewPaneRef,
-  openResource?: (paneId: PaneId) => void,
+  openResource: (paneId: PaneId) => void,
 ): boolean {
-  const address = fileAddressFor(sessionId, workspaceRoot, absolutePath)
-  const open = openResource ?? ((paneId: PaneId): void => {
-    tabInfo.tab.actions.openResource(address, { paneId })
-  })
   if (typeof window !== 'undefined' && window.innerWidth < DUAL_PANE_MIN_VIEWPORT) {
     try {
-      pane.current = tabInfo.panel.id
-      open(tabInfo.panel.id)
+      pane.current = nav.panelId
+      openResource(nav.panelId)
       return true
     } catch {
       pane.current = undefined
@@ -63,16 +68,16 @@ export function openInPreviewPane(
   let paneId = pane.current
   let created = false
   if (paneId !== undefined && !isLiveDockedPane(paneId) && pane.pending !== undefined) {
-    pane.pending = () => { if (pane.current !== undefined) open(pane.current) }
+    pane.pending = () => { if (pane.current !== undefined) openResource(pane.current) }
     return true
   }
   if (paneId === undefined || !isLiveDockedPane(paneId)) {
-    paneId = otherLiveDockedPane(tabInfo.panel.id)
+    paneId = otherLiveDockedPane(nav.panelId)
     if (paneId !== undefined) {
       pane.current = paneId
     } else {
       try {
-        paneId = sidebar.split(tabInfo.panel.id)
+        paneId = sidebar.split(nav.panelId)
       } catch {
         paneId = undefined
       }
@@ -87,7 +92,7 @@ export function openInPreviewPane(
 
   const navigate = (): boolean => {
     try {
-      open(paneId)
+      openResource(paneId)
       return true
     } catch {
       // A user can merge/move a pane between the DOM check and this navigation.
@@ -102,7 +107,7 @@ export function openInPreviewPane(
   // second file click does not split again before that pane is live.
   const pending = (): void => {
     delete pane.pending
-    if (!tabInfo.tab.signal.aborted && pane.current === paneId) void navigate()
+    if (nav.isLive() && pane.current === paneId) void navigate()
   }
   pane.pending = pending
   setTimeout(() => {

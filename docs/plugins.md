@@ -32,16 +32,17 @@
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [简洁模式](../packages/plugins/concise-mode/README.md) | 新建会话时选择预设 | 提供 concise 与 concise-ptc 两个简洁预设；子代理深度沿用 dsh 原生设置（默认 1） |
+| [简洁模式](../packages/plugins/concise-mode/README.md) | 新建会话时选择预设 | 提供简洁预设：原生工具直呼与 run_code 程序并用，由模型自主选择；子代理深度沿用 dsh 原生设置（默认 1） |
 | [远程设置](../packages/plugins/remote-settings/README.md) | 自动生效 | 让已认证的远程浏览器使用完整设置页（自 remote-privileged 拆出；connection 注入留在壳级 overlay 不可停） |
 | [浏览器兼容](../packages/plugins/browser-compat/README.md) | 自动生效；设置 → 浏览器日志 | 为旧 WebKit 垫平 Iterator/AbortSignal/Promise 缺口，并提供当前页面临时错误日志与能力清单 |
 | [网页目录选择](../packages/plugins/directory-picker-browse/README.md) | 打开工作区 | 在浏览器内选择运行 dsh 的机器上的目录 |
 | [固定 YOLO](../packages/plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
 | [网页搜索开关](../packages/plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
+| [远程运行时](../packages/plugins/remote-runtime/README.md) | 设置 → 远程 | 查看 relay/connector 状态与远程入口地址、打开远程管理页（桌面端的常驻管理入口） |
 
 ## 分发组合
 
-21 个功能组件以 11 个第三方 Bundle 随 dsh-remote 提供。组合包是安装、卸载和升级单位；
+22 个功能组件以 11 个第三方 Bundle 随 dsh-remote 提供。组合包是安装、卸载和升级单位；
 除表中注明外，其组件行仍可在插件详情中单独停用。
 
 | 分发包 | 类型 | 包含组件或功能 |
@@ -52,7 +53,7 @@
 | development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
 | directory-picker-browse | 独立包 | 网页目录选择；需在 Bundle 层静态覆盖原生目录选择器，不能并入组合包 |
 | proxy | 独立包 | 出网代理 |
-| concise-mode | 独立包 | 简洁模式 |
+| concise-mode | 独立包 | 简洁模式；预设内嵌 run_code 程序工具（both 展示模式，模型自主选择直呼或写程序） |
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
 | yolo-mode | 独立包 | 固定 YOLO |

@@ -8,6 +8,9 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconChevronRightOutlineMedium: () => null,
   IconWarningOutlineMedium: () => null,
   Toast: () => null,
+  MenuSurface: ({ children }: { children?: unknown }) => children ?? null,
+  MenuGroup: ({ children }: { children?: unknown }) => children ?? null,
+  observeStickyMenuGroups: () => () => {},
 }))
 
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -88,7 +91,9 @@ describe('FavoriteModelSelect', () => {
     expect(root?.classList.contains(selectorClasses.root)).toBe(true)
     expect(trigger.classList.contains(selectorClasses.trigger)).toBe(true)
     expect(trigger.getAttribute('style')).toBeNull()
-    expect(style?.textContent).toContain('--dsw-specific-menu')
+    // 0.2.0 菜单面由 MenuSurface 提供（半透明填充 + backdrop-filter）；自绘 specific-menu
+    // 背景会退化为无模糊纯透明，样式表不得再画菜单面。
+    expect(style?.textContent).not.toContain('--dsw-specific-menu')
     expect(style?.textContent).toContain('--dsw-elevation-prominent')
     expect(style?.textContent).toBe(selectorStyles)
   })

@@ -82,13 +82,16 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 
 出处：`packages/bundle/web-app/cordis.patch.yml`、`packages/preset/agent-preset-registry/src/index.ts`、
 `packages/preset/agent-preset/src/index.ts`、`packages/preset/persona/src/index.ts`、
-`packages/core/agent-tool-presentation/src/index.ts`、`packages/core/system-prompt/src/index.ts`；
-项目定义见 `packages/plugins/concise-mode/cordis.patch.yml`。
+`packages/core/agent-tool-presentation/src/index.ts`、`packages/core/tools/src/index.ts`（presentAs/wireSchemas/collapses）、
+`packages/core/system-prompt/src/index.ts`；项目定义见 `packages/plugins/concise-mode/cordis.patch.yml`。
 
 dsh-web-app 提供 `agent-preset-registry` 与原生预设；concise-mode Bundle 排在其后，用 patch 直接
-插入 `preset-concise` 和 `preset-concise-ptc` 两行 `@deepseek-ai/dsh-agent-preset`，
-各行 `config.plugins` 内联声明 persona、工具与压缩插件。这里没有 preset root、locator entry
-或以文件系统目录加载预设的逻辑；只在 dsh-remote-web profile 增加这两个预设。
+插入一行 `preset-concise` 的 `@deepseek-ai/dsh-agent-preset` 声明，`config.plugins` 内联声明
+persona、工具与压缩插件，行尾嵌套 `run-code` 行（`@dsh-remote/dsh-plugin-run-code`）。
+这里没有 preset root、locator entry 或以文件系统目录加载预设的逻辑；只在 dsh-remote-web
+profile 增加这一个预设。preset 嵌套行以声明方 baseUrl 解析裸包名：开发介质由
+plugin-catalog 的组件机制复制进 concise-mode 目录的 node_modules，套件由 build-suite
+物化进套件 node_modules。
 
 0.1.7-rc.1 不再支持旧版「复制预设 → 写入用户预设目录」：预设现在是 profile/Bundle 中的
 `@deepseek-ai/dsh-agent-preset` 声明，原生设置页只提供「查看配置」（只读）及「让 Agent 帮我创建预设模式」。
@@ -100,13 +103,17 @@ dsh-web-app 提供 `agent-preset-registry` 与原生预设；concise-mode Bundle
 新版依据见 `packages/client/ui-agent-preset/src/client/AgentPresetSection.tsx`、
 `packages/preset/agent-preset-registry/src/index.ts`。remote-settings 不接管预设页，也不恢复旧版写目录接口。
 
-两个预设保留文件、搜索、技能、前台 shell、前台一次性子代理、用户提问、待办和压缩。
+预设保留文件、搜索、技能、前台 shell、前台一次性子代理、用户提问、待办和压缩。
 shell 与 subagent 的 enableRunInBackground 为 false，subagent 使用 one-shot。
 profile 根层的 service_* 和 interactive_terminal 仍可继承。
 
-- concise：complete:true、includeRuntimeContext:false，原生工具 schema。
-- concise-ptc：complete:false、includeRuntimeContext:false，纯 ptc，模型协议只暴露 run_code。
-- complete:true 会过滤 system-prompt section，连 tools:ptc-only 与 tools:sdk 一起过滤，不能用于纯 PTC 预设。
+- concise：complete:false、includeRuntimeContext:false；嵌套 run-code 行等待 `ptcRuntime` 后
+  `presentAs('both')`，并在 `tools:sdk`（TOOLS_SDK=5000）后注册 `run-code:guidance` 指引 section。
+- both 模式下 wireSchemas 返回全部可见工具 + `run_code`，collapses 谓词不收缩直呼；
+  模型自主选择直呼或写 run_code 程序（参考 pi codemode 的「mode on」）。旧的 concise-ptc
+  （纯 ptc、只暴露 run_code）已删除。
+- complete:true 会过滤 system-prompt section，连 tools:ptc-only 与 tools:sdk 一起过滤，
+  不能用于任何需要 SDK 声明的预设。
 - PTC SDK、提示词、并发、worker、子调用日志均由 dsh 提供，不复制实现。
 - PTC 内部调用记录 tool/ptc-dispatch，项目统计只使用顶层 tool/call。
 
@@ -243,6 +250,15 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
 - `slots.entries` 是登记快照，不是通用组件嵌入 API；files 增强在当前版本只把它作为版本受控的适配 seam：
   shadow 登记完整复用原 entry 的 component、store、inject、locale，并只在外层观察/事件委托。
   这不是对任意 dsh 组件的稳定承诺，原生登记契约变化必须由冒烟检查响亮失败。
+- **0.2.0-rc.2 起原生 FilesBody 声明 children 并在渲染期调用 `props.renderSlot`**（`sidebar.right.tab.files.actions`，
+  list/session，官方 ui-open-in-app 往里注册「打开方式」）。影子条目不声明 children 就拿不到 renderSlot prop，
+  内嵌的原生组件抛 `TypeError: renderSlot is not a function`，条目被错误边界捕获后座位回退原生——增强静默丢失
+  （2026-10-10 桌面 CDP 定位，ELECTRON_ENABLE_LOGGING 可见该报错；`standardKit` 只给声明 children 的条目装配
+  renderSlot/SessionProvider，`scoped-slots.tsx` 的绑定按登记项自身 children 授权，无公开途径借得原生绑定）。
+  重复声明同一 child slot 会在 register 抛错（`slot "..." is already declared`），因此影子包装在 0.2.0 契约下不可行。
+  files 已改为 DOM 级挂载（MutationObserver 发现 `[data-files-state]` 树根 + 捕获事件 + 独立 React 根菜单，
+  `nativeFilesAdapter.tsx`）；title 座位（`sidebar.right.pane.tab.title`）的影子仍可用：documentpreview 的
+  title 注册不带 children。
 - Slot 的子槽由唯一登记 owner 声明并持有 render 授权；对现有 cell 加 priority:-1 不会继承原登记项的 children。
   files 不重声明 `sidebar.right.tab.document`，不覆盖 `ui-sidebar-documentpreview` owner；ctx 级 renderSlot 只能渲染 root。
   因此不能把原生预览拆出来任意嵌入另一个 body。图片增强改在原生 text title slot 以 portal 控件定位已渲染 image frame，

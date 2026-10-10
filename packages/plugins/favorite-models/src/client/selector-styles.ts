@@ -100,7 +100,8 @@ export const selectorStyles = `
 }
 
 .${c.menu} {
-  /** 将原生 selector CSS 限定在本插件的 class 前缀下。 */
+  /** 仅几何与层级；表面材质（半透明填充 + backdrop-filter 磨砂）由 MenuSurface 提供。
+   * 自绘 background 会退回无模糊的纯透明（0.2.0 起官方菜单面是半透明磨砂设计）。 */
   position: fixed;
   z-index: 1100;
   display: flex;
@@ -112,8 +113,6 @@ export const selectorStyles = `
   overflow: hidden;
   padding: 4px;
   border: 0;
-  border-radius: 20px;
-  background: var(--dsw-specific-menu);
   --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
   box-shadow: var(--dsw-elevation-prominent);
   color: var(--dsw-alias-label-primary);
@@ -167,18 +166,6 @@ export const selectorStyles = `
 
 .${c.group} + .${c.group} {
   margin-top: 4px;
-}
-
-.${c.groupTitle} {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 5px 8px 3px;
-  background: var(--dsw-specific-menu);
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 500;
 }
 
 .${c.option} {

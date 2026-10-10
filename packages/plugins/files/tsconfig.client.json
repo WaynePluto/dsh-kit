@@ -1,5 +1,18 @@
 {
   "extends": "../../../tsconfig.base.json",
-  "compilerOptions": { "jsx": "react-jsx", "lib": ["ES2023", "DOM"], "types": [] },
-  "include": ["src/client/**/*.ts", "src/client/**/*.tsx", "src/shared.ts"]
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": []
+  },
+  "include": [
+    "src/client/**/*.ts",
+    "src/client/**/*.tsx",
+    "src/shared.ts",
+    "tests/imagePan.spec.ts",
+    "tests/nativeFilesAdapter.spec.ts"
+  ]
 }

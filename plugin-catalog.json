@@ -43,7 +43,8 @@
       "name": "@dsh-remote/dsh-plugin-concise-mode",
       "source": "packages/plugins/concise-mode",
       "components": [
-        { "name": "@dsh-remote/dsh-plugin-concise-mode", "rowId": "agent-presets" }
+        { "name": "@dsh-remote/dsh-plugin-concise-mode", "rowId": "agent-presets" },
+        { "name": "@dsh-remote/dsh-plugin-run-code" }
       ]
     },
     {

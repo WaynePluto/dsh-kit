@@ -5,6 +5,13 @@
 
 ## 已实现
 
+- [x] run_code 工具插件取代简洁 PTC（2026-10-10）：参考 pi 的 codemode，新增 run-code 插件包
+  （`@dsh-remote/dsh-plugin-run-code`，预设内嵌行、非独立 Bundle：等待 ptcRuntime 后 `presentAs('both')`，
+  并在 tools:sdk 后追加何时优先用 run_code 的指引 section）；简洁预设 persona 改 complete:false、
+  行尾挂 run-code 行，原生工具与 run_code 并存、模型自主选择；删除 concise-ptc 预设与
+  preset-concise-ptc 显示壳，run-code 作为 concise-mode 分发组件与套件物化包提供。执行链、SDK、
+  审批与子调用全部复用 dsh。concise-mode-check 重写断言（wire=registry=工具+run_code、SDK 声明、
+  guidance section、无 collapse 指引、concise-ptc 不在 roster）。旧 concise-ptc 会话需改选简洁模式。
 - [x] 套件组件清单元数据统一中文（2026-10-09）：dsh 插件管理器只为裸包名行解析 locale meta
 （相对路径行退化为完整文件 URL、官方包只有英文）。新增 5 个显示壳微包（preset-concise/-ptc、
 model-bootstrap、theme-projection、remote-trust，裸包名 + 中文 locale + re-export 目标模块；
@@ -16,8 +23,33 @@ disabled 插入（嵌套 preset 组合行不插）。桌面实测 24/24 行中�
 /api/WS 永久重连 → onboarding 永久 loading。修复：browser-compat 移出套件（包保留，供老设备单独装）；
 remote-settings 改为条件 script 注入（仅 HTTP(S) 页面设 ownsHost，dsh-app:// 协议页跳过）。
 诊断手段：ELECTRON_ENABLE_LOGGING 捕获渲染进程 console + 摘除套件二分。桌面实测恢复（0 重连失败、
-账号/简洁模式/常驻服务/模型目录全部正常）。遗留：客户端 combo 只装载部分套件条目（2~4/17，
-非确定性，疑 dsh client-modules 首扫竞态，需向上游定位）。
+账号/简洁模式/常驻服务/模型目录全部正常）。装载层复查（2026-10-10 实测）：dev 栈与桌面版在 token 可用后的
+首个认证渲染图均已完整（17/17 套件浏览器行），渲染进程激活标记全部在位（files/chat-scroll/user-message-fork/
+web-search-switch/services/turn-retry 样式标记 + 工具/技能面板 + 设置页全局提示词/代理/通知分区）；此前
+「combo 只装载 2~4/17」为坏传输期断连重试的副产品，非独立 client-modules 首扫竞态，撤销上游定位待办。
+- [x] files 增强 DOM 级重写修复 0.2.0 静默失效（2026-10-10 实机验证）：放弃 `sidebar.right.pane.tab`
+座位影子（0.2.0 起 children/renderSlot 契约下不可行，见 [插件机制](dsh/plugins.md)），改为 MutationObserver 发现
+`[data-files-state]` 原生树根后挂捕获事件（单击预览/双击保留/右键与 F10 菜单经独立 React 根）、行级 Git 装饰与
+树根前提示节点；sessionId 取 `sidebarRight.mounted`、工作区根取 `data-files-root`、导航经 `sidebarRight.openResource/split`
+（paneNavigation 改用 PaneNavigationContext，openResource 必传）。files 35 测试/typecheck/build/lint 与桌面 CDP 实测
+（Git 标记、右键菜单、提示节点、渲染日志 0 renderSlot 崩溃）通过；图片缩放/分栏等既有功能待日常复测。
+右键菜单引起侧栏抖动（2026-10-10 修复并实测）：菜单 React 宿主在 body 流内，锚点 span 的行盒把 body 撑出一行
+高度、触发页面滚动条，工作台整体横移一个滚动条宽度；宿主改为零尺寸 fixed 定位后菜单全程 bodyClientWidth 与
+侧栏坐标逐帧稳定。
+- [x] favorite-models 菜单磨砂材质修复（2026-10-10 实机验证）：0.2.0 官方菜单面是半透明磨砂设计
+（`--dsw-menu-surface-fill` 45%/58% 透明填充 + MenuSurface 组件内 z-index:-1 材质层 `backdrop-filter:
+blur(40px) saturate(150%)`；macOS 额外 opaque backing）。我们的选择器抄自旧版官方 CSS、自绘
+`background: var(--dsw-specific-menu)`，无磨砂层 → 内容清晰透出（用户报告"弹窗变透明"）。修复：菜单改用
+官方 MenuSurface 组件、组头改官方 MenuGroup + observeStickyMenuGroups（stuck 时 94% 不透明填充），删除自绘
+背景/圆角与组头样式。实机对比：与官方账号菜单材质层计算值逐项一致（rgba(67,69,74,0.45) + blur(40px)
+saturate(1.5)）；23 测试/typecheck/build 通过。
+- [x] 设置页「远程」分区（2026-10-10 实机验证）：remote-runtime 新增浏览器半（`/remote-runtime/status` 只读 RPC +
+设置 section），显示 relay/connector 运行状态、远程入口地址（域名模式公网子域名/局域网模式本机地址）与「打开远程管理页」
+按钮（loopback 免登录直达，实测 /_admin 200）。套件图 18/18 浏览器行，scripts/verify-suite-client.mjs 期望清单同步。
+- [x] remote-runtime 进程认领修复（2026-10-10）：L1 写入的记录不含 name 字段而读取端校验 value.name，导致所有认领
+失败——每次宿主重启重复拉起（新 relay 端口冲突退出）、旧进程泄漏、hub zombie 会话与状态误报「未运行」的根因。
+改为按路径编码 name 校验 pid/startedAtMs；重启后记录与监听 pid 一致（实测认领成功）。用户服务器侧遗留 zombie
+设备记录可在 relay 重启后于管理页清理。
 - [x] 全仓更名 dsh-remote（2026-10-09，D28）：包 scope/环境变量（DSH_REMOTE_*）/数据目录（~/.dsh-remote）/
 配置文件/机器名回退值/CLI 程序名全部替换（309 文件）；套件包定名 @dsh-remote/dsh-plugin-suite（目录 packages/plugins/suite）；
 pnpm/zustand/immer 固定为根 devDependencies（原由 launcher 传递提供）、web-search-switch 补 dsh-plugin-manager 类型 devDep；
@@ -29,7 +61,7 @@ dev-runtime.spec 13 项全过。plugin-catalog/plugin-distributions 暂留供 co
 - [x] 删壳第一轮（2026-10-09，D27）：删除 packages/desktop（Go/Wails 壳）、pack 桌面/服务版打包与 release 发布管线
 （scripts/pack*、release.mjs、prepare/dev-desktop*、release.yml 工作流、packaging 桌面相关、release-version skill、docs/06-packaging.md），
 根 package.json 移除 desktop/release 脚本与 archiver；保留 make-icons 图标链、dsh-station.config.example.json 与 dev 栈（launcher 退役见后续任务）。
-- [x] 插件化单包分发与远程运行时宿主托管（2026-10-09，官方桌面 0.2.0-rc.2 实测）：新增 station-suite 全量套件包（一条本地路径经官方「添加插件」安装/启用/卸载，22 组件行 + connection 覆写 + 屏障/投影行，`scripts/build-suite.mjs` 生成并物化依赖闭包）与 remote-runtime 组件（dshRemoteTrust 信任服务、authenticatedUrl 写 `~/.dsh-station/dsh-token`、两级分离启动器拉起并认领 relay/connector，日志 `~/.dsh-station/logs/`）；relay 增加令牌文件兜底（browser-listener/proxy 接线）；relay/connector CLI 顶部快照 argv（Electron node 模式启动后会重写 process.argv，实测 commander 会读到被复制的参数）。桌面实测：安装→启用→重启后 relay 30809 监听并回 303、connector 自挂上线、token 文件与宿主一致、fence 对 LAN Host 由 403 变 401；杀桌面进程树后子进程存活。已知问题：宿主重启偶尔未认领仍存活子进程而重复拉起（新 relay 因端口冲突自然退出，功能无损，原因待查）；GitHub 仓库地址安装待仓库公开后实测；proxy 的 undici 与宿主同实例契约在桌面 asar 语境待验证。spike 记录见 spike/remote-probe/README.md。
+- [x] 插件化单包分发与远程运行时宿主托管（2026-10-09，官方桌面 0.2.0-rc.2 实测）：新增 station-suite 全量套件包（一条本地路径经官方「添加插件」安装/启用/卸载，22 组件行 + connection 覆写 + 屏障/投影行，`scripts/build-suite.mjs` 生成并物化依赖闭包）与 remote-runtime 组件（dshRemoteTrust 信任服务、authenticatedUrl 写 `~/.dsh-station/dsh-token`、两级分离启动器拉起并认领 relay/connector，日志 `~/.dsh-station/logs/`）；relay 增加令牌文件兜底（browser-listener/proxy 接线）；relay/connector CLI 顶部快照 argv（Electron node 模式启动后会重写 process.argv，实测 commander 会读到被复制的参数）。桌面实测：安装→启用→重启后 relay 30809 监听并回 303、connector 自挂上线、token 文件与宿主一致、fence 对 LAN Host 由 403 变 401；杀桌面进程树后子进程存活。已知问题：宿主重启未认领而重复拉起的根因已于 2026-10-10 修复（进程记录 name 字段校验不匹配，见上文认领修复条目）；GitHub 仓库地址安装待仓库公开后实测；proxy 的 undici 与宿主同实例契约在桌面 asar 语境待验证。spike 记录见 spike/remote-probe/README.md。
 - [x] HTTP/WebSocket 反向隧道，原样转发 Host/Origin，断线退避重连。
 - [x] Ed25519 设备注册与认证、一次性注册令牌、停止机器并移除。
 - [x] 密码与 TOTP、JWT/refresh cookie、登录限流、会话吊销和安全审计。
@@ -124,7 +156,7 @@ dev-runtime.spec 13 项全过。plugin-catalog/plugin-distributions 暂留供 co
 | files | 基本验收通过；「开始」页三入口恢复已修复并有自动回归检查，待重启后实机复测；图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；手机及边界矩阵待验收 |
 | chat-scroll | 每个消息按钮只定位自己的消息，深浅主题、减少动态效果与触控尺寸正常 |
 | user-message-fork | 子会话只继承前置历史，草稿可编辑，原会话不变 |
-| concise-mode | 简洁 PTC 会话多步任务以 run_code 执行，项目工具可用 |
+| concise-mode | 简洁会话可直呼工具，也可写 run_code 程序批量/组合调用（both，模型自主选择）；run_code 调用卡片与子调用展示正常 |
 | yolo-mode | 用户提问正常，常驻服务可启动；停用重启后原生权限可恢复 |
 | browser-compat | AbortSignal/Promise/Iterator 垫片、能力清单和临时浏览器日志页已实现；仍需 iOS 16.6 真机验证目录选择、启动报错捕获和复制回退 |
 

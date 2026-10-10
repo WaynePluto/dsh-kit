@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "简洁模式",
-    "description": "提供简洁与简洁 PTC 两个 Agent 预设"
+    "description": "提供简洁 Agent 预设：原生工具与 run_code 程序并用，由模型自主选择"
   }
 }

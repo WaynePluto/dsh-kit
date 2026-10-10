@@ -40,11 +40,8 @@ const EXPECTED_TOOLS = [
   'ask_user_question', 'todo_write', process.platform === 'win32' ? 'pwsh' : 'bash',
   ...PROJECT_GLOBAL_TOOLS,
 ]
-const EXPECTED_PTC_REGISTRY_TOOLS = [...EXPECTED_TOOLS, 'run_code']
-const EXPECTED_SECTIONS = [
-  { name: 'deployment:persona-prefix', text: 'You are a helpful software engineer assistant.' },
-]
-const EXPECTED_CONTEXTS = []
+// both 展示模式：注册表与模型协议都看到全部工具 + run_code。
+const EXPECTED_REGISTRY_TOOLS = [...EXPECTED_TOOLS, 'run_code']
 const PROBE_SOURCE = [
   "export const inject = ['agentPresets', 'tools', 'systemPrompt', 'connection', 'pluginManager']",
   '',
@@ -102,15 +99,13 @@ const PROBE_SOURCE = [
   '        details: {},',
   '      } }',
   '    }',
-  '    const roster = await ctx.agentPresets.list()',
-  "    const concise = await snapshotFor(ctx, 'concise')",
-  "    const concisePtc = await snapshotFor(ctx, 'concise-ptc')",
-  '    return { ok: true, value: {',
-  '      roster: roster.map(ownedPreset),',
-  '      concise,',
-  '      concisePtc,',
-  '      globalTools: ctx.tools.schemas().map(schema => schema.name),',
-  '    } }',
+    '    const roster = await ctx.agentPresets.list()',
+    "    const concise = await snapshotFor(ctx, 'concise')",
+    '    return { ok: true, value: {',
+    '      roster: roster.map(ownedPreset),',
+    '      concise,',
+    '      globalTools: ctx.tools.schemas().map(schema => schema.name),',
+    '    } }',
   '  })',
   "  ctx.effect(() => () => void dispose(), 'concise-mode-check: private RPC probe')",
   '}',
@@ -325,13 +320,8 @@ async function main() {
       'actual=' + JSON.stringify(concisePreset?.name))
     check(concisePreset !== undefined && !Object.hasOwn(concisePreset, 'broken'),
       'concise preset has no broken property', 'keys=[' + Object.keys(concisePreset ?? {}).toSorted().join(', ') + ']')
-
-    const concisePtcPreset = roster.find(preset => preset?.id === 'concise-ptc')
-    check(concisePtcPreset !== undefined, 'concise-ptc preset exists in the roster')
-    check(concisePtcPreset?.name === '简洁 PTC 模式', 'concise-ptc preset name is exactly 简洁 PTC 模式',
-      'actual=' + JSON.stringify(concisePtcPreset?.name))
-    check(concisePtcPreset !== undefined && !Object.hasOwn(concisePtcPreset, 'broken'),
-      'concise-ptc preset has no broken property', 'keys=[' + Object.keys(concisePtcPreset ?? {}).toSorted().join(', ') + ']')
+    check(!roster.some(preset => preset?.id === 'concise-ptc'),
+      'concise-ptc preset is gone from the roster')
 
     const globalTools = Array.isArray(value?.globalTools) ? value.globalTools : []
     const sortedGlobalTools = globalTools.toSorted()
@@ -341,47 +331,44 @@ async function main() {
       'expected=[' + sortedExpectedGlobals.join(', ') + ']; actual=[' + sortedGlobalTools.join(', ') + ']')
 
     const conciseTools = Array.isArray(value?.concise?.tools) ? value.concise.tools : []
-    diagnoseTools(conciseTools, EXPECTED_TOOLS, 'concise')
+    diagnoseTools(conciseTools, EXPECTED_REGISTRY_TOOLS, 'concise registry')
     diagnoseForbidden(conciseTools)
     const conciseParameters = value?.concise?.parameterNames ?? {}
     for (const tool of [process.platform === 'win32' ? 'pwsh' : 'bash', 'subagent']) {
       check(Array.isArray(conciseParameters[tool]) && !conciseParameters[tool].includes('run_in_background'),
         'concise ' + tool + ' schema omits run_in_background')
     }
-    const conciseSections = value?.concise?.systemPrompt?.sections
-    const conciseContexts = value?.concise?.systemPrompt?.contexts
-    check(JSON.stringify(conciseSections) === JSON.stringify(EXPECTED_SECTIONS),
-      'concise system prompt sections are exact', 'actual=' + JSON.stringify(conciseSections))
-    check(JSON.stringify(conciseContexts) === JSON.stringify(EXPECTED_CONTEXTS),
-      'concise system prompt contexts are exactly empty', 'actual=' + JSON.stringify(conciseContexts))
-
-    const ptcTools = Array.isArray(value?.concisePtc?.tools) ? value.concisePtc.tools : []
-    diagnoseTools(ptcTools, EXPECTED_PTC_REGISTRY_TOOLS, 'concise-ptc registry')
-    diagnoseForbidden(ptcTools)
-    const ptcParameters = value?.concisePtc?.parameterNames ?? {}
-    for (const tool of [process.platform === 'win32' ? 'pwsh' : 'bash', 'subagent']) {
-      check(Array.isArray(ptcParameters[tool]) && !ptcParameters[tool].includes('run_in_background'),
-        'concise-ptc ' + tool + ' schema omits run_in_background')
-    }
-    const ptcWireTools = Array.isArray(value?.concisePtc?.wireTools) ? value.concisePtc.wireTools : []
-    check(JSON.stringify(ptcWireTools) === JSON.stringify(['run_code']),
-      'concise-ptc exposes only run_code to the model', 'actual=[' + ptcWireTools.join(', ') + ']')
-    const ptcSections = Array.isArray(value?.concisePtc?.systemPrompt?.sections)
-      ? value.concisePtc.systemPrompt.sections : []
-    const ptcOnly = ptcSections.find(section => section?.name === 'tools:ptc-only')?.text
-    const sdk = ptcSections.find(section => section?.name === 'tools:sdk')?.text
-    check(typeof ptcOnly === 'string' && ptcOnly.includes('`run_code` is the only tool you can call directly'),
-      'concise-ptc keeps the official direct-call collapse instruction')
+    check(Array.isArray(conciseParameters.run_code)
+      && conciseParameters.run_code.includes('code') && conciseParameters.run_code.includes('description'),
+      'concise run_code schema carries code and description',
+      'actual=' + JSON.stringify(conciseParameters.run_code))
+    // both 展示模式：模型协议与注册表一致（全部工具 + run_code），直呼不被收缩。
+    const conciseWireTools = Array.isArray(value?.concise?.wireTools) ? value.concise.wireTools : []
+    check(JSON.stringify(conciseWireTools.toSorted()) === JSON.stringify(EXPECTED_REGISTRY_TOOLS.toSorted()),
+      'concise exposes native tools and run_code together to the model',
+      'actual=[' + conciseWireTools.toSorted().join(', ') + ']')
+    const conciseSections = Array.isArray(value?.concise?.systemPrompt?.sections)
+      ? value.concise.systemPrompt.sections : []
+    const persona = conciseSections.find(section => section?.name === 'deployment:persona-prefix')
+    check(persona?.text === 'You are a helpful software engineer assistant.',
+      'concise persona prefix replaces the deployment persona',
+      'actual=' + JSON.stringify(persona?.text))
+    const sdk = conciseSections.find(section => section?.name === 'tools:sdk')?.text
     check(typeof sdk === 'string' && sdk.includes('Program-only SDK bindings:'),
-      'concise-ptc keeps the generated PTC SDK section')
+      'concise keeps the generated PTC SDK section')
     for (const tool of EXPECTED_TOOLS) {
       check(typeof sdk === 'string' && sdk.includes('  ' + tool + ':'),
-        'concise-ptc SDK declares ' + tool)
+        'concise SDK declares ' + tool)
     }
-    check(Array.isArray(value?.concisePtc?.systemPrompt?.contexts)
-      && value.concisePtc.systemPrompt.contexts.length === 0,
-      'concise-ptc system prompt contexts are exactly empty',
-      'actual=' + JSON.stringify(value?.concisePtc?.systemPrompt?.contexts))
+    const guidance = conciseSections.find(section => section?.name === 'run-code:guidance')?.text
+    check(typeof guidance === 'string' && guidance.includes('`run_code`'),
+      'run-code guidance section follows the SDK')
+    const ptcOnly = conciseSections.find(section => section?.name === 'tools:ptc-only')?.text ?? ''
+    check(!ptcOnly.includes('`run_code` is the only tool you can call directly'),
+      'both mode keeps direct tool calls allowed (no collapse instruction)')
+    const conciseContexts = value?.concise?.systemPrompt?.contexts
+    check(Array.isArray(conciseContexts) && conciseContexts.length === 0,
+      'concise system prompt contexts are exactly empty', 'actual=' + JSON.stringify(conciseContexts))
 
     const toggle = await callProbe(cookie, 'toggle')
     check(toggle?.disabled?.application === 'applied' && toggle.disabled.warnings?.length === 0,

@@ -7,6 +7,7 @@
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
+import type { RemoteRuntimeStatus } from './contract.js'
 import {
   defaultMachineSlug,
   defaultStationHome,
@@ -15,13 +16,22 @@ import {
   processRecordPath,
   readProcessRecord,
   readStationConfig,
+  runtimeStatus,
   tokenFromAuthenticatedUrl,
   writeTokenFile,
   type ProcessRecord,
 } from './shared.js'
 
 interface MinimalContext {
-  readonly connection?: { authenticatedUrl(baseUrl: string): string }
+  readonly connection?: {
+    authenticatedUrl(baseUrl: string): string
+    rpc?: {
+      handle(
+        channel: string,
+        handler: (endpoint: string, payload: unknown) => Promise<{ ok: true, value: unknown } | { ok: false, error: { code: string, message: string, details: {} } }>,
+      ): () => Promise<void>
+    }
+  }
   readonly webServer?: { readonly port?: number }
   on(event: 'dispose', listener: () => void): void
   logger?: { warn(message: string): void } & Record<string, unknown>
@@ -123,6 +133,17 @@ export function apply(ctx: MinimalContext): void {
   if (ctx.connection !== undefined) {
     const token = tokenFromAuthenticatedUrl(ctx.connection.authenticatedUrl(`http://127.0.0.1:${String(dshPort ?? 0)}/`))
     if (token !== undefined) writeTokenFile(home, token)
+  }
+  // 设置页「远程」分区的只读状态通道；无人打开设置页时无流量。
+  const rpc = ctx.connection?.rpc
+  if (rpc !== undefined) {
+    const disposeChannel = rpc.handle('/remote-runtime', async (endpoint: string) => {
+      if (endpoint !== 'status') {
+        return { ok: false, error: { code: 'UNKNOWN_ENDPOINT', message: `unknown endpoint: ${endpoint}`, details: {} } }
+      }
+      return { ok: true, value: runtimeStatus(home) satisfies RemoteRuntimeStatus }
+    })
+    ctx.on('dispose', () => { void disposeChannel() })
   }
   const relayCli = resolveWorkspaceCli('relay')
   ensureProcess('relay', relayCli, relayArguments(relayCli, home).slice(1), home)
