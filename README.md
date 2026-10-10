@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README.en.md)
 
-对应官方 dsh：`0.2.0-rc.2`（已实测）
+对应官方 dsh：`0.2.0-rc.2`（已实测；插件适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md) 与 `dsh-upgrade` skill）
 
 官方 DeepSeek Harness（dsh）的**全量插件套件**：不再有独立的桌面应用与发行介质（决策 D27），
 在官方 dsh 桌面版（或 web 版）的插件管理页「+ 添加插件」输入**一条路径**即可安装或升级全部内容——

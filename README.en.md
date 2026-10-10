@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Verified against official dsh: `0.2.0-rc.2`
+Verified against official dsh: `0.2.0-rc.2` (plugin adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
 
 A **single-package plugin suite** for the official DeepSeek Harness (dsh). There is no
 standalone desktop app or release media any more (decision D27): install or upgrade
