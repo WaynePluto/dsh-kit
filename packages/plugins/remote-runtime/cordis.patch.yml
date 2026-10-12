@@ -1,9 +1,0 @@
-# remote-runtime 组件自身的行。connection 行的 trustedHosts 覆写不在这里：
-# 它属于套件层（仓库根 cordis.patch.yml），避免单独停用本组件时让 connection
-# 行等待一个不再提供的服务而整行 pending。
-- insert:
-    - id: dsh-remote-trust-bootstrap
-      name: './dist/bootstrap.js'
-- insert:
-    - id: remote-runtime
-      name: './dist/index.js'

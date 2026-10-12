@@ -10,20 +10,13 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const PLUGINS = join(ROOT, 'packages', 'plugins')
-const SUITE_PACKAGE = '@dsh-remote/dsh-plugin-suite'
+const PLUGINS = join(ROOT, 'plugins')
+const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
 const COMBO_PACKAGES = new Set([
-  // browser-compat 是旧 WebKit 垫片（dsh-station 壳时代产物）：其全局 Promise/Iterator
-  // 垫片会垫坏官方桌面（Chromium）的连接客户端，导致页面 /api 永久重连失败
-  // （2026-10-09 实测二分确认），不进入套件；包保留供老设备单独安装。
-  'browser-compat',
-  'remote-experience',
   'model-enhancements',
   'conversation-enhancements',
   'development-tools',
   'suite',
-  // remote-privileged 不是普通组件包：它的行（屏障/投影）在套件模板的特殊段落里。
-  'remote-privileged',
 ])
 // 代理必须先于模型组件生效（见 plugin-catalog 顺序约定）；固定 YOLO 保持最后。
 const FIRST = ['proxy']
@@ -31,7 +24,7 @@ const LAST = ['yolo-mode']
 
 // 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。preset-concise
 // 是显示壳微包（行名改写目标）；run-code 由 concise 预设的嵌套行按裸包名引用。
-const DISPLAY_PACKAGE_DIRS = ['model-bootstrap', 'theme-projection', 'remote-trust', 'preset-concise', 'run-code']
+const DISPLAY_PACKAGE_DIRS = ['model-bootstrap', 'preset-concise', 'run-code']
 
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
@@ -69,13 +62,10 @@ function topLevelEntries(text) {
   }).filter(block => block.length > 0)
 }
 
-// 非 './dist/*' 形态行的显示改写：preset 行换成本套件生成的显示壳微包，
-// remote-runtime 的 bootstrap 子路径行同理（相对路径行拿不到插件管理器元数据）。
+// 非 './dist/*' 形态行的显示改写：preset 行换成本套件生成的显示壳微包
+// （相对路径行拿不到插件管理器元数据）。
 const ROW_NAME_OVERRIDES = new Map([
-  ['preset-concise', '@dsh-remote/dsh-plugin-preset-concise'],
-])
-const SUBPATH_DISPLAY_PACKAGES = new Map([
-  ['@dsh-remote/dsh-plugin-remote-runtime/bootstrap.js', '@dsh-remote/dsh-plugin-remote-trust'],
+  ['preset-concise', '@dsh-kit/dsh-plugin-preset-concise'],
 ])
 
 function suiteDisabledExpr(indent) {
@@ -115,8 +105,7 @@ function transformEntry(block, packageName) {
         replacement = ROW_NAME_OVERRIDES.get(rowId)
       } else if (current.startsWith('./dist/')) {
         const file = current.slice('./dist/'.length)
-        const display = SUBPATH_DISPLAY_PACKAGES.get(`${packageName}/${file}`)
-        replacement = display ?? (file === 'index.js' ? packageName : `./node_modules/${packageName}/${file}`)
+        replacement = file === 'index.js' ? packageName : `./node_modules/${packageName}/${file}`
       }
       out.push(replacement === undefined ? line : `${indent}name: '${replacement}'`)
       continue
@@ -145,20 +134,11 @@ function componentSection() {
   return sections.join('\n\n')
 }
 
-const header = `# dsh-remote 全量套件 Bundle（本文件由 scripts/build-suite.mjs 生成，勿手改）。
+const header = `# dsh-kit 全量套件 Bundle（本文件由 scripts/build-suite.mjs 生成，勿手改）。
 # 单输入安装：官方 dsh 插件管理页「添加插件」输入本目录路径（或仓库地址），
-# 即安装/升级全部组件与远程运行时。组件行沿用组合包的裸包名 + disabled 表达式
-# 约定：套件被停用/卸载（离开 bundles 列表）时全部组件行一并禁用。
+# 即安装/升级全部组件。组件行沿用组合包的裸包名 + disabled 表达式约定：
+# 套件被停用/卸载（离开 bundles 列表）时全部组件行一并禁用。
 #
-# connection 行覆写：合并 dshRemoteTrust（remote-runtime bootstrap 从 membership
-# 与本机地址计算的 authority 集合）与 webRuntime 的局域网信任。!!js 是标量 tag，
-# 表达式必须加引号（spike 实测：裸 [ 会被安装期校验拒绝）。
-- id: connection
-  name: '@deepseek-ai/dsh-client-connection'
-  inject: [webRuntime, webServer, dshRemoteTrust]
-  config:
-    trustedHosts: !!js "[...ctx.dshRemoteTrust.authorities, ...ctx.webRuntime.trustedHosts]"
-
 # 模型 HMR 启动屏障：随进程固定契约，避免运行中停用模型组件时热重启 llm-pi-ai。
 - id: llm-pi-ai
   name: '@deepseek-ai/dsh-llm-pi-ai'
@@ -167,16 +147,24 @@ const header = `# dsh-remote 全量套件 Bundle（本文件由 scripts/build-su
     - modelsCatalogBootstrap
     - modelCapabilitiesBootstrap
 
-# 壳级常驻行：模型屏障占位与原生主题只读投影（原 --patch overlay 内容，转入
-# 套件层）。trust bootstrap 行由 remote-runtime 组件自己的 patch 提供，保持常驻。
-# 这三行与简洁预设行都通过生成的「显示壳」微包装载（裸包名 + 中文 locale meta）：
-# 插件管理器只给裸包名行解析元数据，相对路径行会退化为显示完整文件 URL，
-# 非套件的官方包（如 @deepseek-ai/dsh-agent-preset）则只会显示英文包名与描述。
+# connection 行覆写：宿主半 RPC 的通道归属 connection 行 fiber（cordis service.ctx
+# 经 shadow 解析到服务构造行，组件行自己的 inject 不参与），而官方行只注入
+# webRuntime；宿主半插件经 connection.rpc.handle 注册的通道需要 webServer。
+# config 是整行替换，必须复刻官方 dsh-web-app 行的 trustedHosts 表达式，
+# 只追加注入不改信任面。表达式加引号（!!js 是标量 tag）。
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject: [webRuntime, webServer]
+  config:
+    trustedHosts: !!js 'ctx.webRuntime.trustedHosts'
+
+# 套件常驻行：模型组件未随进程启动时提供占位屏障，与简洁预设行一起通过生成的
+# 「显示壳」微包装载（裸包名 + 中文 locale meta）：插件管理器只给裸包名行解析
+# 元数据，相对路径行会退化为显示完整文件 URL，非套件的官方包（如
+# @deepseek-ai/dsh-agent-preset）则只会显示英文包名与描述。
 - insert:
-    - id: dsh-remote-model-bootstrap-fallback
-      name: '@dsh-remote/dsh-plugin-model-bootstrap'
-    - id: dsh-remote-theme-projection
-      name: '@dsh-remote/dsh-plugin-theme-projection'
+    - id: dsh-kit-model-bootstrap-fallback
+      name: '@dsh-kit/dsh-plugin-model-bootstrap'
 `
 
 const output = `${header}\n${componentSection()}\n`
@@ -190,7 +178,6 @@ process.stdout.write(`已生成 ${target}\n`)
 
 const SUITE_DIR = join(PLUGINS, 'suite')
 const SUITE_MODULES = join(SUITE_DIR, 'node_modules')
-const RUNTIME_PACKAGE_DIRS = ['relay', 'connector', 'protocol']
 
 function packageNameOf(source) {
   return JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).name
@@ -214,7 +201,7 @@ function copySelfContainedPackage(source, target) {
 
 /**
  * 从仓库根 node_modules 复制 registry 依赖闭包（扁平布局，匹配 hoisted 解析）。
- * 跳过 @deepseek-ai/*（dsh 宿主运行时树提供，避免第二单例）与 @dsh-remote/*。
+ * 跳过 @deepseek-ai/*（dsh 宿主运行时树提供，避免第二单例）与 @dsh-kit/*。
  */
 function copyRegistryClosure(seedNames) {
   const rootModules = join(ROOT, 'node_modules')
@@ -222,7 +209,7 @@ function copyRegistryClosure(seedNames) {
   const done = new Set()
   while (pending.length > 0) {
     const name = pending.shift()
-    if (done.has(name) || name.startsWith('@deepseek-ai/') || name.startsWith('@dsh-remote/')) continue
+    if (done.has(name) || name.startsWith('@deepseek-ai/') || name.startsWith('@dsh-kit/')) continue
     done.add(name)
     const source = join(rootModules, name)
     if (!existsSync(join(source, 'package.json'))) {
@@ -243,27 +230,19 @@ function copyRegistryClosure(seedNames) {
 
 function materializeSuiteModules() {
   rmSync(SUITE_MODULES, { recursive: true, force: true })
-  mkdirSync(join(SUITE_MODULES, '@dsh-remote'), { recursive: true })
+  mkdirSync(join(SUITE_MODULES, '@dsh-kit'), { recursive: true })
   const registrySeeds = new Set()
-  const componentDirs = [...componentDirectories(), 'remote-privileged', ...DISPLAY_PACKAGE_DIRS]
+  const componentDirs = [...componentDirectories(), ...DISPLAY_PACKAGE_DIRS]
   for (const dir of componentDirs) {
     const source = join(PLUGINS, dir)
-    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1]))
+    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-kit', packageNameOf(source).split('/')[1]))
     for (const name of Object.keys(manifest.dependencies ?? {})) registrySeeds.add(name)
   }
-  for (const dir of RUNTIME_PACKAGE_DIRS) {
-    const source = join(ROOT, 'packages', dir)
-    const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1]))
-    // relay/connector/protocol 是应用包，无 files 字段：显式带上构建产物。
-    cpSync(join(source, 'dist'), join(SUITE_MODULES, '@dsh-remote', packageNameOf(source).split('/')[1], 'dist'), { recursive: true })
-    // relay/connector 是独立进程：带上它们的完整 registry 闭包（@deepseek-ai 之外）。
-    for (const name of Object.keys(manifest.dependencies ?? {})) registrySeeds.add(name)
-  }
-  // @deepseek-ai/* 种子（pi-ai、dsh-http-proxy 等非宿主树包除外见下）在此展开：
-  // 组件声明的 @deepseek-ai 依赖里，只有 dsh 运行时确实提供的才跳过；pi-ai 等
-  // 第三方 scope（@earendil-works）正常复制。schemastery 等 dsh 家族包由宿主提供。
+  // @deepseek-ai/* 种子在此展开：组件声明的 @deepseek-ai 依赖里，只有 dsh 运行时
+  // 确实提供的才跳过；pi-ai 等第三方 scope（@earendil-works）正常复制，
+  // schemastery 等 dsh 家族包由宿主提供。
   const copied = copyRegistryClosure([...registrySeeds])
-  process.stdout.write(`物化完成：${componentDirs.length + RUNTIME_PACKAGE_DIRS.length} 个 @dsh-remote 包 + ${copied.size} 个 registry 依赖（${[...copied].join(', ')}）\n`)
+  process.stdout.write(`物化完成：${componentDirs.length} 个 @dsh-kit 包 + ${copied.size} 个 registry 依赖（${[...copied].join(', ')}）\n`)
 }
 
 materializeSuiteModules()

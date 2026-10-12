@@ -2,158 +2,89 @@
 
 ## 1. 全景
 
-完整远程模式下，每台机器运行自己的 dsh、relay 和 connector。任意机器都可以提供远程入口；
-一台机器最多配置一个远程入口，开放关系是单向的。
-dsh 由官方应用（桌面版/web 版）启动；suite 套件经官方「添加插件」一条路径安装（D27）。
-remote-runtime 组件在宿主激活时写 dsh 令牌文件并以两级分离启动器拉起 relay/connector，
-宿主重启后按 pid 注册表认领仍存活的子进程。
+官方 dsh（桌面版或 web 版）是唯一宿主：Agent、工具、会话、界面与服务都由它提供。
+本项目是它的第三方插件套件——一个 Bundle 包 `plugins/suite`，安装后把 18 个组件挂进宿主。
+项目里没有常驻进程，也没有自有数据目录。
 
 ```mermaid
 flowchart LR
-  Browser[浏览器] -->|HTTPS / WSS| TLS[TLS 反向代理]
-  TLS --> Relay[入口机器 relay]
-  Connector[目标机器 connector] -->|主动建立控制和数据 WebSocket| Relay
-  Connector -->|HTTP / WebSocket 字节| DSH[目标机器 dsh: 127.0.0.1]
-  Host[官方 dsh 应用] --> DSH
-  Host -->|remote-runtime 组件 spawn| Connector
-  Host -->|remote-runtime 组件 spawn| LocalRelay[目标机器 relay]
+  Suite["plugins/suite（聚合 Bundle）"] -->|"官方「添加插件」安装/启用"| Host["官方 dsh 宿主"]
+  Host --> HostHalf["组件宿主半 dist/index.js"]
+  Host --> BrowserHalf["组件浏览器半 dist/client.js"]
+  Host --> Settings["dsh profile 与 settings（唯一配置来源）"]
+  Host --> Sessions["dsh 会话与工作区（唯一数据来源）"]
 ```
 
-打开 pc2 的页面就是操作 pc2 的文件与进程，入口机器 pc1 只转发请求。
+## 2. 仓库组成
 
-## 2. 组件与插件
-
-| 包 | 职责 |
+| 路径 | 职责 |
 |---|---|
-| `packages/protocol` | 控制帧、schema、协议版本、超时与错误码 |
-| `packages/connector` | 拨出隧道、设备签名认证、回拨数据流、重连 |
-| `packages/relay` | 浏览器认证、设备认证、管理页、机器路由与字节转发 |
-| `packages/plugins` | 通过 dsh 插件扩展功能；见 [插件索引](plugins.md) |
-| `packages/plugins`（装载） | 全部功能组件随 suite 单包分发（D27）；connection 覆写、模型 HMR 屏障与主题投影进入套件 patch 层；launcher 与 plugin-catalog 的旧分发流程仅剩开发栈过渡使用 |
+| `plugins/<组件>/` | 单个功能插件：宿主半、浏览器半、Bundle 行、locale 文案、测试 |
+| `plugins/<组合包>/` | 组合分发：只含 `cordis.patch.yml`，把若干组件聚成一个安装/停用单位 |
+| `plugins/suite/` | 唯一对外分发包：生成的聚合 patch + 物化依赖闭包 + 中文元数据 |
+| `plugins/{model-bootstrap,preset-concise}/` | 显示壳微包：为裸包名行提供中文 locale meta 或占位屏障入口 |
+| `packages/plugin-build/` | `createPluginBuildConfig`：所有插件的 tsdown 配置工厂与产物约定 |
+| `packages/plugin-ui/` | 浏览器半共享 UI（对话框全屏、导航图标、几何断言） |
+| `plugin-catalog.json` | 组件 → 组合包/独立包的映射、顺序与停用粒度约定 |
+| `scripts/` | 套件生成、开发实例、隔离冒烟、依赖版本检查 |
+| `docs/` | 决策、上游契约、路线图与插件索引 |
 
-dsh 是官方 npm 依赖，不 fork、不改源码。浏览器使用 dsh 自带 UI，relay 提供自己的登录和管理页。
+## 3. 装载与停用
 
-### Home 与 Profile
+dsh 的三层事实（契约出处见 [插件机制](dsh/plugins.md)）：
 
-沿用标准 `$DSH_HOME`（默认 `~/.dsh`），共享设置、凭据、会话和用户全局 patch。
-内置扩展只加载到 `dsh-remote-web`：
+| 事实 | 存在位置 | 改动方式 |
+|---|---|---|
+| 是否安装 | profile `dependencies` | 官方「添加插件」安装/卸载 |
+| 是否启用 | profile `dsh.profile.bundles` 数组 | 插件页 Bundle 开关 |
+| 组件是否停用 | profile patch 里该行的 `disabled` | 插件详情里的组件开关 |
+
+套件 patch 由 `scripts/build-suite.mjs` 生成：
+
+1. 文件头两段固定契约——覆写 `llm-pi-ai` 行（注入两个模型 bootstrap 服务）与模型屏障占位行。
+2. 各组件自己 `cordis.patch.yml` 的顶层条目被改写成裸包名行
+   （`name: '@dsh-kit/dsh-plugin-x'`，loader 从套件 `node_modules/` 解析），并逐行补
+   `disabled: !!js …bundles.includes('@dsh-kit/dsh-plugin-suite')…`。
+3. 生成后把组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`
+   （本地目录安装不装 link 包的依赖；`@deepseek-ai/*` 由宿主运行时树提供，不复制第二份）。
+
+顺序约定：`proxy` 先于模型组件生效，`yolo-mode` 最后；其余按名字排序。组件包之间没有 import 依赖，
+跨插件协作一律走 dsh 的服务与事件。
+
+## 4. 插件包结构
 
 ```text
-dsh-base → dsh-web-app → 已启用的第三方 Bundle（默认 10 个分发包）
-  → profile patch → home patch → --patch（壳级 connection 注入与模型 HMR 启动屏障）
+plugins/<组件>/
+  package.json        # name、version、dsh.bundle.patch、dsh.client、exports['./client']
+  cordis.patch.yml    # Bundle 行（insert 内的稳定 id + name: './dist/index.js'）
+  src/index.ts        # 宿主半：inject 声明所需服务，注册工具/RPC/设置
+  src/client/index.tsx# 浏览器半：槽位、设置分区、注入样式
+  locale/{zh,en}.json # 插件页显示的标题与描述
+  tests/              # Vitest（宿主半 + 浏览器半）
+  tsdown.config.ts    # createPluginBuildConfig({ ... })
 ```
 
-concise-mode 在 Bundle patch 内联声明两个 Agent preset 行，不使用 preset root 或 locator entry；
-子代理深度由 dsh 原生界面控制，默认 1。
-suite 是唯一分发包：官方「添加插件」一条路径安装/升级，卸载即整体移除（D27）；
-launcher 多包分发与配套升级机制已随 launcher 退役删除。
-
-### 插件 Bundle 与壳级 overlay 装载
-
-每个插件包在 package.json 声明 `dsh.bundle.patch` 指向包根 `cordis.patch.yml`，
-入口写相对路径 `./dist/index.js`；dsh 将它锚定到该文件目录，发行包移动后仍可解析。
-插件构建链（plugins:build / build-suite）要求宿主与浏览器产物齐备，缺失即响亮失败。
-带浏览器半的包同时声明 `dsh.client`，dsh 据此下发 `dist/client.js`。
-
-默认分发与装载顺序以根目录 [plugin-catalog.json](../plugin-catalog.json) 为准：
-代理在模型增强前生效（跟随环境、使用插件代理、强制直连三态），固定 YOLO 是最后一个第三方 Bundle；唯一随 `--patch` 传入的是
-remote-privileged（壳级、不可停），负责 connection 注入、模型 Bundle 在线启停所需的稳定启动屏障，以及原生主题只读投影。
-管理页主题沿用原生 `ui-theme` 配置为单一来源（D26）：壳级插件订阅已提交重载，原子写工作站home的
-`dsh-theme.json`；relay有界读取并通过目录watch订阅，认证后的管理页用固定哈希脚本消费只读NDJSON流。
-这是工作站自有安全投影，不是relay读取原生profile或解释dsh业务协议；不建立反向写入通道。
-登录与首次设置保留独立Cookie外观。初始无有效投影时system，暂时失联保留最后值。
-
-完整开发栈入口为 [dev-stack.mjs](../scripts/dev-stack.mjs)（过渡，待套件化开发流程替代）；
-套件产物由 `scripts/build-suite.mjs` 生成，可在任意 dsh profile 安装。
-两者共享 [dev-plugin-build.mjs](../scripts/dev-plugin-build.mjs) 缓存与
-[local-config.mjs](../scripts/local-config.mjs) 的隔离数据/端口，不能同时占用同一开发实例。
-
-第三方 Bundle 使用官方命令：
-
-```powershell
-dsh plugin --profile dsh-remote-web add <bundle-package>
-```
-
-此 profile 没有 HMR；改动插件后必须构建并重启 dsh。
-
-## 3. 机器路由
-
-| 顺序 | 路由键 | 示例 |
-|---|---|---|
-| 0 | publicDomain 裸域名（仅管理入口） | `dsh.example.com` → `/_admin` |
-| 1 | publicDomain 下的子域名 | `pc2.dsh.example.com` |
-| 2 | 持久化的每机器端口 | `10.1.2.87:30810` |
-| 3 | directSlug | 入口机器自己的 `10.1.2.87:30809` 或本机 `127.0.0.1:30809` |
-
-dsh 使用绝对 `/api` 路径，所以每台机器必须有独立 origin，不能放在子路径下。
-域名模式默认不打开成员端口，新增机器只需注册设备；同一台机器的本机 loopback 入口仍保留。
-端口模式不需要域名；同主机不同端口共享 cookie，边界见 [安全](04-security.md)。
-
-## 4. 隧道协议
-
-### 4.1 每条流独立
-
-采用 work connection 模型：一条控制 WebSocket 管理设备，每条数据流使用独立 WebSocket。
-一条流失败不影响其他流；新数据流需要额外一次回拨。
-
-### 4.2 控制信道
-
-路径 `/_tunnel/control`，当前协议版本为 3。
-
-1. connector 发送 hello，relay 下发随机挑战。
-2. connector 用 Ed25519 私钥签名；首次注册携带一次性注册令牌。
-3. relay 验证签名和设备状态，完成认证后标记在线。
-4. 控制帧承载 open-stream、心跳、dsh token 和状态上报。
-
-心跳每 30 秒一次，90 秒无响应判离线。重连按 1 至 30 秒指数退避并加抖动。
-设备被停止并移除等致命错误使 connector 退出；插件时代不再联动整套停机，remote-runtime 在下次宿主启动时重拉。
-
-### 4.3 数据信道
-
-1. relay 生成 stream id 和 60 秒有效的一次性 stream token。
-2. 经控制信道通知 connector 回拨 `/_tunnel/stream`。
-3. relay 验证 token 并配对；connector 连接 `127.0.0.1:<dsh.port>`。
-4. connector 双向搬运字节，不解析 HTTP 或 dsh 业务数据。
-
-HTTP 转发使用 `node:http`，通过 `createConnection` 注入隧道 Duplex。
-WebSocket 走独立 upgrade 路径，不能交给普通 HTTP 路由处理。
-
-### 4.4 dsh 信任与浏览器认证
-
-relay 原样转发 Host/Origin；dsh 需要的 trusted host 由套件的 dshRemoteTrust 服务注入 connection 行。
-条目必须是裸 host 或 host:port，错误格式会导致 dsh 启动失败。
-远程设置能力由 [remote-settings](../packages/plugins/remote-settings/README.md) 提供。
-
-remote-runtime 经 `ctx.connection.authenticatedUrl()` 取得启动 token 写入 `~/.dsh-remote/dsh-token`，relay 首访 401 时读取该文件发起一次重定向。
-仅当 dsh 对首页返回 401，relay 才返回一次 `?token=` 重定向，让 dsh 自己交换 cookie。
-已带 token 的请求不重定向，API 的 401 原样透传；relay 登录始终在此前完成。
-
-必须原样转发 `/plugins/??…` combo 路由的 raw URI。
-`/api/remote.mux` 是唯一的 dsh 下行多路复用 WebSocket。
-源码依据见 [传输与浏览器认证](dsh/transport.md)。
+两层产物都必须存在：`dist/index.js`（宿主）与 `dist/client.js`（浏览器）。
+构建缺失时 `pnpm plugins:build` 与 `pnpm suite:build` 都会响亮失败。
 
 ## 5. 技术选型
 
 | 用途 | 实现 |
 |---|---|
-| 语言、工作区 | TypeScript、ESM、pnpm workspace |
-| 构建、开发、测试 | tsdown、tsx、Vitest |
-| WebSocket、管理页 | ws；hono 只用于管理页 |
-| 校验、持久化 | zod；Node 内置 node:sqlite |
-| 密码、设备签名 | Node 内置 scrypt、Ed25519 |
-| JWT、TOTP、限流 | jose、otplib、rate-limiter-flexible |
-| 日志 | pino |
-| Windows 托盘 | Go 标准库与 Win32 API |
+| 语言、工作区 | TypeScript、ESM、pnpm workspace（`packages/*`、`plugins/*`） |
+| 构建、开发、测试 | tsdown（rolldown）、tsx、Vitest |
+| 校验、依赖注入 | dsh 自带的 schemastery/cordis 机制；插件不引第二套运行时 |
+| 直接依赖 | 固定版本；dsh 家族版本由根 `pnpm.overrides` 钉住 |
+| 进程与原生能力 | 一律经 dsh 提供的服务（`tools`、`terminal`、`sandboxPolicy` 等），插件不引原生模块 |
 
-直接依赖固定版本，版本以 manifest 为准，`pnpm check:dependencies` 检查。
-relay、connector 与 remote-runtime 不引入原生模块。
+## 6. 开发与验证链
 
-## 6. 请求顺序
+| 命令 | 作用 |
+|---|---|
+| `pnpm plugins:build` | 构建全部插件的两层产物（`packages/plugin-ui` + `plugins/**`） |
+| `pnpm suite:build` | 生成套件 patch 并物化依赖闭包到 `plugins/suite/node_modules/` |
+| `pnpm dev` | 隔离开发实例：DSH_HOME=`~/.dsh-dev`、profile `dsh-kit-dev`、端口 3180，启动前自动检查运行时并安装套件 |
+| `node scripts/<主题>-check.mjs` | 隔离 home + 真实 dsh 的冒烟断言，入口表见 [源码依据](02-dsh-facts.md) |
+| `node scripts/verify-suite-client.mjs --token <token>` | 校验运行中宿主首页的 `__DSH_BOOT__` 图含全部 16 个浏览器行 |
 
-1. 公网 HTTPS 由反向代理终结，原始 Host 保留；本机 loopback HTTP 直接连接 relay，不经过公网反代。
-2. relay 验证浏览器会话；仅 loopback socket 与 loopback Host 同时成立才免登录。
-3. 校验原始 Host/Origin、sec-fetch-site，域名公网请求要求 HTTPS Origin，loopback 请求允许 HTTP Origin；解析目标机器并检查访问权限及在线状态。
-4. 创建隧道数据流，原样转发请求头、URL、body。
-5. dsh 验证信任规则及自己的 cookie，响应经原路返回。
-
-relay 不解析、缓存或重建 dsh 业务协议；首页 token 重定向是唯一业务相关例外。
+套件所在 profile 没有 HMR：改动插件任何一半后都要重新构建并重启 dsh。

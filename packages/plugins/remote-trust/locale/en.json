@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Remote trust bootstrap",
-    "description": "Computes the authority set dsh must trust from membership and local addresses."
-  }
-}

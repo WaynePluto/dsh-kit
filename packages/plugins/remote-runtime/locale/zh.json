@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "远程运行时",
-    "description": "在 dsh 内托管 relay 与 connector，提供远程访问能力"
-  }
-}

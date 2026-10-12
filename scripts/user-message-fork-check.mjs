@@ -6,12 +6,12 @@
  */
 
 import { join } from 'node:path'
-import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, ROOT, dshPluginOverlays } from './local-config.mjs'
+import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, DSH_HOME_DEV, ROOT } from './local-config.mjs'
 import { createCheckContext, runLiveDshCheck } from './lib/check-context.mjs'
 import { inspectClientBundle as inspectClientArtifact } from './lib/check-client-bundle.mjs'
 
-const PACKAGE_ID = '@dsh-remote/dsh-plugin-user-message-fork'
-const CLIENT_BUNDLE = join(ROOT, 'packages', 'plugins', 'user-message-fork', 'dist', 'client.js')
+const PACKAGE_ID = '@dsh-kit/dsh-plugin-user-message-fork'
+const CLIENT_BUNDLE = join(ROOT, 'plugins', 'user-message-fork', 'dist', 'client.js')
 const portArgument = process.argv.indexOf('--port')
 const PORT = portArgument === -1 ? 3098 : Number(process.argv[portArgument + 1])
 const HOME = join(DEV_DIRECTORY, 'user-message-fork-check-home')
@@ -76,8 +76,8 @@ function inspectBundle() {
 const context = createCheckContext({
   dshBin: DSH_BIN,
   profile: DSH_PROFILE,
-  overlays: dshPluginOverlays,
   home: HOME,
+  sourceHome: DSH_HOME_DEV,
   cwd: ROOT,
   port: PORT,
   trustedHost: `127.0.0.1:${PORT}`,

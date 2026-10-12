@@ -1,8 +1,8 @@
 # 官方桌面应用启动结构
 
 核实于 dsh-v0.2.0-rc.2（git `639ed01539`）。源码路径相对 dsh 仓库根。
-本项目不依赖官方桌面版运行，本页只记录其启动时序的查证结论，作为
-dsh-remote 桌面启动优化的对照基线；行为变化在升级 dsh 时复核。
+本页记录官方桌面版（本题的主宿主）的启动时序查证结论，供插件开发与排查参考；
+行为变化在升级 dsh 时复核。
 
 ## 架构
 
@@ -40,17 +40,15 @@ dsh-remote 桌面启动优化的对照基线；行为变化在升级 dsh 时复�
 6. 关窗即隐藏，宿主常驻；再次双击走 single-instance 只 focus
    （`main.ts` "Closing hides" 注释与 `single-instance.ts`）。
 
-## 对 dsh-remote 的对照结论
+## 对插件开发的结论
 
-- 官方快 = `max(Electron 启动 + 本地前端加载, asar 内宿主 boot 约 2.6s) + 一次 IPC`，
-  冷启动到可用约 3s（实测本机）；其中 asar 化的运行时树是散装布局没有的
-  结构性加速，dsh 插件树装载本身两边同价（散装裸 profile 实测约 2.8s）。
-- 可借鉴且已借鉴：介质一致性校验从「每次启动逐字节哈希」改为
-  「打包期指纹清单」（本项目 `stamp.json`，见 [插件机制](plugins.md)）；
-  配套升级只重装实际变化条目。
-- 不可直接照搬：`--expose-internals` 的 ready IPC 是官方私有契约
-  （本项目以 token 行 stdout 为上限，不能 fork dsh）；asar 归档访问依赖
-  Electron 的虚拟文件系统，纯 Node 宿主（本项目 launcher spawn 的 dsh）
-  不支持等价物——同等收益要等上游把 CLI/分发形态 bundle 化；
-  `dsh-app://` 本地协议 + `/api`/WS 转发在 Wails/WebView2 下没有干净的
-  WebSocket 转发路径，且会引入壳内代理与新 Origin 语义，未采纳。
+- 宿主启动约 2.6s 到端口监听（冷启动本机实测），其中 asar 化的运行时树是主要加速来源；
+  官方 dsh 不跑包管理器，也不在启动时校验依赖版本——插件在 profile 里的依赖由
+  用户经插件管理页安装时确定。
+- 装插件写的是 profile 目录（asar 之外），第三方插件与官方运行时树物理分离；
+  插件产物缺失或 patch 写错只会影响自己那一行，不会修改 app.asar。
+- 宿主就绪后经 IPC 把 `{type:'ready', url, injections}` 给壳，壳用一次 loopback
+  fetch 换 cookie；`/api` 与 WS 由协议转发到固定端口 `127.0.0.1:19387`。
+  排查客户端插件问题要以渲染进程 console 为准（`ELECTRON_ENABLE_LOGGING`）。
+- 关窗即隐藏、宿主常驻；再次双击走 single-instance。重启 dsh 即彻底重启宿主进程，
+  插件改动必须这样做才能生效。

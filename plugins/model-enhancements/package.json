@@ -1,0 +1,27 @@
+{
+  "name": "@dsh-kit/dsh-plugin-model-enhancements",
+  "version": "0.1.0",
+  "description": "整合 Copilot 登录、模型目录、模型能力与常用模型的模型增强 Bundle。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "dependencies": {
+    "@dsh-kit/dsh-plugin-copilot-auth": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-models-catalog": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-model-capabilities": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-favorite-models": "workspace:0.1.0"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  }
+}

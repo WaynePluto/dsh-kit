@@ -1,8 +1,7 @@
-// 开发入口（替代已退役的 dev-stack）：准备隔离 dsh 运行时 → 构建套件 →
+// 开发入口：准备隔离 dsh 运行时 → 构建套件 →
 // 在隔离 home 准备开发 profile（base + web-app + suite）→ 启动 dsh web。
 //
-// 与正式实例互不干扰：DSH_HOME=~/.dsh-dev、station home=~/.dsh-remote-dev、
-// dsh 端口 3180、relay 端口 31809（经 dev home 的配置文件下发）。
+// 与日常实例互不干扰：DSH_HOME=~/.dsh-dev、dsh 端口 3180。
 // 用法：node scripts/dev-suite.mjs [--built]（--built 跳过插件构建，仅复用现有产物）。
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -13,13 +12,11 @@ import { ensureDevelopmentRuntime } from './dev-runtime.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DSH_HOME = join(homedir(), '.dsh-dev')
-const STATION_HOME = join(homedir(), '.dsh-remote-dev')
-const PROFILE = 'dsh-remote-dev'
+const PROFILE = 'dsh-kit-dev'
 const DSH_PORT = 3180
-const RELAY_PORT = 31_809
-const SUITE_DIRECTORY = join(ROOT, 'packages', 'plugins', 'suite')
+const SUITE_DIRECTORY = join(ROOT, 'plugins', 'suite')
 const DSH_VERSION = '0.2.0-rc.2'
-const SUITE_PACKAGE = '@dsh-remote/dsh-plugin-suite'
+const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
 
 const runtime = await ensureDevelopmentRuntime()
 const dshEnv = { ...process.env, DSH_HOME }
@@ -50,9 +47,13 @@ if (!existsSync(manifestPath)) {
     dsh: { profile: { bundles: [] } },
   }, undefined, 2)}\n`)
   writeFileSync(join(profileDirectory, 'cordis.patch.yml'), '[]\n')
-  // pnpm 12 会在安装官方闭包时写入 allowBuilds 占位并硬失败；显式置 false（预编译产物）。
+  // allowBuilds 逐包显式决定，避免 pnpm 遇未列出的带脚本包硬失败；
+  // 清单对齐官方桌面 project-manager.ts 的 workspaceFile（0.2.0-rc.2）：
+  // 原生模块（subprocess-local/koffi/node-pty/fs-ext）置 true，纯 JS/预编译包置 false。
   writeFileSync(join(profileDirectory, 'pnpm-workspace.yaml'),
-    'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\nallowBuilds:\n  koffi: false\n  esbuild: false\n  node-pty: false\n  protobufjs: false\n')
+    'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\nallowBuilds:\n' +
+    "  '@deepseek-ai/dsh-subprocess-local': true\n  '@google/genai': false\n  esbuild: false\n  fs-ext: true\n" +
+    '  koffi: true\n  node-addon-require-builtin: false\n  node-pty: true\n  protobufjs: false\n')
 }
 runDshCli(['add', `@deepseek-ai/dsh-base@${DSH_VERSION}`, `@deepseek-ai/dsh-web-app@${DSH_VERSION}`, SUITE_DIRECTORY])
 
@@ -63,16 +64,9 @@ manifest.dsh.profile ??= {}
 manifest.dsh.profile.bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', SUITE_PACKAGE]
 writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
 
-// dev 的 relay 端口与正式实例（30809）错开，经 station home 配置文件下发。
-mkdirSync(STATION_HOME, { recursive: true })
-const stationConfigPath = join(STATION_HOME, 'dsh-remote.config.json')
-if (!existsSync(stationConfigPath)) {
-  writeFileSync(stationConfigPath, `${JSON.stringify({ relay: { port: RELAY_PORT } }, undefined, 2)}\n`)
-}
-
-process.stdout.write(`开发实例：profile=${PROFILE} dsh=http://127.0.0.1:${DSH_PORT} relay 端口=${RELAY_PORT}\n`)
+process.stdout.write(`开发实例：profile=${PROFILE} dsh=http://127.0.0.1:${DSH_PORT}\n`)
 const child = spawn(process.execPath, [runtime.dshBin, PROFILE, `--port=${DSH_PORT}`, '--no-open'], {
-  cwd: ROOT, stdio: 'inherit', env: { ...dshEnv, DSH_REMOTE_HOME: STATION_HOME },
+  cwd: ROOT, stdio: 'inherit', env: dshEnv,
 })
 child.on('close', code => process.exit(code ?? 0))
 for (const signal of ['SIGINT', 'SIGTERM']) {

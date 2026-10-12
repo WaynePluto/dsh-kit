@@ -88,7 +88,7 @@ danger-full-access 不额外提问；受限模式需 ctx.approval 且仅 allowed
 
 ### Windows 进程树
 
-项目 launcher 使用 taskkill /T /F；detached 只解除控制台，不清除记录的父 pid，单层 detached 会被一起枚举。
+dsh-kit 插件杀进程树统一用 taskkill /T /F；detached 只解除控制台，不清除记录的父 pid，单层 detached 会被一起枚举。
 services 使用两级 Node 启动器：
 
 ```text

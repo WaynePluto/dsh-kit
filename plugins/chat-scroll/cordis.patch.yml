@@ -1,0 +1,9 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+# `./` 开头的路径由 dsh 锚定到本文件所在目录；不能写绝对路径。
+#
+# 本插件的行为全部在浏览器半：宿主半只是让 dsh 的客户端模块系统顺着
+# overlay 找到 package.json，再把 dist/client.js 下发到页面。
+- insert:
+    - id: chat-scroll
+      name: './dist/index.js'

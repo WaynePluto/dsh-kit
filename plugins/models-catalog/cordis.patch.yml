@@ -1,0 +1,18 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+#
+# `./` insert 名字由 dsh 锚定到本文件目录再转成 file:// URL，故这里只写相对路径（D17）。
+# 双面插件通过 package.json 的 `dsh.client` 与 `exports["./client"]` 下发 `dist/client.js`；
+# 缺失客户端产物会让 dsh 启动失败。`id` 让后续 `--patch` 按 id 覆盖，顺序为 bundle/profile/DSH_HOME/`--patch`。
+# 宿主同步恢复持久化 runtime catalog；`modelsCatalogBootstrap` 让 adapter 在 settings validator 前等待，
+# 否则重启时 mixed-route model 会过早校验。机器相关代理地址通过 HTTPS_PROXY / HTTP_PROXY 配置。
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  inject:
+    - llm
+    - modelsCatalogBootstrap
+    - modelCapabilitiesBootstrap
+
+- insert:
+    - id: models-catalog
+      name: './dist/index.js'

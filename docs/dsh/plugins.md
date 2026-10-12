@@ -11,32 +11,19 @@
 应用顺序为 Bundle → profile patch → home patch → `--patch`（argv 顺序），后者覆盖前者。
 `--patch` 可重复传入；insert 中 `./` 或 `../` 开头的入口锚定到 patch 所在目录。裸包名相对
 Bundle 自身解析，因此组合 Bundle 必须将组件声明为固定版本 dependencies，并从自己的安装目录
-解析，不能依赖 launcher 工作区恰好存在同名包。
+解析；本地目录安装是 `link:` 语义（不安装依赖），套件因此自带物化好的 `node_modules/`。
 
 profile 的 `dependencies` 是第三方 Bundle 是否安装的事实，`dsh.profile.bundles` 是 Bundle 是否
 启用的事实，profile patch 中目标行的 `disabled` 则是组件是否停用的事实，三者不能混用。
-项目首次默认安装第三方 Bundle，配套升级只处理仍在 dependencies 中的包，并保留后两种状态；
-卸载后不得仅凭“默认清单”重新加入 dependency 或 bundles。
-升级判定用状态文件（`dsh-remote-bundles-state.json`）记录的介质版本与内容指纹：
-两者与介质一致且 profile `node_modules` 链接完好时启动跳过介质物化
-与 pnpm（快路径）；版本或内容变化、链接缺失、迁移或上次同步中断走完整路径。
-指纹优先取介质生成时随 `catalog.json` 一并写出的 `stamp.json`（一次小文件读取，
-算法与 launcher 回退哈希共用 `packages/launcher/src/media-stamp.ts`）；清单缺失或
-条目不全才逐字节哈希介质树，删除 `stamp.json` 可强制回退逐字节校验。
-指纹覆盖了开发栈每次构建重写 `.dev/plugins` 的同版本变化；旧状态文件没有指纹，
-升级后第一次运行会走一次完整路径补齐。完整路径只重装**实际变化**的仍安装条目
-（版本或指纹变化者）；版本与指纹都未变、链接完好的条目沿用现有安装副本，
-但其运行时依赖闭包仍按「安装项 ∪ 沿用项」重建——profile 依赖以 link: 指向
-缓存目录，沿用条目在运行期仍从缓存解析依赖。包管理器主版本迁移会重建整个
-node_modules，届时沿用条目回到完整重装列表。
+dsh-kit 只使用官方安装流程：「添加插件」写 dependency 与 bundles，插件页开关改 bundles，
+组件开关改 profile patch 的 `disabled`；项目不实现自己的安装、升级或状态记忆，也不在卸载后补回。
 
-项目介质物化由 `packages/launcher/src/plugin-copy.ts` 以最多 8 路文件操作复制，普通依赖仍是
-真实文件；仅 pi-ai/http-proxy 保持原有共享模块链接，不改变安装布局或依赖版本。
-失败后停止派发并等待在途写入结束；profile 根的 `.dsh-remote-plugin-media.pending` 在修改缓存前写入，
-复制、官方安装和状态提交全部成功才移除。标记存在时禁止快路径，但保留旧 offered/停用/卸载状态，
-避免重试自动补回用户已卸载的包。慢路径各步骤开始时（复制介质/准备依赖/包管理器安装）经
-状态行 `pluginStage` 标记上报，桌面加载页只把它映射为固定文案（未知标记沿用阶段默认文案）；
-阶段耗时数值仍只输出到 launcher 日志，不进入加载页状态协议。
+套件 patch 由 `scripts/build-suite.mjs` 生成，不是手写文件：文件头是固定契约（`llm-pi-ai` 屏障行、
+connection 行覆写与模型屏障占位行），其余为各组件 `cordis.patch.yml` 顶层条目的改写（入口换成裸包名，
+逐行补 `disabled: !!js …bundles.includes('@dsh-kit/dsh-plugin-suite')…`）。生成后脚本把
+组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`；`@deepseek-ai/*` 由 dsh
+运行时树提供，不复制第二份单例。套件包移动目录后仍可工作（入口是包内相对路径，
+裸包名从套件自身安装目录解析）。
 
 profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖普通项目插件 config 需要更靠后的 patch，
 且目标行必须有稳定 id。用户可编辑的插件字段通过带 volatile Config 的插件行和 configForms 写入；
@@ -65,33 +52,37 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
   这会使任意 Bundle 开关被无关插件的 `failed to import` 阻断；磁盘选择已保存但旧 fiber 未卸载，
   随后的卸载又会得到 `bundle-in-use`。进程重启只会掩盖问题，不能以“重启后正常”代替稳定 ID。
 
-### dsh-remote 分发约束
+### dsh-kit 分发约束
 
-- 根 `plugin-catalog.json` 将 20 个功能组件映射为 4 个组合包与 6 个独立包。发行介质位于
-  `plugins/`，开发介质位于 `.dev/plugins/`；两者都用本地绝对目录走上述官方安装流程。
+- 根 `plugin-catalog.json` 将 18 个功能组件映射为 3 个组合包与 6 个独立包；
+  它们又收进 `plugins/suite` 一个套件包，用本地绝对目录走上述官方安装流程。
 - 组合包是安装/卸载/升级单位，其 `cordis.patch.yml` 仍为组件保留独立稳定行。组件从 Bundle
   内嵌依赖的相对路径装载，并用 Bundle 选择状态跳过 HMR 卸载阶段的瞬时残留行。普通组件可以
   单独 disabled；models-catalog 与 model-capabilities 共同构成 `llm-pi-ai` 启动屏障，不能只停一行。
-- directory-picker-browse 需要 Bundle 层静态 override 原生 picker，因此必须是独立包，不能作为
-  可单独停用的组合包组件。
-- connection 的 webRuntime/webServer 注入和模型 HMR 启动屏障由壳级 remote-privileged
-  以 `--patch` 常驻加载，不进入原生第三方插件安装、启停与卸载流程。模型组件在启动时把屏障
-  挂到 root fiber；未选择模型增强时由壳提供占位屏障，避免 Bundle 切换重启 `llm-pi-ai`。
+- 套件 patch 的 `llm-pi-ai` 覆写行、connection 行覆写与模型屏障占位行是项目常驻契约：模型组件启动时
+  把屏障挂到 root fiber，未启动时由占位行兜底，避免 Bundle 切换重启 `llm-pi-ai`。connection 覆写
+  把官方行的 `inject` 从 `[webRuntime]` 扩为 `[webRuntime, webServer]`：cordis 4 的 service.ctx 经
+  shadow 解析到服务构造行，`connection.rpc.handle` 的通道归属 connection 行 fiber，组件行自己的
+  inject 不参与解析；覆写同时整行替换 config，必须复刻官方 `trustedHosts` 表达式以免丢信任面
+  （出处：`packages/client/connection/src/rpc-host.ts` 的 `get rpc()` 与 `packages/boot/plugin-manager/src/build-approval.ts`）。
+- profile 初始化的 `allowBuilds` 逐包显式决定（缺项会让 pnpm 硬失败 ERR_PNPM_IGNORED_BUILDS）：
+  开发 profile 的清单对齐官方桌面 `apps/desktop/src/project-manager.ts` 的 `workspaceFile`，
+  原生模块（subprocess-local/koffi/node-pty/fs-ext）置 true，纯 JS/预编译包置 false。
+- 插件不写项目专属数据目录、不注入环境变量；不存在 launcher、外部介质同步或第二套插件管理器。
 
 ## 简洁模式预设 Bundle
 
 出处：`packages/bundle/web-app/cordis.patch.yml`、`packages/preset/agent-preset-registry/src/index.ts`、
 `packages/preset/agent-preset/src/index.ts`、`packages/preset/persona/src/index.ts`、
 `packages/core/agent-tool-presentation/src/index.ts`、`packages/core/tools/src/index.ts`（presentAs/wireSchemas/collapses）、
-`packages/core/system-prompt/src/index.ts`；项目定义见 `packages/plugins/concise-mode/cordis.patch.yml`。
+`packages/core/system-prompt/src/index.ts`；项目定义见 `plugins/concise-mode/cordis.patch.yml`。
 
 dsh-web-app 提供 `agent-preset-registry` 与原生预设；concise-mode Bundle 排在其后，用 patch 直接
 插入一行 `preset-concise` 的 `@deepseek-ai/dsh-agent-preset` 声明，`config.plugins` 内联声明
-persona、工具与压缩插件，行尾嵌套 `run-code` 行（`@dsh-remote/dsh-plugin-run-code`）。
-这里没有 preset root、locator entry 或以文件系统目录加载预设的逻辑；只在 dsh-remote-web
-profile 增加这一个预设。preset 嵌套行以声明方 baseUrl 解析裸包名：开发介质由
-plugin-catalog 的组件机制复制进 concise-mode 目录的 node_modules，套件由 build-suite
-物化进套件 node_modules。
+persona、工具与压缩插件，行尾嵌套 `run-code` 行（`@dsh-kit/dsh-plugin-run-code`）。
+这里没有 preset root、locator entry 或以文件系统目录加载预设的逻辑；套件所在 profile 里
+只增加这一个预设。preset 嵌套行以声明方 baseUrl 解析裸包名，因此 run-code 由
+`build-suite.mjs` 物化进套件 `node_modules/`。
 
 0.1.7-rc.1 不再支持旧版「复制预设 → 写入用户预设目录」：预设现在是 profile/Bundle 中的
 `@deepseek-ai/dsh-agent-preset` 声明，原生设置页只提供「查看配置」（只读）及「让 Agent 帮我创建预设模式」。
@@ -101,7 +92,7 @@ plugin-catalog 的组件机制复制进 concise-mode 目录的 node_modules，�
 `packages/preset/agent-presets/src/authoring.ts`；旧方案被归档于
 `.agents/notes/archived/simplification/2026-08-08-copy-only-preset-authoring.zh.md`。
 新版依据见 `packages/client/ui-agent-preset/src/client/AgentPresetSection.tsx`、
-`packages/preset/agent-preset-registry/src/index.ts`。remote-settings 不接管预设页，也不恢复旧版写目录接口。
+`packages/preset/agent-preset-registry/src/index.ts`。
 
 预设保留文件、搜索、技能、前台 shell、前台一次性子代理、用户提问、待办和压缩。
 shell 与 subagent 的 enableRunInBackground 为 false，subagent 使用 one-shot。
@@ -127,10 +118,10 @@ React、Cordis、store、slots、ui-primitives 等共享运行时保持 external
 跨插件通过 Cordis 服务协作，避免重复打包造成模块实例不一致。
 
 缺失 dist/client.js 会导致客户端模块激活失败，可能使整个 Web UI 无法启动。
-launcher、开发栈和打包脚本必须同时检查宿主与浏览器产物。
+`pnpm plugins:build` 与 `pnpm suite:build` 必须同时检查宿主与浏览器产物。
 
 注册时 readFileSync 将 bundle 读成不可变快照，以 IMMUTABLE_CACHE 下发；只有 rebuilt() 会重读，
-该回调由 HMR watch 触发。dsh-remote-web 没有 HMR，任何插件改动都必须构建并重启 dsh。
+该回调由 HMR watch 触发。套件所在 profile 没有 HMR，任何插件改动都必须构建并重启 dsh。
 
 ## 原生客户端加载页
 
@@ -139,11 +130,8 @@ launcher、开发栈和打包脚本必须同时检查宿主与浏览器产物。
 
 `AppWebEntry` 构造时创建 `BootPage`（`Loading plugins…`），随后在当前浏览器文档里
 预取、加载并激活客户端插件，最后交给 `uiRenderer` 挂载工作台；没有最短展示时间。
-桌面 launcher 的 ready/token 只表示后台可进入，不代表浏览器插件已经加载完成。
-壳的 loopback 加载页与原生 BootPage 是先后两份文档；前者不覆盖后者，也不能代替其加载阶段。
-未观察到原生提示不等于流程被跳过。隔离 WebView2 实测：热缓存样本的 BootPage 在
-130.4ms 被工作台替换，首次绘制为136ms，确实可能没有可见帧；冷缓存样本首绘后仍保留约165ms。
-测量方法、三次结果及边界见 [启动时序调研](../reference/startup-timing.md)。
+未看到启动提示不等于流程被跳过：热缓存下 BootPage 可能在首绘前就被替换。
+后台进程“已可进入”不代表浏览器插件已经加载完成，排查仍需看渲染进程日志。
 
 ## index.html 注入
 
@@ -154,10 +142,10 @@ JSON 数据，serve 形态渲染进 index.html 文本，静态 worker 形态由 
 按同一顺序执行。行类型：`global`（先于后续 script 行给 globalThis 赋值）、`script`
 （内联经典脚本，text 不得含 `</script`）、`script-src`/`script-preload`、`style`、`html`。
 
-head 位置的经典脚本 parser-blocking，先于页面 combo 模块求值。remote-settings 用
-global 行注入 `__DSH_TRANSPORT__`；browser-compat 用 head script 行在旧 WebKit 上垫平
-Iterator/AbortSignal/Promise 能力，并建立当前页面内存中的诊断桥（函数体 `toString()` 序列化，
-必须自包含、不引用模块作用域）。client 半读取该桥显示临时日志，不向 Host 发 RPC。
+head 位置的经典脚本 parser-blocking，先于页面 combo 模块求值。行是给宿主插件的通用能力：
+当前 dsh-kit 组件没有再使用它（原先用它注入 `__DSH_TRANSPORT__.ownsHost` 与旧 WebKit 垫片，
+随远程能力删除）。如果将来要用，注意函数体 `toString()` 序列化限制：必须自包含、
+不引用模块作用域，也不能包含 `</script`。
 
 原生启动页承担认证交接之后的浏览器插件加载等待（见上文「原生客户端加载页」）。
 创建 DOM 不等于立即绘制；不能用 index 注入或 rAF 中看到该节点来保证用户一定看得到。
@@ -174,7 +162,7 @@ composition Config：
   `apply(ctx, config)` 收到解析后的 config；读值 `config.x.get()`（兼容 schema 直接解析出的普通值），
   响应热更新用 `ctx.on('loader/volatile-update', cb)`（事件名声明来自 `@deepseek-ai/cordis-plugin-loader`）。
 - 跨字段校验挂 `ctx.on('internal/config', function (this: Fiber, _raw, next) {...})`：`next()` 取候选，
-  `this !== ctx.fiber` 时放行；校验抛错即拒绝写入、不落盘。参考实现 `packages/plugins/proxy/src/index.ts`。
+  `this !== ctx.fiber` 时放行；校验抛错即拒绝写入、不落盘。参考实现 `plugins/proxy/src/index.ts`。
 - 宿主 SettingsForms 仍提供跨命名空间 `describe()` / `mutate(ns, ops, expectedRevision?)`；
   表单命名空间是 profile 行的 entry id（`cordis.patch.yml` insert 行的 `id` 字段），不再与文案命名空间同串。
 - 浏览器半 `ctx.configForms.get<T>(entryId)` 返回 ConfigForm（inject 用 `configForms`）：
@@ -197,10 +185,8 @@ composition Config：
 - 接管现有 renderer 使用 priority:-1；并列添加用 list 或插件定义的子槽。
 - **设置导航是例外**：当前 `ui-settings-general/src/client/index.ts` 用原始 `slots.entries('settings.section')`
   投影导航，而不是 `entriesOfSlot`。同 id 的 priority shadow 虽然只渲染一个正文，却会生成两个菜单项。
-  不应把 list 正文 shadow 当作无副作用的菜单增强。remote-settings 不注册或包装 Agent 预设页面，也不添加路径复制 UI。
-- 普通 list 槽由标准 `renderSlot` 按 cell 选择 priority 最低的 winner。顶部
-  `conversation.session.header.utilities/open-in-app` 没有另做 raw ledger 导航投影，因此 remote-settings 可用
-  `priority:-1` 复用原 component/store/inject/locale，仅替换注入的 Explorer launch；其它 app 与其它 header 项保持原生。
+  不应把 list 正文 shadow 当作无副作用的菜单增强。
+- 普通 list 槽由标准 `renderSlot` 按 cell 选择 priority 最低的 winner。
 - `ctx.slots.onEntryError` 观察被错误边界捕获的 slot renderer 异常；它只覆盖渲染边界，不等于全局
   （0.1.6 起回调参数是 StoredEntry | StoredFactory 联合，Factory 没有 options 字段，需 `'options' in entry` 收窄）
   `window.error` 或 Promise 拒绝监听。监听器随插件 fiber 清理，来源为 `packages/client/ui-renderer/src/client/registry.ts`。
@@ -322,31 +308,12 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
 `packages/client/ui-settings/src/client/config-form.ts`、`packages/boot/config-editor/src/index.ts`。
 
 - 三态为 `light/dark/system`，默认 `system`；宿主配置为原生 `ui-theme` 行的 volatile `config.preference`。
-  ConfigEditor 写活动 profile 的 `cordis.patch.yml`，不是浏览器 localStorage；不由 relay 直接读写该文件。
+  ConfigEditor 写活动 profile 的 `cordis.patch.yml`，不是浏览器 localStorage。
 - 客户端公开服务为 `ctx.theme`：`getTheme()` 读快照，`setTheme()` 改偏好，`theme/change` 通知变化；
   内部通过 `configForms.get('ui-theme')` 订阅配置。`setTheme()` 本身返回 void、先本地更新，不能当作持久化成功的回执。
 - 可访问宿主设置的客户端共享同一宿主/profile 的持久化偏好；不是每个浏览器独立保存。
   缺少可写宿主设置时不能承诺跨客户端持久化同步。`system` 只共享选择，各设备自行按操作系统解析明暗。
 - 宿主每次 index 渲染注入当前偏好与启动配色，刷新时不依赖浏览器存储恢复。
-- 项目管理页按 D26 单向跟随此偏好；登录、首次设置和离线页仍使用独立 Cookie。
-  公开 `/_theme` GET 只改 Cookie，不接入宿主设置写入，也不影响管理页。
-
-### 工作站只读主题投影
-
-项目实现：`packages/plugins/remote-privileged/theme-projection.mjs`、
-`packages/protocol/src/theme-projection.ts`、`packages/relay/src/admin/{native-theme,theme-events,theme-client}.ts`。
-
-- 壳级插件等 `ctx.loader.await()` 完成，从 `loader.entries()` 定位 include 下唯一活跃的 `ui-theme` 行，
-  读 `fiber.config.preference.get()`；没有可用原生行时保留旧投影并输出固定诊断，不猜默认配置。
-- 订阅 `app-boot/config-reload`：`reconcileProfilePatches` 完成活跃性校验后广播，ConfigEditor 持久化修改会经过此路径。
-  原生 `settings.describe()` 返回完整描述列表，不接收 namespace 参数；不把定向 `loader/volatile-update` 当作全局事件。
-  来源：`packages/boot/app-boot/src/profile.ts`、`packages/boot/config-editor/src/index.ts`；已核对0.2.0-rc.2源码。
-- launcher/dev-stack 用 `DSH_REMOTE_THEME_FILE` 传绝对路径。插件原子写 `dsh-theme.json`，
-  严格只有 `{version:1,preference:light|dark|system}`，最多1024 UTF-8字节；不携带原生配置、URL或凭据。
-- relay 只读项目投影，以目录 `fs.watch` 覆盖原子替换，去重后通知管理页；坏文件/缺失保持进程内上次有效值，首次为system。
-  管理 HTML 直接带初值，固定哈希脚本单向消费 NDJSON，认证/连接寿命限制见 [安全](../04-security.md#管理页只读主题流)。
-- 隔离真实 dsh 原生 mutate 与 Chrome 管理页验证 dark→light→system、非法值拒绝；
-  同一文档和一条流内更新，草稿不变，CSP无违规。升级须复核上述loader/重载提交点与原生theme字段。
 
 ### 视觉 token
 
@@ -415,8 +382,6 @@ token 拼写和实际值是两件事，需用真实页面 getComputedStyle 检�
 （`--dsh-frame-overlay-top` 由 `packages/client/ui-layout/src/client/AppFrame.module.css` 发布：
 桌面为 `--dsh-frame-top-clearance + 20px`，浏览器为 20px）；全屏 mask 顶部让出标题栏
 （`inset: var(--dsh-frame-chrome-top,0px) 0 0`）。外部留白来自视口高度限制和居中，不是标题/header 的 padding。
-项目 relay 管理页是顶部对齐的独立文档，不应复制整套 modal：其 `--dsh-remote-page-top-gap`
-保留24px（窄屏12px）页面留白；桌面 `chromebar.go` 将36px标题栏占位与该值叠加，不能覆盖它。
 dsh 文档未定义该项目变量，沿用36px占位和border-box，不改变原生设置样式。
 
 ### Modal 弹窗
@@ -433,8 +398,8 @@ dsh 文档未定义该项目变量，沿用36px占位和border-box，不改变�
 - 全屏能力由 `packages/plugin-ui/src/dialog-fullscreen.ts` 提供：`useDialogFullscreen`（进入前保存几何、
   退出写回、窗口 resize 跟随、按 `open`/`identity` 复位）、`dialogFullscreenButtonRule`、`DialogFullscreenButton`。
   几何写入与拖动 resize 共用同一组 custom properties；全屏时插件隐藏拖动与八向手柄。
-- 实例：services 日志弹窗（`packages/plugins/services/src/client/log-dialog.ts`）与
-  turn-retry 原因弹窗（`packages/plugins/turn-retry/src/client/reason-dialog.ts`）共用同一实现，
+- 实例：services 日志弹窗（`plugins/services/src/client/log-dialog.ts`）与
+  turn-retry 原因弹窗（`plugins/turn-retry/src/client/reason-dialog.ts`）共用同一实现，
   只有 dialog class、data 属性名和图标不同。
 
 ## Dock 约定
@@ -471,8 +436,7 @@ dsh `0.1.5-rc.2` 将通用文件图标统一为 `FileTypeIcon`（用 `path` 或 
 - **Bundle 静默跳过**：dsh 0.1.7 对解析/清单/patch 失败的 Bundle 不再启动即败。0.1.7-rc.2 起
   profile 装载把跳过项收进 `Profile.skippedBundles`（装载过程本身不打印），CLI 装载完成后调用
   `reportSkippedBundles` 每次启动向 stderr 打一次 `dsh: skipping profile bundle "<包名>": <原因>`。
-  launcher 在 dsh 输出行里检测该诊断并响亮警告（`skippedBundleFromLine`）；分发管线的
-  「缺少宿主/浏览器产物」预检因此仍是必要的前置防线。
+  排查安装问题时先看这行输出；构建管线的「缺少宿主/浏览器产物」预检仍是必要的前置防线。
 - **工具参数 schema**：`ctx.tools.register` 收原始 JSON Schema，只有 `defineTool` 会把属性表简写
   编译成对象根 schema（`parameterSchemaSpecToJsonSchema`，`packages/core/tools/src/schema.ts`）。
   裸注册的 `parameters` 必须自己写全 `type: 'object'` 与 `properties`，属性级 `required: true`

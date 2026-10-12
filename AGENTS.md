@@ -1,9 +1,8 @@
 # AGENTS.md
 
-适用于本仓库中的 AI 编码助手。本项目 dsh-remote（用户文案「DSH Remote」）是官方
-DeepSeek Harness (dsh) 的完整封装工作站：桌面应用与绿色/服务介质内置并托管 dsh，
-带认证的反向隧道提供远程能力；`remote` 一词只指远程能力（远程入口、remote-* 插件），
-不再是项目名。
+适用于本仓库中的 AI 编码助手。本项目 dsh-kit（用户文案「DSH 增强套件」）是官方
+DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」输入一条路径安装 18 个
+功能组件，扩展只走官方插件机制，不含远程访问能力。
 
 ## 开始前
 
@@ -15,52 +14,27 @@ DeepSeek Harness (dsh) 的完整封装工作站：桌面应用与绿色/服务�
 ## 铁律
 
 - 不修改或 fork dsh 源码，扩展只能写插件。
-- relay 只搬运 HTTP/WebSocket 字节，不解析 dsh 业务协议；首页 401 的一次 token 重定向是唯一例外。
-- dsh 始终 bind 127.0.0.1。relay 原样转发 Host/Origin，通过 --trusted-host 声明信任。
-- 所有非 loopback 浏览器访问必须认证；仅 loopback socket + loopback Host 同时成立才免登录。
-- 一台机器独立 origin，公网用子域名，局域网可用每机器端口，不能挂子路径。
-- connector、relay 与 remote-runtime 组件不引入原生模块，持久化用 node:sqlite，密码哈希用 node:crypto scrypt。
-- 优先成熟依赖，所有直接依赖固定版本，不使用范围、dist-tag 或隐式升级。
-- 与官方 dsh 共用标准 DSH_HOME，仅在 dsh-remote-web profile 安装项目功能插件。
-  不写 home 级 patch、不修改官方 web profile，不实现第二套插件管理器。
-- 普通插件位于 packages/plugins/<名字>，包名 @dsh-remote/dsh-plugin-<名字>，
-  包根 overlay 用 ./dist/index.js；plugins:build 与 build-suite 都要检查宿主和浏览器产物。
-- 全部功能组件按 suite 单包分发（D27）：官方「添加插件」一条路径安装/升级，套件 patch 由 `scripts/build-suite.mjs` 生成；plugin-catalog/launcher 旧分发流程仅为开发栈过渡，不再产出发行介质。
-- `remote-privileged` 的 connection/webServer 注入、模型 HMR 启动屏障与原生主题只读投影作为不可卸载的壳级基础设施；模型屏障服务挂在 root fiber，避免 Bundle 在线启停重启 `llm-pi-ai`。管理页主题单向消费工作站自有投影，不读写原生profile或通过公开主题GET回写宿主。
-- concise-mode（用户文案「简洁模式」）是独立第三方 Profile Bundle，位于 dsh-web-app 后；patch 内联声明一行 `@deepseek-ai/dsh-agent-preset`，行内嵌 run-code 行（`@dsh-remote/dsh-plugin-run-code`，presentAs both + SDK 后指引 section）启用 run_code 双通道，persona 必须 complete:false；不加载 preset root 或 locator entry；子代理深度沿用 dsh 原生配置（默认 1）。
-- 中文文案使用决策中的词表，页面使用机器真名；hub、membership、slug 等代码标识符不随文案改名。
-- 完成 roadmap 条目立即勾选，未做实机验收不能按自动测试结果勾选。
-
-## 环境与检查
-
-Windows，PowerShell 7；使用 PowerShell 语法。Node 最低 22.19.0，本地 pnpm 使用已安装版本，CI 固定 10.17.0。
-TypeScript + ESM + pnpm workspace，构建 tsdown，开发 tsx，测试 Vitest。
-技术选型见 [架构](docs/03-architecture.md)，不要随意替换。
-项目模块架构见 [ARCHITECTURE.md](ARCHITECTURE.md)；修改模块结构后请更新该文件。
-
-常用检查：pnpm check:dependencies、pnpm lint、pnpm typecheck、pnpm build、pnpm test。
-官方 dsh 新版本的插件适配检查加载 dsh-upgrade skill（适配基线记录在 docs/02-dsh-facts.md 开头）；其余依赖固定不动，升级另行决策。
-提交前钩子检查固定版本并清理 lockfile 内部镜像 tarball 地址。
-
-## 按任务阅读
-
-| 改动 | 必须阅读 | 关键约束 |
-|---|---|---|
-| 转发、登录、目录选择 | [传输](docs/dsh/transport.md)、[安全](docs/04-security.md) | 认证 → 原始安全检查 → 隧道；HTTP 用 node:http；upgrade 单独处理 |
-| 插件装载、设置、界面 | [插件机制](docs/dsh/plugins.md) | mutate 返回 boolean（false 即拒绝），失败保留草稿；同 cell 同 priority 冲突；primitives external |
-| 模型与代理 | [模型](docs/dsh/models.md) | 保留用户条目、只清理插件溯源；混合协议先恢复同一 pi-ai map；代理唯一配置源 |
-| 重试、滚动、分叉、通知 | [会话](docs/dsh/conversation.md) | 保护 nextTurn 队列；不移动 React DOM；保持 turn-tail 最后；idle 去抖 |
-| 权限、服务、PTY、工具统计 | [运行时](docs/dsh/runtime.md) | 不 append 自定义事件；统计回放历史；进程身份复核；交互终端仅用于人类输入 |
-| 技能、提示词、文件浏览 | [工作区](docs/dsh/workspace.md) | scope/cwd 来自 live Agent；有界读取；只读视图不改变模型能力 |
-
-插件功能与入口见 [插件索引](docs/plugins.md)，具体实现前读对应包 README。
-升级与冒烟脚本入口统一在源码依据索引，各包 test/typecheck/build 仍需按改动范围运行。
-
-## 高风险约束
-
-- 设置写入走插件行 volatile Config：宿主半 loader/volatile-update + internal/config 校验钩子，浏览器半 configForms。mutate/set/unset 返回 boolean，false 即宿主拒绝；两半共享校验，失败保留草稿并就地报错（契约见 docs/dsh/plugins.md）。
+- 唯一分发路径是套件单包：`plugins/suite` 经官方「添加插件」安装/升级；不实现第二套插件管理器，
+  不做 launcher 式的外部安装、介质同步或进程编排。
+- 插件一律是受管 Profile Bundle：包根 `cordis.patch.yml` 声明行，宿主入口 `./dist/index.js`，
+  浏览器半声明 `dsh.client` 并产出 `dist/client.js`；`pnpm plugins:build` 与 `pnpm suite:build`
+  都要检查两半产物，缺失即响亮失败。
+- 不写项目专属数据目录、不注入环境变量；配置存在 dsh 自己的 profile 与 settings。
 - 插件不能 append 自定义 Session 事件，否则持久化加载会拒绝会话；projection 只折叠已知事件，
   无关事件返回同一引用。工具/技能历史使用 snapshotEvents，查询 scope 必须传 live Agent。
+- 设置写入走插件行 volatile Config：宿主半 loader/volatile-update + internal/config 校验钩子，
+  浏览器半 configForms；mutate/set/unset 返回 boolean，false 即宿主拒绝。两半共享校验，
+  失败保留草稿并就地报错（契约见 [插件机制](docs/dsh/plugins.md)）。
+- 组合包（model-enhancements、conversation-enhancements、development-tools）是安装与停用单位，
+  组件保留跨重组稳定且全局唯一的行 id；models-catalog 与 model-capabilities 共同构成
+  `llm-pi-ai` 启动屏障，不可只停一行。
+- 套件 patch 里的 `llm-pi-ai` 屏障行、connection 行覆写（`inject` 扩 webServer 并复刻官方
+  `trustedHosts` config）与模型屏障占位行是固定契约：模型组件随进程启动时写真实屏障，
+  未启动时由占位行兜底，使在线启停模型组件不热重启 `llm-pi-ai`；宿主半 RPC 通道归属
+  connection 行 fiber，必须由该覆写注入 webServer。生成逻辑只在 `scripts/build-suite.mjs`，
+  patch 本身是生成物，不手改。
+- 全部功能组件在套件内以裸包名 + `disabled` 表达式装载：套件离开
+  `dsh.profile.bundles` 时全部组件行一并禁用。组件包不能依赖套件当前在工作区里存在。
 - yolo-mode 固定 danger-full-access + ask，合法 approval 自动 allowed-once，用户提问不自动回答。
   schema 与执行/展示参数都过滤提权字段；升级运行 yolo-mode-check，任何契约变化必须响亮失败。
 - services 在沙箱外 spawn，受限模式 start/restart 必须批准；终端沿用 dsh PTY 沙箱。
@@ -68,8 +42,36 @@ TypeScript + ESM + pnpm workspace，构建 tsdown，开发 tsx，测试 Vitest�
   Linux sudo 管理任务的命令统一走交互终端，可在同一终端内复用系统缓存，但不建立持续 root shell。
 - Windows 杀进程树用 taskkill /T /F；常驻服务用两级启动器并记录 L2 pid，不以 detached:true 保证存活。
 - 全局提示词只保存 DSH_HOME/AGENTS.md，UTF-8 字节上限 1 MiB、原子写入，冒烟由 dsh 加载器反向认领。
-- files 插件的 Git 根只取 live session.header.cwd，Git 采集无 shell且有界；文件树、读取与预览跟随 dsh 原生 workspaceFiles/UI，目录右键只复制绝对/相对路径；
-  不增写入接口、不递归预扫、不挂 watcher、不引第二套预览编辑器。
+- files 插件的 Git 根只取 live session.header.cwd，Git 采集无 shell 且有界；文件树、读取与预览跟随
+  dsh 原生 workspaceFiles/UI，目录右键只复制绝对/相对路径；不增写入接口、不递归预扫、不挂 watcher、
+  不引第二套预览编辑器。
+- 所有直接依赖固定版本，不使用范围、dist-tag 或隐式升级；`pnpm check:dependencies` 覆盖
+  `packages/` 与 `plugins/`。
+
+## 环境与检查
+
+Windows，PowerShell 7；使用 PowerShell 语法。Node 最低 22.19.0，本地 pnpm 使用已安装版本，
+CI 固定 10.17.0。TypeScript + ESM + pnpm workspace，构建 tsdown，开发 tsx，测试 Vitest。
+技术选型见 [架构](docs/03-architecture.md)，不要随意替换。项目模块架构见
+[ARCHITECTURE.md](ARCHITECTURE.md)；修改模块结构后请更新该文件。
+
+常用检查：`pnpm check:dependencies`、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test`；
+插件产物与套件产物：`pnpm plugins:build`、`pnpm suite:build`。
+
+官方 dsh 新版本的插件适配检查加载 dsh-upgrade skill（适配基线记录在 docs/02-dsh-facts.md 开头）；
+其余依赖固定不动，升级另行决策。提交前钩子检查固定版本并清理 lockfile 内部镜像 tarball 地址。
+
+## 按任务阅读
+
+| 改动 | 必须阅读 | 关键约束 |
+|---|---|---|
+| 插件装载、设置、界面 | [插件机制](docs/dsh/plugins.md) | mutate 返回 boolean（false 即拒绝），失败保留草稿；同 cell 同 priority 冲突；primitives external |
+| 模型与代理 | [模型](docs/dsh/models.md) | 保留用户条目、只清理插件溯源；混合协议先恢复同一 pi-ai map；代理唯一配置源 |
+| 重试、滚动、分叉、通知 | [会话](docs/dsh/conversation.md) | 保护 nextTurn 队列；不移动 React DOM；保持 turn-tail 最后；idle 去抖 |
+| 权限、服务、PTY、工具统计 | [运行时](docs/dsh/runtime.md) | 不 append 自定义事件；统计回放历史；进程身份复核；交互终端仅用于人类输入 |
+| 技能、提示词、文件浏览 | [工作区](docs/dsh/workspace.md) | scope/cwd 来自 live Agent；有界读取；只读视图不改变模型能力 |
+
+插件功能与入口见 [插件索引](docs/plugins.md)，具体实现前读对应包 README。
 
 ## 界面约束
 
@@ -87,9 +89,8 @@ services 与 terminal 共用 IconApiOutlineMedium。
 
 ## 文档与运行
 
-- 插件使用说明放包根 README，docs/plugins.md 做索引；源码契约按 docs/dsh 的主题归属维护。
+- 插件使用说明放包根 README，[插件索引](docs/plugins.md) 做导航；源码契约按 docs/dsh 的主题归属维护。
 - docs 每个文件最多 600 行，只保留现行行为与明确待办，不追加旧方案或调试过程。
-- 修改插件任何一半后都要构建并重启 dsh，dsh-remote-web 没有 HMR，刷新页面不会更新产物。
-- 安全活动写 relay.db 的 audit_log 与 pino，没有管理页面；查询加载 relay-audit skill。
+- 修改插件任何一半后都要构建并重启 dsh，套件所在 profile 没有 HMR，刷新页面不会更新产物。
 - 上游源码引用使用相对 dsh 根路径，不在其他文件记录本地绝对路径。
 - 未记录的架构决策先向用户确认，不猜 dsh 行为。

@@ -45,6 +45,7 @@ const files = [];
 const rootManifest = join(ROOT, 'package.json');
 if (statSync(rootManifest, { throwIfNoEntry: false })) files.push(rootManifest);
 collectPackageJson(join(ROOT, 'packages'), files);
+collectPackageJson(join(ROOT, 'plugins'), files);
 
 /** @type {{ file: string, manifest: any }[]} */
 const manifests = [];

@@ -13,8 +13,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROOT } from './local-config.mjs'
 
-const PACKAGE_ID = '@dsh-remote/dsh-plugin-web-search-switch'
-const BUNDLE = join(ROOT, 'packages', 'plugins', 'web-search-switch', 'dist', 'client.js')
+const PACKAGE_ID = '@dsh-kit/dsh-plugin-web-search-switch'
+const BUNDLE = join(ROOT, 'plugins', 'web-search-switch', 'dist', 'client.js')
 const NOOP = () => {}
 let failures = 0
 

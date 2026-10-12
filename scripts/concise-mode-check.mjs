@@ -1,21 +1,20 @@
 /**
- * dsh-remote 精简代理预设及随附 Bundle HMR 的真实宿主端冒烟检查。
+ * dsh-kit 精简代理预设及随附 Bundle HMR 的真实宿主端冒烟检查。
  *
  * 每次升级 dsh 后运行：
  *
  *   用法：node scripts/concise-mode-check.mjs [--port 3100]
  *
- * 探针挂载常驻预设作用域、读取注册表，并依次停用/启用全部随附 Bundle；不发起模型请求，也不创建会话。
+ * 探针挂载常驻预设作用域、读取注册表，并停用/启用整个套件 Bundle；不发起模型请求，也不创建会话。
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { runPluginCommand } from '@deepseek-ai/dsh-plugin-manager/operations'
-import { DSH_BIN, DSH_INSTALL_ANCHOR, DSH_PROFILE, PNPM_CLI, ROOT, dshPluginOverlays } from './local-config.mjs'
-import { materializePluginDistributions } from './plugin-distributions.mjs'
+import { DSH_BIN, DSH_INSTALL_ANCHOR, DSH_PROFILE, PNPM_CLI, ROOT } from './local-config.mjs'
 
 const CHANNEL = '/concise-mode-check'
 const portAt = process.argv.indexOf('--port')
@@ -25,8 +24,8 @@ if (!Number.isSafeInteger(PORT) || PORT < 1 || PORT > 65535) {
 }
 const AUTHORITY = '127.0.0.1:' + PORT
 const BASE = 'http://' + AUTHORITY
-const EXPECTED_DISTRIBUTIONS = JSON.parse(readFileSync(join(ROOT, 'plugin-catalog.json'), 'utf8'))
-  .distributions.map(distribution => distribution.name).toSorted()
+const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
+const SUITE_DIRECTORY = join(ROOT, 'plugins', 'suite')
 mkdirSync(join(ROOT, '.dev'), { recursive: true })
 const HOME = mkdtempSync(join(ROOT, '.dev', 'concise-mode-check-'))
 const PROBE = join(HOME, 'concise-mode-check-probe.mjs')
@@ -77,20 +76,9 @@ const PROBE_SOURCE = [
   'export function apply(ctx) {',
   "  const dispose = ctx.connection.rpc.handle('/concise-mode-check', async (endpoint) => {",
   "    if (endpoint === 'toggle') {",
-  "      const disabled = await ctx.pluginManager.setBundleEnabled('@dsh-remote/dsh-plugin-concise-mode', false)",
-  "      const enabled = await ctx.pluginManager.setBundleEnabled('@dsh-remote/dsh-plugin-concise-mode', true)",
+  `      const disabled = await ctx.pluginManager.setBundleEnabled('${SUITE_PACKAGE}', false)`,
+  `      const enabled = await ctx.pluginManager.setBundleEnabled('${SUITE_PACKAGE}', true)`,
   '      return { ok: true, value: { disabled, enabled } }',
-  '    }',
-  "    if (endpoint === 'toggle-all') {",
-  '      const listed = await ctx.pluginManager.listBundles()',
-  "      const names = listed.map(bundle => bundle.name).filter(name => name.startsWith('@dsh-remote/dsh-plugin-')).toSorted()",
-  '      const results = []',
-  '      for (const name of names) {',
-  '        const disabled = await ctx.pluginManager.setBundleEnabled(name, false)',
-  '        const enabled = await ctx.pluginManager.setBundleEnabled(name, true)',
-  '        results.push({ name, disabled, enabled })',
-  '      }',
-  '      return { ok: true, value: results }',
   '    }',
   "    if (endpoint !== 'snapshot') {",
   '      return { ok: false, error: {',
@@ -127,7 +115,10 @@ function browserHeaders(cookie) {
 }
 async function prepareHome() {
   const profile = join(HOME, 'profiles', DSH_PROFILE)
-  const media = materializePluginDistributions({ output: join(ROOT, '.dev', 'plugins') })
+  // 套件 patch 与物化依赖闭包是安装输入：dist 由 pnpm plugins:build 提供，
+  // 这里重新生成 patch 与 node_modules，避免用上一次构建的陈旧产物做冒烟。
+  const suiteBuild = spawnSync(process.execPath, ['scripts/build-suite.mjs'], { cwd: ROOT, stdio: 'inherit' })
+  if (suiteBuild.status !== 0) throw new Error('scripts/build-suite.mjs 失败：先运行 pnpm plugins:build')
   mkdirSync(profile, { recursive: true })
   writeFileSync(join(profile, 'package.json'), `${JSON.stringify({
     name: `dsh-profile-${DSH_PROFILE}`,
@@ -136,7 +127,7 @@ async function prepareHome() {
     dsh: { profile: { bundles: [
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
-      ...media.plugins.map(plugin => plugin.name),
+      SUITE_PACKAGE,
     ] } },
   }, null, 2)}\n`)
   writeFileSync(join(profile, 'cordis.patch.yml'), '[]\n')
@@ -147,7 +138,7 @@ async function prepareHome() {
     home: HOME,
     installAnchor: DSH_INSTALL_ANCHOR,
     cwd: ROOT,
-  }, ['add', ...media.plugins.map(plugin => join(media.output, plugin.directory))], {
+  }, ['add', SUITE_DIRECTORY], {
     execution: 'service',
     outputBytes: 64 * 1024,
     activateNewBundles: false,
@@ -164,7 +155,8 @@ async function prepareHome() {
  * 这样就绪失败时不会泄漏进程。
  */
 function startDsh() {
-  const overlays = [...dshPluginOverlays(), OVERLAY]
+  // 探针 overlay 是本脚本私有的宿主端挂载点，与用户 profile 无关。
+  const overlays = [OVERLAY]
   // bundle 定位器不能使用环境变量，因为 local-config
   // 已经通过 createRequire 从真实的 launcher 依赖中解析 DSH_BIN。
   const child = spawn(process.execPath, [
@@ -372,34 +364,12 @@ async function main() {
 
     const toggle = await callProbe(cookie, 'toggle')
     check(toggle?.disabled?.application === 'applied' && toggle.disabled.warnings?.length === 0,
-      'concise-mode Bundle disables through live Profile HMR', JSON.stringify(toggle?.disabled))
+      'suite Bundle disables through live Profile HMR', JSON.stringify(toggle?.disabled))
     check(toggle?.enabled?.application === 'applied' && toggle.enabled.warnings?.length === 0,
-      'concise-mode Bundle re-enables through live Profile HMR', JSON.stringify(toggle?.enabled))
+      'suite Bundle re-enables through live Profile HMR', JSON.stringify(toggle?.enabled))
     const restored = await callProbe(cookie, 'snapshot')
     check(restored?.roster?.some(preset => preset?.id === 'concise'),
       'concise preset returns after live re-enable')
-
-    const distributionToggles = await callProbe(cookie, 'toggle-all')
-    const toggledNames = Array.isArray(distributionToggles)
-      ? distributionToggles.map(result => result.name).toSorted() : []
-    check(JSON.stringify(toggledNames) === JSON.stringify(EXPECTED_DISTRIBUTIONS),
-      'HMR check covers every distributed Bundle',
-      'expected=[' + EXPECTED_DISTRIBUTIONS.join(', ') + ']; actual=[' + toggledNames.join(', ') + ']')
-    for (const result of distributionToggles ?? []) {
-      // 已知问题（dsh 0.1.7-rc.1，上游重协调竞态）：停用 yolo-mode Bundle 会让
-      // session-controller 行重挂载，file-upload 的 Agent resolver 尚未随旧 fiber
-      // 释放，构造器二次注册即抛错。铁律 1 禁止改 dsh；等上游修复后删除本豁免，
-      // 且只有签名完全匹配才豁免——其它失败照常响亮报错。
-      const resolverClash = JSON.stringify(result).includes('file-upload: Agent resolver is already registered')
-      if (resolverClash && result.name === '@dsh-remote/dsh-plugin-yolo-mode') {
-        check(true, result.name + ' toggles hit the known dsh 0.1.7 session-controller remount race (upstream)')
-        continue
-      }
-      check(result?.disabled?.application === 'applied' && result.disabled.warnings?.length === 0,
-        result.name + ' disables through live Profile HMR', JSON.stringify(result?.disabled))
-      check(result?.enabled?.application === 'applied' && result.enabled.warnings?.length === 0,
-        result.name + ' re-enables through live Profile HMR', JSON.stringify(result?.enabled))
-    }
 
     if (failures !== 0) throw new Error(failures + ' concise-mode/HMR smoke assertion(s) failed')
     console.log('\nAll concise-mode and distributed Bundle HMR checks passed.')

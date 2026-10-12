@@ -49,7 +49,7 @@ PiAiModelProfile 没有 api 字段，解析顺序是路由 api → 同 id 内置
 
 1. 按模型 id 查同一份外部 pi-ai 目录，目标路由优先。
 2. 无匹配则按 gpt-* → openai-responses、claude-* → anthropic-messages、其他 → openai-completions。
-3. 先扩展同一份 pi-ai 运行时 map，再写 dsh models；不是给单个模型增加 api 字段。profile 安装介质中的 pi-ai 必须链接到 dsh-llm-pi-ai 实际解析的包目录（Node ESM 按真实路径缓存）；复制一份同版本包也会让 dsh 校验看不到新增模型。launcher 在安装时检查版本并共享模块身份。
+3. 先扩展同一份 pi-ai 运行时 map，再写 dsh models；不是给单个模型增加 api 字段。套件内的 pi-ai 必须与 dsh-llm-pi-ai 实际解析的是同一个包目录（Node ESM 按真实路径缓存）；复制一份同版本包也会让 dsh 校验看不到新增模型。`build-suite.mjs` 物化时跳过 `@deepseek-ai/*`，就是为了不做第二份单例。
 4. 将推断与新增条目归属存入 dsh-plugin-models-catalog，启动时在 llm-pi-ai 校验前恢复。
 5. dsh 自带该模型后只清理本插件拥有的条目，用户及其他插件配置原样保留。
 
@@ -98,7 +98,7 @@ favorite-models 在 settings.models.footer 保存 provider+model 收藏，只影
 ## 出网代理
 
 出处：`apps/cli/src/profile-boot.ts`、`packages/util/http-proxy/src/{policy,install}.ts`、
-`packages/web/web-fetch-http/src/index.ts`；项目实现见 `packages/plugins/proxy/src/{dispatcher,settings,shared}.ts`。
+`packages/web/web-fetch-http/src/index.ts`；项目实现见 `plugins/proxy/src/{dispatcher,settings,shared}.ts`。
 已安装 `0.1.7-rc.1` 产物对应 `@deepseek-ai/dsh/lib/profile-boot-*.js`、
 `@deepseek-ai/dsh-http-proxy/lib/index.js` 和 `@deepseek-ai/dsh-web-fetch-http/lib/index.js`。
 

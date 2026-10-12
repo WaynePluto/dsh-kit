@@ -6,7 +6,7 @@
  */
 
 import { join } from 'node:path'
-import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, ROOT, dshPluginOverlays } from './local-config.mjs'
+import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, DSH_HOME_DEV, ROOT } from './local-config.mjs'
 import { createCheckContext, runLiveDshCheck } from './lib/check-context.mjs'
 import {
   createClientInspectionContext,
@@ -17,7 +17,7 @@ import {
 } from './lib/check-client-bundle.mjs'
 
 
-const PACKAGE_ID = '@dsh-remote/dsh-plugin-services'
+const PACKAGE_ID = '@dsh-kit/dsh-plugin-services'
 const portArgument = process.argv.indexOf('--port')
 const PORT = portArgument === -1 ? 3099 : Number(process.argv[portArgument + 1])
 const HOME = join(DEV_DIRECTORY, 'services-check-home')
@@ -36,8 +36,8 @@ function check(ok, what, detail) {
 const context = createCheckContext({
   dshBin: DSH_BIN,
   profile: DSH_PROFILE,
-  overlays: dshPluginOverlays,
   home: HOME,
+  sourceHome: DSH_HOME_DEV,
   cwd: ROOT,
   port: PORT,
   trustedHost: `127.0.0.1:${PORT}`,
@@ -57,7 +57,7 @@ const { prepareHome } = context
  * @returns {Promise<{ tools: {name: string, parameters: object, description: string}[], channels: string[], disposers: number }>}
  */
 async function inspectHostBundle() {
-  const entry = join(ROOT, 'packages', 'plugins', 'services', 'dist', 'index.js')
+  const entry = join(ROOT, 'plugins', 'services', 'dist', 'index.js')
   const tools = []
   const channels = []
   const disposers = []
@@ -86,7 +86,7 @@ async function inspectHostBundle() {
  * @returns {{ seats: object[], namespaces: string[], externals: string[] }}
  */
 function inspectClientBundle() {
-  const bundle = join(ROOT, 'packages', 'plugins', 'services', 'dist', 'client.js')
+  const bundle = join(ROOT, 'plugins', 'services', 'dist', 'client.js')
   return inspectClientArtifact({
     bundle,
     packageId: PACKAGE_ID,

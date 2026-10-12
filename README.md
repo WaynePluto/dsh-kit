@@ -1,65 +1,84 @@
-# DSH Remote 套件（dsh-remote）
+# DSH 增强套件（dsh-kit）
 
 **简体中文** | [English](README.en.md)
 
-对应官方 dsh：`0.2.0-rc.2`（已实测；插件适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md) 与 `dsh-upgrade` skill）
+对应官方 dsh：`0.2.0-rc.2`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
-官方 DeepSeek Harness（dsh）的**全量插件套件**：不再有独立的桌面应用与发行介质（决策 D27），
-在官方 dsh 桌面版（或 web 版）的插件管理页「+ 添加插件」输入**一条路径**即可安装或升级全部内容——
-远程访问能力与 22 个功能组件。
+官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
+个人体验增强，共 18 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
 
-- 不改 dsh、不 fork，扩展全部走官方插件机制；dsh 升级与工作站解耦
-- 远程访问在插件内自举：`remote-runtime` 组件在 dsh 宿主里拉起 relay 与 connector
-  （两级分离启动器，杀宿主进程树也存活、重启后自动认领），登录令牌经文件交接，
-  trustedHosts 由信任服务注入 connection 行——**没有独立 launcher**
-- 远程语义不变：被开放的机器不监听公网端口、主动外拨；所有非本机浏览器访问必须登录
-  （密码 + TOTP）；入口机器路由到各台机器的 dsh
+- 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
+- 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
+- 模型 HMR 启动屏障随套件提供，模型组件在线启停不会热重启 `llm-pi-ai`
+
+## 组件一览
+
+| 组件 | 使用入口 | 用途 |
+|---|---|---|
+| [全局提示词](plugins/agents-md/README.md) | 设置 → 全局提示词 | 编辑 dsh 读取的全局 AGENTS.md |
+| [出网代理](plugins/proxy/README.md) | 设置 → 代理 | 跟随环境（默认）、使用插件代理地址或强制直连 |
+| [Copilot 登录](plugins/copilot-auth/README.md) | 设置 → 模型 → GitHub Copilot | 设备码登录与账号模型同步 |
+| [模型目录更新](plugins/models-catalog/README.md) | 设置 → 模型 | 从 models.dev 补充模型目录 |
+| [模型能力与协议](plugins/model-capabilities/README.md) | 设置 → 模型 → 展开模型行 | 声明图片支持、推理档位与单模型协议覆盖 |
+| [常用模型](plugins/favorite-models/README.md) | 设置 → 模型；聊天模型选择器 | 收藏并筛选常用模型 |
+| [失败重试](plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
+| [会话滚动导航](plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |
+| [用户消息分叉](plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿 |
+| [任务通知](plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
+| [工具状态](plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
+| [技能状态](plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
+| [文件浏览](plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览与目录右键菜单 |
+| [常驻服务](plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
+| [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
+| [简洁模式](plugins/concise-mode/README.md) | 新建会话时选择预设 | 原生工具直呼与 run_code 程序并用，模型自主选择 |
+| [固定 YOLO](plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
+| [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
+
+分组、顺序与停用粒度见 [插件索引](docs/plugins.md) 与根目录 [plugin-catalog.json](plugin-catalog.json)。
 
 ## 安装
 
-1. 安装官方 dsh 桌面版（或服务器上运行官方 dsh web）。
+1. 安装官方 dsh 桌面版（或在服务器上运行官方 dsh web）。
 2. 克隆本仓库并构建：
    ```powershell
    pnpm install
    pnpm plugins:build
-   node scripts/build-suite.mjs   # 生成套件 patch 并物化依赖闭包
+   pnpm suite:build      # 生成套件 patch 并物化依赖闭包
    ```
-3. dsh → 插件 → 添加插件 → 输入 `packages/plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
-   升级：重新构建后卸载再安装。
+3. dsh → 插件 → 添加插件 → 输入 `plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
+   升级：重新构建后卸载再安装（官方桌面暂不支持插件自动更新）。
+   用一条 GitHub 仓库地址安装的结构已就绪（`file:` 相对依赖），待仓库公开后实测收口。
 
-用一条 GitHub 仓库地址安装的结构已就绪（`file:` 相对依赖），待仓库公开后实测收口。
+装完之后套件就是一个普通第三方 Bundle：插件页可以停用整个套件，也可以在套件详情里
+单独停用某个组件；卸载后不会自动补回，重新安装同样走「添加插件」。
 
-## 运行数据与配置
+## 数据与配置
 
-- 数据目录 `~/.dsh-remote`：relay 数据库、设备密钥、membership、dsh-token、进程注册表与日志（`logs/`）
-- 配置示例见 [packaging/dsh-remote.config.example.json](packaging/dsh-remote.config.example.json)
-  （放 `~/.dsh-remote/dsh-remote.config.json`；未配置时默认局域网模式，relay 端口 30809）
-- 已知边界：更换远程入口后需手动重启 dsh 使新 trustedHosts 生效（插件无法重启宿主）
-
-## 组件一览
-
-远程设置、模型目录/能力/收藏、Copilot 登录、出网代理、全局提示词、会话重试/滚动/分叉、
-简洁模式（原生工具与 run_code 程序并用）、固定 YOLO、常驻服务、交互终端、工具/技能历史、文件浏览、
-网页目录选择、浏览器兼容垫片、桌面通知、网页搜索开关。功能说明见 [插件索引](docs/plugins.md)。
+- 不写项目专属数据目录，也不注入环境变量；所有配置存在 dsh 自己的 profile 与 settings 里。
+- 通知、代理、模型目录等插件各自的作用范围见对应包 README。
+- 固定 YOLO 会取消模型执行前的交互式权限边界，请先读 [安全说明](plugins/yolo-mode/README.md)。
 
 ## 开发
 
 ```powershell
 pnpm install
-pnpm lint && pnpm build && pnpm typecheck && pnpm test   # 与 CI 相同
-pnpm plugins:build && node scripts/build-suite.mjs       # 套件产物
-pnpm dev                                                  # 旧开发栈（过渡，待套件化流程替代）
+pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm check:dependencies
+pnpm plugins:build && pnpm suite:build      # 插件产物 + 套件 patch/闭包
+pnpm dev                                    # 隔离开发实例：profile dsh-kit-dev、端口 3180
 ```
 
-修改插件任何一半后都要重新构建并重启 dsh；冒烟脚本见 [源码依据](docs/02-dsh-facts.md)。
-可行性探针与桌面版实测记录见 [spike/remote-probe/README.md](spike/remote-probe/README.md)。
+`pnpm dev` 使用 `~/.dsh-dev` 作为 DSH_HOME，与日常实例互不影响；改动插件任何一半后
+都要重新构建并重启 dsh（套件所在 profile 没有 HMR，刷新页面不会更新产物）。
+各主题的检查脚本入口见 [源码依据](docs/02-dsh-facts.md)。
 
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
-| [需求与决策](docs/01-decisions.md) | 产品边界、术语与全部决策（D27 为现行分发形态） |
-| [架构](docs/03-architecture.md) | 组件、隧道协议与安全模型 |
-| [安全](docs/04-security.md) | 认证边界、部署要求 |
-| [当前进度](docs/05-roadmap.md) | 已实现能力与待验收项 |
-| [插件索引](docs/plugins.md) | 组件功能与入口 |
+| [需求与决策](docs/01-decisions.md) | 产品边界、术语与全部决策 |
+| [架构](docs/03-architecture.md) | 组件划分、装载方式与依赖 |
+| [当前进度](docs/05-roadmap.md) | 已实现能力、实机验收清单与下一步 |
+| [插件索引](docs/plugins.md) | 组件功能、入口与分发组合 |
+| [dsh 契约](docs/dsh/) | 上游源码核对结论（插件机制、模型、会话、运行时、工作区） |
+
+模块结构见 [ARCHITECTURE.md](ARCHITECTURE.md)。

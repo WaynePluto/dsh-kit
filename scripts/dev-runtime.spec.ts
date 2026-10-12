@@ -48,8 +48,8 @@ describe('development runtime validated content cache', () => {
     // 依赖清单已内联到 dev-runtime.mjs（launcher 退役）：校验关键家族成员存在。
     expect(manifest.dependencies['@deepseek-ai/dsh']).toBe('0.2.0-rc.2')
     expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('0.87.1')
-    expect(manifest.dependencies['@dsh-remote/plugin-ui']).toContain('file:')
-    expect(Object.keys(manifest.dependencies).every(name => !name.startsWith('@dsh-remote/') || name === '@dsh-remote/plugin-ui')).toBe(true)
+    expect(manifest.dependencies['@dsh-kit/plugin-ui']).toContain('file:')
+    expect(Object.keys(manifest.dependencies).every(name => !name.startsWith('@dsh-kit/') || name === '@dsh-kit/plugin-ui')).toBe(true)
     expect(f.run.mock.calls[0]?.[0]).toContain('--ignore-scripts')
     expect(f.run.mock.calls[0]?.[0]).toContain('--config.node-linker=hoisted')
   })
@@ -97,7 +97,7 @@ describe('development runtime validated content cache', () => {
   it.each(['missing', 'invalid', 'schema'])('revalidates a %s cache', async kind => {
     const f = fixture()
     await ensureDevelopmentRuntime(f)
-    const path = join(f.root, 'node_modules/.cache/dsh-remote/dev-runtime-validation.json')
+    const path = join(f.root, 'node_modules/.cache/dsh-kit/dev-runtime-validation.json')
     if (kind === 'missing') rmSync(path)
     else if (kind === 'invalid') write(path, '{')
     else write(path, JSON.stringify({ ...JSON.parse(readFileSync(path, 'utf8')), schemaVersion: 0 }))

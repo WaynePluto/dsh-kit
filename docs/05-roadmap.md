@@ -1,141 +1,45 @@
 # 05 · 当前进度
 
 只记录当前能力和下一步任务。完成一项立即勾选；自动测试与用户实机验收分开记录。
-功能说明见 [插件索引](plugins.md)，测试步骤见 [联调验收](reference/acceptance.md)。
+本轮重构（2026-10-10，删除远程能力并更名 dsh-kit）前的历史记录见
+[docs/changelog](changelog/) 与 git tag `dsh-remote-final`。
 
 ## 已实现
 
-- [x] run_code 工具插件取代简洁 PTC（2026-10-10）：参考 pi 的 codemode，新增 run-code 插件包
-  （`@dsh-remote/dsh-plugin-run-code`，预设内嵌行、非独立 Bundle：等待 ptcRuntime 后 `presentAs('both')`，
-  并在 tools:sdk 后追加何时优先用 run_code 的指引 section）；简洁预设 persona 改 complete:false、
-  行尾挂 run-code 行，原生工具与 run_code 并存、模型自主选择；删除 concise-ptc 预设与
-  preset-concise-ptc 显示壳，run-code 作为 concise-mode 分发组件与套件物化包提供。执行链、SDK、
-  审批与子调用全部复用 dsh。concise-mode-check 重写断言（wire=registry=工具+run_code、SDK 声明、
-  guidance section、无 collapse 指引、concise-ptc 不在 roster）。旧 concise-ptc 会话需改选简洁模式。
-- [x] 套件组件清单元数据统一中文（2026-10-09）：dsh 插件管理器只为裸包名行解析 locale meta
-（相对路径行退化为完整文件 URL、官方包只有英文）。新增 5 个显示壳微包（preset-concise/-ptc、
-model-bootstrap、theme-projection、remote-trust，裸包名 + 中文 locale + re-export 目标模块；
-preset 包需同时转发 default 导出），build-suite 的行改写逐行处理多 id/name 块并按缩进门控
-disabled 插入（嵌套 preset 组合行不插）。桌面实测 24/24 行中文标题+描述。
-- [x] 官方桌面「正在加载设置」卡死修复（2026-10-09）：双元凶——browser-compat 的旧 WebKit 全局垫片
-（Promise/Iterator）垫坏 Chromium 连接层；remote-settings 的静态 `__DSH_TRANSPORT__={ownsHost:true}`
-违反 dsh 契约（只有自组装 transport 的壳可设置，被服务页面绝不携带），抢占官方桌面注入语义致页面
-/api/WS 永久重连 → onboarding 永久 loading。修复：browser-compat 移出套件（包保留，供老设备单独装）；
-remote-settings 改为条件 script 注入（仅 HTTP(S) 页面设 ownsHost，dsh-app:// 协议页跳过）。
-诊断手段：ELECTRON_ENABLE_LOGGING 捕获渲染进程 console + 摘除套件二分。桌面实测恢复（0 重连失败、
-账号/简洁模式/常驻服务/模型目录全部正常）。装载层复查（2026-10-10 实测）：dev 栈与桌面版在 token 可用后的
-首个认证渲染图均已完整（17/17 套件浏览器行），渲染进程激活标记全部在位（files/chat-scroll/user-message-fork/
-web-search-switch/services/turn-retry 样式标记 + 工具/技能面板 + 设置页全局提示词/代理/通知分区）；此前
-「combo 只装载 2~4/17」为坏传输期断连重试的副产品，非独立 client-modules 首扫竞态，撤销上游定位待办。
-- [x] files 增强 DOM 级重写修复 0.2.0 静默失效（2026-10-10 实机验证）：放弃 `sidebar.right.pane.tab`
-座位影子（0.2.0 起 children/renderSlot 契约下不可行，见 [插件机制](dsh/plugins.md)），改为 MutationObserver 发现
-`[data-files-state]` 原生树根后挂捕获事件（单击预览/双击保留/右键与 F10 菜单经独立 React 根）、行级 Git 装饰与
-树根前提示节点；sessionId 取 `sidebarRight.mounted`、工作区根取 `data-files-root`、导航经 `sidebarRight.openResource/split`
-（paneNavigation 改用 PaneNavigationContext，openResource 必传）。files 35 测试/typecheck/build/lint 与桌面 CDP 实测
-（Git 标记、右键菜单、提示节点、渲染日志 0 renderSlot 崩溃）通过；图片缩放/分栏等既有功能待日常复测。
-右键菜单引起侧栏抖动（2026-10-10 修复并实测）：菜单 React 宿主在 body 流内，锚点 span 的行盒把 body 撑出一行
-高度、触发页面滚动条，工作台整体横移一个滚动条宽度；宿主改为零尺寸 fixed 定位后菜单全程 bodyClientWidth 与
-侧栏坐标逐帧稳定。
-- [x] favorite-models 菜单磨砂材质修复（2026-10-10 实机验证）：0.2.0 官方菜单面是半透明磨砂设计
-（`--dsw-menu-surface-fill` 45%/58% 透明填充 + MenuSurface 组件内 z-index:-1 材质层 `backdrop-filter:
-blur(40px) saturate(150%)`；macOS 额外 opaque backing）。我们的选择器抄自旧版官方 CSS、自绘
-`background: var(--dsw-specific-menu)`，无磨砂层 → 内容清晰透出（用户报告"弹窗变透明"）。修复：菜单改用
-官方 MenuSurface 组件、组头改官方 MenuGroup + observeStickyMenuGroups（stuck 时 94% 不透明填充），删除自绘
-背景/圆角与组头样式。实机对比：与官方账号菜单材质层计算值逐项一致（rgba(67,69,74,0.45) + blur(40px)
-saturate(1.5)）；23 测试/typecheck/build 通过。
-- [x] 设置页「远程」分区（2026-10-10 实机验证）：remote-runtime 新增浏览器半（`/remote-runtime/status` 只读 RPC +
-设置 section），显示 relay/connector 运行状态、远程入口地址（域名模式公网子域名/局域网模式本机地址）与「打开远程管理页」
-按钮（loopback 免登录直达，实测 /_admin 200）。套件图 18/18 浏览器行，scripts/verify-suite-client.mjs 期望清单同步。
-- [x] remote-runtime 进程认领修复（2026-10-10）：L1 写入的记录不含 name 字段而读取端校验 value.name，导致所有认领
-失败——每次宿主重启重复拉起（新 relay 端口冲突退出）、旧进程泄漏、hub zombie 会话与状态误报「未运行」的根因。
-改为按路径编码 name 校验 pid/startedAtMs；重启后记录与监听 pid 一致（实测认领成功）。用户服务器侧遗留 zombie
-设备记录可在 relay 重启后于管理页清理。
-- [x] 全仓更名 dsh-remote（2026-10-09，D28）：包 scope/环境变量（DSH_REMOTE_*）/数据目录（~/.dsh-remote）/
-配置文件/机器名回退值/CLI 程序名全部替换（309 文件）；套件包定名 @dsh-remote/dsh-plugin-suite（目录 packages/plugins/suite）；
-pnpm/zustand/immer 固定为根 devDependencies（原由 launcher 传递提供）、web-search-switch 补 dsh-plugin-manager 类型 devDep；
-全仓 build/typecheck/test/lint/check:dependencies 通过。旧数据目录与旧套件安装需手动迁移（见 D28）。
-- [x] launcher 退役（2026-10-09，D27 第二轮）：删除 packages/launcher 与 dev-stack/dev-profile；
-运行时依赖清单内联到 dev-runtime.mjs（可注入以保持测试可控），解析锚点改根 package.json，
-media-stamp 迁 scripts/lib；开发入口改为 scripts/dev-suite.mjs（隔离 home/端口 + 套件安装 + dsh web），
-dev-runtime.spec 13 项全过。plugin-catalog/plugin-distributions 暂留供 concise-mode-check 冒烟（后续随套件化冒烟改造清理）。
-- [x] 删壳第一轮（2026-10-09，D27）：删除 packages/desktop（Go/Wails 壳）、pack 桌面/服务版打包与 release 发布管线
-（scripts/pack*、release.mjs、prepare/dev-desktop*、release.yml 工作流、packaging 桌面相关、release-version skill、docs/06-packaging.md），
-根 package.json 移除 desktop/release 脚本与 archiver；保留 make-icons 图标链、dsh-station.config.example.json 与 dev 栈（launcher 退役见后续任务）。
-- [x] 插件化单包分发与远程运行时宿主托管（2026-10-09，官方桌面 0.2.0-rc.2 实测）：新增 station-suite 全量套件包（一条本地路径经官方「添加插件」安装/启用/卸载，22 组件行 + connection 覆写 + 屏障/投影行，`scripts/build-suite.mjs` 生成并物化依赖闭包）与 remote-runtime 组件（dshRemoteTrust 信任服务、authenticatedUrl 写 `~/.dsh-station/dsh-token`、两级分离启动器拉起并认领 relay/connector，日志 `~/.dsh-station/logs/`）；relay 增加令牌文件兜底（browser-listener/proxy 接线）；relay/connector CLI 顶部快照 argv（Electron node 模式启动后会重写 process.argv，实测 commander 会读到被复制的参数）。桌面实测：安装→启用→重启后 relay 30809 监听并回 303、connector 自挂上线、token 文件与宿主一致、fence 对 LAN Host 由 403 变 401；杀桌面进程树后子进程存活。已知问题：宿主重启未认领而重复拉起的根因已于 2026-10-10 修复（进程记录 name 字段校验不匹配，见上文认领修复条目）；GitHub 仓库地址安装待仓库公开后实测；proxy 的 undici 与宿主同实例契约在桌面 asar 语境待验证。spike 记录见 spike/remote-probe/README.md。
-- [x] HTTP/WebSocket 反向隧道，原样转发 Host/Origin，断线退避重连。
-- [x] Ed25519 设备注册与认证、一次性注册令牌、停止机器并移除。
-- [x] 密码与 TOTP、JWT/refresh cookie、登录限流、会话吊销和安全审计。
-- [x] 每台机器运行 dsh、relay、connector，支持远程入口与多机器端口路由。
-- [x] dsh 首页 token 交换，远程设置与网页内目录选择。
-- [x] 共用标准 DSH_HOME，专属 dsh-station-web profile 与插件产物检查。
-- [x] Windows 托盘、浏览器初始化、开机自启动与日志轮转。
-- [x] Windows Wails v2 桌面应用：独立模式托管自有后台（launcher `--desktop` 状态行契约、实例锁、随包/系统 Node 发现、Job Object 崩溃回收），attach 开发模式保留；自绘标题栏、托盘（含后台启停/壳自重启恢复）、通知管道（共享令牌握手）与 dsh-station 图标已实现。原生网络/权限隔离（S1.3）仍未完成，不得作为通过安全验收的发行版。
-- [x] 桌面独立模式 Windows 实机验收（2026-09-25，隔离数据 + 随包 Node）：双击启动 → 状态持有 → dsh Web UI 完整渲染（token 交换、工作区、模型选择器）；强制杀壳后 Job Object 4 秒回收全部 4 个后台子进程；重复启动被单实例互斥拒绝。托盘交互（右键/双击/启动/停止/重启后台、Explorer 重启恢复）与通知点击定位会话仍待手动验收。
-- [x] 首次免设置（D23）：relay 未初始化时 loopback 业务直达 dsh，仅管理页（`/_admin`）与登录页被引导到设置向导；非 loopback 访问仍一律拒绝。已在桌面独立模式实机验证（无管理员首次打开直接进入 dsh）。
-- [x] 项目改名 dsh-station（D24）：包名、profile（dsh-station-web）、数据目录（~/.dsh-station）、Go module、图标与用户文案（DSH 工作站）完成迁移；不保留对旧 dsh-remote 数据目录/配置文件名的运行时迁移（一次性事件，用户手动搬移）；relay.db 迁移合并为单一 CREATE 且版本号归一为 1（旧库 user_version 2–4 手工执行 PRAGMA user_version = 1，schema 逐列一致）。
-- [x] Linux x64 服务版 zip（原绿色包）与构建检查；win/mac 绿色包随 D22 介质收敛退役。
-- [x] 桌面版打包管线（S8 最小集）：`scripts/pack-desktop.mjs` 产出 win NSIS setup + 便携 zip、mac DMG + .app 便携 zip、linux deb + 便携 zip，每平台 setup/portable 两形态、各含 lite/full 变体；完整版附带固定版本 Node（官方 SHA-256 校验清单 `packaging/desktop-node.json`）。Windows 双变体已实打并通过自检；mac/linux 由 CI 原生 runner 构建，实机验收待 S10。统一发布入口 `scripts/release.mjs`：`release` 出本机全部，各平台按变体拆为 `release:win|mac|linux:lite|full` 六个命令（linux 两变体均含服务版 zip），另有 `release:linux-server:lite|full` 只打服务版 zip（任意平台可执行）；CI release 工作流三路原生 runner + 汇总发布。
-- [x] manifest 与应用图标。
-- [x] 20 个功能组件，按 4 个组合包与 6 个独立包随发行版提供，功能入口见插件索引。
-- [x] concise 与 concise-ptc 两个简洁预设，PTC 复用官方工具执行链。
-- [x] 固定 YOLO，用户提问保留人工回答。
-- [x] dsh 0.1.7 能力吸收：25 个插件包补显示元数据（locale/{en,zh}.json 的 meta + exports/files）；launcher 检测 dsh Bundle 静默跳过诊断并响亮警告；peer 准入与打包约定写入 docs/dsh/plugins.md。
-- [x] dsh 0.1.7-rc.1 适配：代码迁移与各冒烟 check 已完成，真实链路验收（登录 → 发消息 → 流式输出）于 2026-09-24 在桌面预览壳内置窗口实测通过（会话日志记录完整轮次，流式经 relay 长连接），复核入口见 [源码依据](02-dsh-facts.md)。
-- [x] dsh 0.1.7-rc.2 升级（2026-09-26）：传输/认证/插件契约逐条核对无破坏，favorite-models 补 `ModelDirectoryState.pending` 字段；14 个冒烟 check 与全仓 test/typecheck/build 通过，开发栈实测启动正常。rc.2 下真实链路（登录 → 发消息 → 流式输出）待用户复测。
-- [x] 启动体验修复（2026-09-26，二轮）：弹终端与启动慢双双修复。空 cmd 根因是 dev 栈以 DETACHED_PROCESS 拉起、pnpm 的 cmd.exe 只能新建可见控制台，改 windowsHide 隐藏控制台后消失；Wails v2 首次导航完成前不显示窗口且进 relay 只能靠初始导航 302，因此把 relay 提到一切构建/同步之前（launcher 与 dev 栈都重排），等待页改为 relay 自己的重试页（本机 loopback 使用 HARNESS 字标、转圈与三元素布局的 splash，就绪探测与动画改进见下文；远程访客保留每秒刷新、带指引的离线页）；插件快路径以介质内容指纹替代开发栈 forceRefresh。实测：dev:desktop 开窗约 4 秒（原 25+）、机器在线约 12 秒；便携版开窗约 2.1–2.6 秒、dsh 可用约 6.2 秒（dsh 插件树加载为上游成本），全程 0 个控制台窗口。
-- [x] 启动并行化与开发链提速（2026-09-26，三轮）：独立模式后台在 `wails.Run` 前启动、与 WebView2 初始化并行（实测 relay 提前约 0.25s，窗口仍卡 WebView2 初始化约 2.2s）；dev 栈入口拆为「运行时准备 + 栈主体」两段（修复全新克隆/依赖变更时 local-config 读到过期 runtime.json 的顺序隐患）；插件构建链按源码指纹跳过（src/配置/清单/lockfile 哈希，26 包约 33ms；未变化时跳过 tsdown 构建与介质复制约 5s）；dev-desktop 直接以 tsx 拉栈并内置 syso 检查（去掉 pnpm 与 desktop:prepare 两层）。attach 模式实测开窗 2.5s。
-- [x] 托盘收敛与 splash 对齐（2026-09-27）：托盘移除启动/停止/重启后台三项（退出重开即等价于重启；失败/离线状态页指引改为「请退出并重新打开」，壳自重启路径 shellRestart/spawnShellReplacement 一并删除）；启动 splash 转圈外径修正为 24px（dsh 启动页无 box-sizing reset，20px 内容+2px 边框的外径是 24），保持 1s 匀速旋转。
-- [x] 启动速度第四轮（2026-09-28）：壳窗口不再等首次导航完成——Wails 默认等初始导航 302 放行且首个页面加载完才显示窗口（冷启动数秒「点了没反应」），改为 `OnStartup`（WebView2 就绪）立即 `WindowShow`，等待期间展示与 dsh 启动页浅色 page 同值的窗口底色 rgb(249,250,251)；dev:desktop 以 mtime 缓存桌面壳产物替代每次 `go run` 链接（全缓存命中实测 1.7s，selfcheck 缓存命中 0.28s）。Go vet/test、relay typecheck/test、dev:desktop selfcheck 两次（构建/缓存命中）通过；窗口提前显示的实机观感待用户复测。
-- [x] 本机启动转圈平滑化：移除每 0.2 秒整页刷新，改为固定弧长、1s 匀速旋转；仅 loopback splash 使用 CSP 哈希限定脚本，同源串行探测后等待 200ms，单次请求 3s 超时，就绪后重载交给原有认证导航。禁用脚本仍每秒刷新，远程离线/登录/管理页保持无脚本。relay 183 测试、typecheck/build 通过，lint 无新增警告；真实 Chrome + 隔离 relay/模拟上游验证连续 120 帧无动画重置、深浅主题、减少动态效果、上线后顶层 token 交换（探测未跟随 token）。桌面 WebView2 启动观感待用户复测。
-- [x] 桌面版本机模式（D25，2026-09-28）：独立模式默认只启动 dsh 与项目插件，不常驻 relay/connector；托盘新增「启用远程服务」，launcher 收 `start-remote` 后补起 relay + connector（幂等、退出回收、不记忆状态），本机入口随之切回 relay；本机入口由壳直连 dsh 的 loopback——dsh 登录 token 经 desktop-link 状态行上报（不落日志），初始导航 302 时代发一次 `/?token=` 交换，与 relay 代发的认证语义一致。CLI 与服务版仍全量启动。desktop-link 契约扩展（`remote` phase、`dshToken`/`remoteEnabled` 字段、`start-remote` 命令、`close` 关 stdin）；顺带修复 launcher --desktop 停止后因 stdin 活跃 handle 挂住事件循环不退出的问题（shutdown 显式关闭控制通道）。隔离环境端到端验证通过（状态流无 relay 阶段、直连交换 303、start-remote 后 relay 约 0.9s 监听、connector 退避重连自动注册、stop 后 2.6s 干净退出）；launcher 192 测试、desktop go test、selfcheck 通过。实机验收（托盘启用远程、双主题观感）待用户复测。
-- [x] 桌面开发/发行统一与即时管理加载页（D25）：`dev:desktop` 改为受管 launcher，默认只起 dsh，保留开发 home/端口、单实例隔离与指纹构建缓存；仅显式 attach 的菜单仍只读。托盘启用、桌面转到管理、浏览器打开管理共用流程，管理动作先开临时只读 loopback 加载页，再异步启用，成功交接、失败就地显示；纯托盘动作失败弹窗。remoteState/remoteError 与本机阶段分开，启用失败只清理 relay/connector，保留 dsh；已就绪后致命退出仍整套停机。Go test/vet、launcher 与开发脚本 278 测试/typecheck/build、壳构建/selfcheck 通过，lint 无新增警告。真实 dev:desktop 仅3180监听、31809未监听；临时 home 的真后端集成测试验证成功/端口冲突两条路径，加载页立即200，失败后dsh存活。系统锁屏，真实浏览器/桌面点击、管理页交接与深浅主题动画仍待用户验收。
-- [x] 桌面启动立即加载页：开发/发行受管模式的初始资产请求立即 302 到临时 loopback 页，不等 dsh 才响应；连续动画与固定阶段文案、150 秒超时/失败就地提示。就绪后固定顶层 `/enter` 以无正文302代发 token，HTML/状态不含凭据，保持同站交接与原认证 fence，不提前启动 relay。Go test/vet、壳构建/selfcheck、lint（既有警告）通过；隔离真后端验证加载200→302→dsh交换303→首页200，两条远程成功/失败路径仍通过。Chrome夹具验证60帧无动画重置、深浅主题、减少动态效果、同站cookie交接及失败提示；真实WebView2开窗时机/完整工作台观感仍待用户复测，未停止现有开发实例。
-- [x] 原生 Loading plugins 可见性与轮询调研：隔离 Wails/WebView2 + 官方dsh/默认插件三次采样，确认热缓存下 BootPage 可在首绘前移除（130.4ms移除、136ms首绘），不是跳过客户端加载。事件推送现已落地（见下条），方法与测量边界见 [启动时序](reference/startup-timing.md)。
-- [x] 加载页事件推送与原生优先交接：启动/管理页共用单次同源NDJSON流，移除200ms查询及Go等待的短周期回查；统一所有状态广播，原子读取快照/信号，帧/连接/期限有界。项目页仅兜底后台等待，认证入口可用立即顶层交给原生，不等动画/客户端插件完成；并行远程启用不阻挡已就绪本机。全量Go test/vet、16组Node执行客户端测试、构建/selfcheck、真实后端成功/远程失败集成通过，lint仅既有警告。隔离WebView2实测成功进入dsh，1次/events、0次/status；未改上游或停止用户实例。完整日常交互与mac/Linux仍待复测。
-- [x] 远程管理卡片顶部留白：修复桌面标题栏直接覆盖relay页面padding的问题，36px占位与24px/窄屏12px页面留白叠加，保留顶部对齐、普通浏览器与dsh原布局。已按0.1.7-rc.2设置面板产物核对外部留白契约；真实Chrome + 隔离relay + 实际标题栏脚本验证深浅主题，宽屏间隔24px、窄屏12px，无横向溢出。relay 183测试/typecheck/build、Go test/vet及开发壳构建/selfcheck通过；桌面实机观感待用户复测。
-- [x] 管理页单向跟随原生主题（D26）：移除管理页切换器与Cookie优先级，壳级插件输出有界只读投影，relay以fs.watch和受保护NDJSON流更新，登录/首次设置保留独立主题。补充标题栏主题属性、系统配色与可见性监听。633项相关测试、typecheck/build、Go test/vet和桌面构建selfcheck通过，lint无新增警告。父会话隔离真dsh→Chrome验证dark/light/system切换期间单流、无刷新、草稿保留、CSP零违规；非法设置拒绝、服务断连保留、深浅主题与窄屏通过。实际日常桌面与mac/Linux仍待复测；契约见 [主题投影](dsh/plugins.md#工作站只读主题投影)。
-- [x] 工作站列表「本机」圆点改为蓝鲸品牌蓝 #4D6BFE，在线/离线等状态色保持不变；relay 218测试、typecheck/build及定向lint通过。隔离Chrome验证深浅主题计算色均为rgb(77,107,254)，浅色截图已检查；深色截图与桌面最终观感仍待实机复测。
-- [x] 远程管理列表标题改为「工作站列表」，不重复当前机器名，顶部机器身份及卡片名称保留；23项相关测试、relay typecheck/build和定向lint通过，未改样式或业务行为。
-- [x] 远程管理文案应用化：机器、远程入口、账号及确认/反馈页精简为标题、短提示与配置；ID/时间/技术原因默认折叠，去除拓扑长文、自挂术语和重复旁白。账号/验证器与首次设置同步精简，必要安全后果仍直接显示；在线停止与离线移除、配置与连接状态不混淆。relay 216测试、typecheck/build通过，lint无新增警告。隔离真实relay + Chrome验证三个默认页、详情鼠标展开/Space收起、宽窄屏及深浅主题DOM样式，无横向溢出；浅色截图已检查，深色窄屏截图因后台超时未取得，桌面最终观感仍待用户复测。
-- [x] dsh 启动 3~4 秒构成分析（2026-09-28，CDP 外部采样 + 裸 profile 对照，隔离 dev home 实测）：全量 20 插件端口监听 3.46s、token 就绪 3.96s；官方 bundle 裸对照 2.80s/2.89s——项目插件增量 +0.65s/+1.05s。CPU 采样构成（覆盖自约 100ms）：模块解析与文件 IO 约 55–60%（node:fs 21%、package_json_reader 13%、esm resolve/loader/utils 13%、cjs loader 5%、path/url 4%），worker 传输 13.5%，cordis+plugin-loader 约 7%，app-boot 3%。dsh 以散装 node_modules ESM 运行，启动是磁盘 IO bound：NODE_COMPILE_CACHE 实测无收益（3797→3885ms，V8 编译非瓶颈）；不改 dsh 的可压缩空间很小，环境侧无剩余空间（实测本机无任何实时杀毒活动，纯基线与此前测量一致），根治要靠上游归档化分发——官方桌面版已把整个运行时树打进 app.asar（实测冷启动 2.62s 到宿主端口监听，见 [官方桌面应用](dsh/desktop-app.md)）。HTTP 面非瓶颈：SPA 约 1.5MB 资产本机传输全部 <60ms，WebView2/浏览器侧成本是 1.4MB JS 的解析执行。
-- [x] 托盘远程启停：新增「停止远程服务」「重启远程服务」，只控制 relay/connector，正常停止后恢复本机入口并可再次启用；操作中禁用重复请求。停止/重启时内置 relay 页面自动返回本机工作台（含远程管理），直连工作台保留草稿且不刷新，外部浏览器不强制切换。开发中转脚本完整转发 start-remote/stop-remote/restart-remote，退出期间不再下发远程命令。launcher 311测试/typecheck、Go test/vet、launcher/桌面构建与selfcheck通过；新增脚本定向lint无警告。隔离真后端与开发命令桥均验证start→stop→start→restart→stop的端口回收、dsh原token认证/首页持续可用，端口冲突仍只影响远程；开发桥真后端用例位于 scripts/dev-desktop.spec.ts，按 DSH_STATION_INTEGRATION=1 开启。开发桥漏转发的停止/重启回归已覆盖。Go test/vet、实际JS测试、桌面构建/selfcheck通过；隔离WebView2两场景连续5轮验证条件回退、模拟端点认证交换、返回后按钮响应、直连文档单次加载/草稿保留。全仓lint仅既有警告；实际日常管理页与托盘点击仍待用户复测。
-- [x] dsh 0.2.0-rc.2 升级（2026-09-29）：传输/认证/WS/插件契约逐条核对无破坏（connection 包零变化；gateway 仅新增 `hasLiveClient()`；trustedHosts 仍不可变，重启机制保留；schedule 拆为可选 experimental bundle、产品遥测仅 desktop profile）。原生设置面板顶部留白变量改名 `--dsh-frame-overlay-top` 且全屏 mask 让出标题栏，已同步 docs/dsh 与 dsh-theme 技能；pi-ai 0.85.1→0.87.1 对齐（copilot-auth/models-catalog/launcher），models-catalog 测试改用新目录仍未收录的同族新版本并跟进 gpt-6 家族 minimal 档位变化。根 overrides 全表钉 0.2.0-rc.2，删 lockfile 与全部 node_modules 重装消除 peer 旧解析；隔离开发运行时重建；minor 依赖跟进（ws 8.22.0、hono 4.13.11、@types/ws 8.18.2、oxlint 1.86.0），major（@hono/node-server 2.x、TypeScript 7、react 19、zustand 5、immer 11、vitest 5、jsdom 30）留待单独一轮。16 项冒烟 check 与全仓 lint/typecheck/build/test 通过（lint 仅既有 11 警告）。rc 下真实链路（登录 → 发消息 → 流式输出）待用户复测；dsh 0.1.7 session-controller 重挂载竞态在 0.2.0 仍存在，yolo-mode 豁免保留。
-- [x] 标题栏「工作站」菜单新增「关于 DSH 工作站」（2026-10-01）：原生信息弹窗（Wails MessageDialog）显示工作站、dsh、Node（标注随包/系统）、Wails、Go 与操作系统版本，对标 VSCode About；版本首次打开时按需解析并缓存（载荷包根与 dsh 的 package.json、实际 node 可执行文件、Go 构建信息），attach 模式无载荷字段显示未知、Node 回退系统 PATH，单项失败不阻塞其余字段。desktop go test/vet/gofmt 与生产标签构建通过；实机弹窗观感待用户复测。
-- [x] 网页搜索开关插件（2026-10-08）：新增第 21 个功能组件 web-search-switch（独立分发包），为 dsh 官方「网页搜索」插件（base 行 `web-search-deepseek`）补充官方插件页缺失的启停开关。查证依据：官方 `plugins.item` 卡片组件不含 Switch；该行不在 `protectedModules`、可经 profile patch 编址；停用纯惰性（`web` 行 searchProvider 只在真正搜索时解析），重启后官方卡片因命名空间不再 served 自动消失。浏览器半以本 Bundle 包名注册 `plugins.bundle.config` keyed 槽，经官方 `ctx.remote.pluginManager.setPluginEnabled` 写 dsh profile 用户层补丁（与原生行开关同一机制，非第二套管理器），支持热加载生效与「重启后生效」提示、锁定/缺失/未管理三种不可用文案。插件 18 测试/typecheck/build、web-search-switch-check 冒烟、launcher 359 测试（catalog 11/21 断言更新）通过。dev 栈 + 真实 Chrome 界面闭环已验证：新装 Bundle 自动安装并在插件页出现、详情页配置区正确读取官方行、停用热加载即时生效并落盘 `id: web-search-deepseek, disabled: true`、重启 dsh 后保持且官方「网页搜索」卡片消失、重新启用后补丁翻为 `disabled: false` 且卡片恢复。深浅主题观感与日常使用待用户复测。
-- [x] 桌面初始位置顶部夹回（2026-10-08）：修复低分辨率或高 DPI 缩放屏上首次打开工作站时窗口顶部跑出系统顶部、自绘标题栏无法拖回的问题。根因是 Wails v2.16 Windows 启动固定按工作区垂直居中（winc `Form.Center`），窗口高度超过工作区高度时居中 top 为负。现于 `OnStartup` 在 `WindowShow` 之前按标题+pid 找到主窗口，top 高于所在显示器工作区顶部时下移贴齐；不改尺寸与水平位置、不处理底部越界（标题栏可见即可拖动），非 Windows 维持系统默认位置。纯逻辑裁决表驱动与真实 Win32 窗口的越出→夹回、区内不动、标题不匹配不动测试覆盖，desktop go test/vet/gofmt 与构建通过；实机低分辨率/高缩放屏幕验收待用户复测。
-- [ ] 上游已知问题：dsh 0.1.7-rc.1 停用 yolo-mode Bundle 时 session-controller 重挂载竞态（file-upload Agent resolver 二次注册失败，重启可恢复；concise-mode-check 已按签名精确豁免并标注）。等上游修复后移除豁免。
-- [ ] 实机对比验收 dsh 0.1.7 原生 Open In… Explorer（`openWorkspacePath`，等待交接应答、不置前）与 remote-settings 现有通道（spawn 即返回 + 异步置前）：按结果决定收敛或保留置前兼容层（见 [工作区](dsh/workspace.md)）。
-- [x] 插件第三方化与组合分发（D20）代码已完成：20 个功能组件分为 4 个组合包与 6 个独立包，首次默认安装；配套升级所有仍安装项并保留 Bundle/组件停用，卸载后不补回，可从发行版 `plugins/` 或开发 `.dev/plugins/` 重装。directory-picker 独立；模型组两个启动屏障组件不可单独停用；connection 注入与模型 HMR 屏障仍为壳级 overlay。10 个 Bundle 的在线停用/启用自动检查与隔离启动已通过，实机界面验收仍见下一项及 [计划](plugin-optional-plan.md)。
-- [ ] 插件生命周期实机验收：组合包/组件停用后重启仍保持，卸载后 launcher 不补回，从随附目录重装当前版本；影子型插件（user-message-fork、files）层序生效，并检查深浅主题与中英文界面。
-- [x] 插件使用说明归属各包 README，docs 按主题组织且每篇不超过 600 行。
+- [x] 套件单包分发（2026-10-10）：`@dsh-kit/dsh-plugin-suite` 经官方「添加插件」一条路径
+  安装/启用/卸载；`scripts/build-suite.mjs` 生成聚合 patch（`llm-pi-ai` 屏障 + 模型屏障占位 +
+  全部组件行）并把组件与 registry 依赖闭包物化进 `plugins/suite/node_modules/`。
+  官方桌面 0.2.0-rc.2 实测装载通过。
+- [x] 18 个功能组件，按 3 个组合包与 9 个独立包分发（见 [插件索引](plugins.md)）；
+  组合包内的组件保留独立行，可单独停用（模型组两个屏障组件除外）。
+- [x] 插件目录扁平化（2026-10-10）：`packages/plugins/*` → `plugins/*`；
+  `packages/` 只保留 `plugin-build`（tsdown 配置工厂）与 `plugin-ui`（浏览器半共享 UI）。
+- [x] 全仓更名 dsh-kit（2026-10-10）：包 scope `@dsh-kit/*`、插件 `name` 字段、locale 文案、
+  依赖版本统一为 `0.1.0`、`check:dependencies` 覆盖 `plugins/`。
+- [x] 开发与冒烟链收敛：开发入口 `pnpm dev`（`~/.dsh-dev` + profile `dsh-kit-dev` + 端口 3180，
+  自动构建套件并安装）；冒烟脚本从该 profile 复制隔离副本；`concise-mode-check` 改为安装套件并
+  停用/启用整个套件 Bundle；`verify-suite-client.mjs` 期望 16 个浏览器行。
+- [x] 插件内清理：删除 notify 的桌面壳回环通道（只保留 Windows toast），各包 README 的
+  分发与重装说明改指套件路径。
+- [x] 文档重建：README（中英）、AGENTS.md 铁律、ARCHITECTURE.md、docs 01/02/03/05 与插件索引；
+  删除远程专属文档（安全、传输、联调验收、启动基准、旧计划）。
+- [x] run_code 工具插件取代简洁 PTC（2026-10-10）：简洁预设内嵌 run-code 行
+  （`presentAs('both')` + SDK 后指引 section），原生工具与 run_code 并存、模型自主选择；
+  执行链、SDK、审批与子调用全部复用 dsh。
+- [x] 套件组件清单元数据统一中文（2026-10-09）：插件管理器只为裸包名行解析 locale meta，
+  因此新增 display 壳微包（preset-concise、model-bootstrap）承载中文标题与描述。
+- [x] 官方桌面「正在加载设置」卡死修复（2026-10-09，两个组件随后随远程能力删除）：
+  根因是 browser-compat 的旧 WebKit 全局垫片垫坏官方桌面 Chromium 连接层，
+  以及 remote-settings 的静态 `__DSH_TRANSPORT__={ownsHost:true}` 违反 dsh 契约。
+- [x] files 增强 DOM 级重写（2026-10-10 实机验证）：放弃 `sidebar.right.pane.tab` 座位影子，
+  改为 MutationObserver 发现原生树根后挂捕获事件；右键菜单宿主改零尺寸 fixed 定位，
+  消除侧栏抖动。
+- [x] favorite-models 菜单磨砂材质修复（2026-10-10 实机验证）：改用官方 MenuSurface 组件
+  与 MenuGroup，删掉自绘背景与组头样式，计算值与官方账号菜单逐项一致。
+- [x] dsh 0.2.0-rc.2 升级（2026-09-29）：传输/认证/插件契约核对无破坏；根 overrides 全表
+  钉 0.2.0-rc.2；pi-ai 0.85.1→0.87.1 对齐；16 项冒烟 check 与全仓检查通过。
 
-## 启动基准
-
-- [x] Node 24.19.0 Windows 实机基准（2026-09-29）：开发桌面与新打包 lite 便携 zip 各一次空数据初始化、五次缓存重启；登录入口就绪中位数3.752s/2.922s，dsh自身2.635s/2.593s，窗口可见0.792s/0.648s。逐进程复核系统Node24.19.0、默认无relay、每轮回收；两种实际WebView2窗口截图确认原生工作台与内测声明。全仓构建、便携打包/解压自检通过；本机缺makensis未产出NSIS。未测精确页面首绘或交互时刻、不作旧Node因果对比，方法与样本见 [基准报告](reference/startup-benchmark-node24.md)。
-
-- [x] 首次插件准备有界复制（2026-09-29）：固定阶段计时，普通依赖保持真实文件且最多8路复制；失败停止派发并排空写入，pending标记阻止半成品误入快路径，保留停用/卸载选择。同一11,359文件的9组交错复制指纹一致，中位5.800→1.685s；开发/新lite便携首次登录入口10.297→5.839s、9.859→5.469s，旧新便携交错缓存重启中位3.059/3.051s。launcher340测试通过/2跳过、typecheck/build与打包通过；默认TEMP下既有watch测试触发Node原生断言，仓库外D盘TEMP全套通过。方法及限制见 [优化报告](reference/startup-copy-optimization.md)。
-- [x] 第一轮有界复制启动优化已由用户确认通过（2026-09-29）；该确认不扩展为mac/Linux或其他未明确验收的专项通过。
-- [x] 第二轮开发准备提速（2026-09-29）：runtime准备合并进原可取消准备进程，完整字节SHA缓存成功YAML校验，保留变化/缺失产物/失败重试检查；交错准备中位约351→129ms，最终真实开发桌面五次缓存中位3.692→3.468s。Copilot懒加载候选未在便携包交错复测中证实收益，已撤回并恢复原介质/zip；不改官方dsh、模型屏障、插件集合和ready。测试、方法与边界见 [第二轮报告](reference/startup-development-optimization.md)，本轮实机观感待用户复测。
-- [x] 插件同步加载页子步骤提示（2026-09-30）：状态行新增 `pluginStage` 标记（copy/deps/install），launcher 在慢路径各步骤开始时重发状态行，Go 加载页只映射固定文案（正在复制插件文件/正在准备插件依赖/正在安装插件），未知标记沿用「正在准备插件…」默认文案、不透传自由文本；快路径不携带。首次安装约 15 秒窗口内文案随步骤推进，不再静止。launcher 359 测试/typecheck/build、Go test/vet/gofmt、backend 线格式与文案映射/labels 数组同步守卫（含既有阶段全量校验）通过；实机观感待用户复测。
-- [x] 第三轮介质指纹清单与重装收窄（2026-09-30，对照官方桌面版启动分析，见 [官方桌面应用](dsh/desktop-app.md)）：介质生成时随 catalog.json 写出 `stamp.json` 指纹清单（算法与 launcher 回退哈希共用 `media-stamp.ts`），launcher 启动校验从逐字节哈希整棵介质树改为一次小文件读取，清单缺失才回退哈希、删除即强制逐字节校验；完整同步只重装实际变化条目（版本或指纹变化者），同版本未变条目沿用安装副本，运行时依赖闭包仍按安装项∪沿用项重建（link: 安装在运行期解析缓存依赖），包管理器主版本迁移与 pending 中断时禁用收窄。Go 壳补启动阶段计时日志（`[启动计时]` 前缀：单实例/拉起/握手/WebView2/后台阶段/页面就绪），launcher 增加「启动就绪用时」与插件收窄统计日志。真实开发 home 实测：暖启动校验 2–4ms（原为全树哈希数秒）；单插件重建后完整同步约 7.5s、其中 pnpm add 仅 0.47s（原全量重装约 15s）；剩余大头为依赖闭包 rmSync+重拷约 6s（含计时盲区的整树删除），可作后续增量闭包优化。launcher 357 测试/typecheck/build、介质生成脚本实测、Go build/vet、全仓 test 与 check:dependencies 通过。发行/`dev:desktop` 冷启动观感待用户实机复测。
-
-## 优先验收
-
-- [ ] 远程入口重连：取消后「远程入口」页出现重连卡片，一键恢复不需要新令牌；
-  对已「停止并移除」本机的入口点重连时降回卡片而不是停机，重新签令牌可再次加入。
-- [ ] 从入口唤醒断开的机器：hub「机器」页显示「已断开 · 可唤醒/离线」两种状态，
-  点「请求上线」约一个探测周期内机器自动重连并恢复远程访问；离线机器的「移除」
-  确认页如实说明送不到对方。
-- [ ] 远程入口自动重启：粘命令加入新入口后 dsh 自动重启并信任新地址，远程页面自动恢复；
-  「远程入口」页正确显示进行中/完成/失败三种状态；取消远程入口同样触发重启。
-- [ ] 手机端完整流程：登录、目录选择、发消息、流式输出、切换会话、设置和提问卡片。
-- [ ] 页面保持 30 分钟以上，/api/remote.mux 稳定；断网、切 App、锁屏后恢复。
-- [ ] 图片附件上传，并验证目标模型实际接收到图片。
-- [ ] 公网 HTTPS/WSS、泛域名证书与共享 cookie 的真实链路。
-- [ ] 登录连续失败触发 15 分钟限流，用独立测试账号环境避免锁住日常管理员。
-- [ ] Linux 真机解压运行 start.sh；跨平台构建成功不等于目标系统运行验收。
-
-## 插件实机验收
+## 实机验收
 
 以下保留用户确认项，不因实现或单元测试完成而自动勾选。修改插件后先重启 dsh。
 
@@ -144,32 +48,34 @@ dev-runtime.spec 13 项全过。plugin-catalog/plugin-distributions 暂留供 co
 
 | 插件 | 待确认 |
 |---|---|
-| remote-settings | 远程模型与插件设置可以加载、保存；Agent 预设保持唯一原生菜单、无路径复制 UI；Windows 预设目录兼容已由真实 Chrome 确认可见；顶部「在本地打开」已由真实 Chrome 确认走私有通道并出现可见 `xdip` Explorer；两个 Explorer 动作已改为 spawn 成功即响应，工作区私有 RPC 经本机 relay 单次实测约 12 ms 且窗口可见；异步 best-effort 置前已由本机 relay 实测确认 Explorer 成为前台；远程目标及复制预设后的自动动作仍待复测；组件停用后经 relay 访问设置页回到受限形态，重新启用后恢复 |
+| 套件生命周期 | 停用/启用整个套件后重启仍保持；组件级停用保持；卸载后不自动补回，重装仍走「添加插件」；深浅主题与中英文界面 |
 | copilot-auth | 设备码登录成功，凭据持久化，账号模型可使用 |
 | proxy | 跟随环境（默认）、使用插件代理地址、强制直连三态：测试 URL、原生 fetch 模型请求和官方网页抓取按所选策略出网；不以子进程或独立网络库作验收前提 |
-| models-catalog | 检查、选择、应用与重启持久化已实机通过，保留了原有 `gpt-6-astra`；GPT-6 Sol 的 Default/Low 真实请求成功，Grok 4.7 的 Default/Low 均由 Copilot 端点返回 400；撤销与其余新增模型仍待实机确认 |
+| models-catalog | 检查、选择、应用与重启持久化已实机通过；撤销与其余新增模型仍待实机确认 |
 | favorite-models | 输入框筛选、全部失效回退、当前模型不跳转，/model 目录完整 |
 | model-capabilities | 协议覆盖生效；图片支持后向实际端点发送图片 |
 | turn-retry | 失败重试、停止继续、错误详情；有排队消息时不发送或修改队列；详情弹窗全屏（含深色主题）待实机确认 |
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
-| files | 基本验收通过；「开始」页三入口恢复已修复并有自动回归检查，待重启后实机复测；图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；手机及边界矩阵待验收 |
-| chat-scroll | 每个消息按钮只定位自己的消息，深浅主题、减少动态效果与触控尺寸正常 |
+| files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认 |
+| notify | Windows 通知实际弹出、点击只有关闭、专注助手与权限设置提示正确 |
+| tools-inspector | 工具清单与历史调用、失败次数统计与只读性 |
+| skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 子会话只继承前置历史，草稿可编辑，原会话不变 |
 | concise-mode | 简洁会话可直呼工具，也可写 run_code 程序批量/组合调用（both，模型自主选择）；run_code 调用卡片与子调用展示正常 |
 | yolo-mode | 用户提问正常，常驻服务可启动；停用重启后原生权限可恢复 |
-| browser-compat | AbortSignal/Promise/Iterator 垫片、能力清单和临时浏览器日志页已实现；仍需 iOS 16.6 真机验证目录选择、启动报错捕获和复制回退 |
+| web-search-switch | 开关热加载即时生效并落盘，重启 dsh 后保持；官方「网页搜索」卡片随之消失/恢复 |
+| agents-md | 设置页编辑、保存与 dsh 加载器反向认领一致 |
 
 ## 后续任务
 
-- [ ] 根据手机实测决定移动端布局调整范围。
-- [ ] 完善 PWA service worker 与 iOS 添加到主屏幕引导。
-- [ ] Web Push：VAPID、锁屏通知及点击跳转会话；与 Windows 桌面通知分开验收。
-- [ ] 多用户与邀请流程。
-- [ ] 按需增加 OIDC 或 Passkey 登录。
-- [ ] Windows 代码签名、自动更新及 Linux/macOS 桌面启动体验。
-- [x] 介质矩阵切换完成（D22，2026-09-25 用户决定提前执行，不等 mac/linux 桌面版实机验收）：
-  win/mac 仅桌面版（setup + portable），Linux 桌面版 + 服务版 zip，共四个发布端、
-  各 lite/full；mac/linux 桌面版实机验收仍按 S10 待办，验收结论不再影响介质矩阵。
-- [ ] 决定 `packaging/win-launcher` 托盘程序与遗留 `start.ps1` 的去留：win 服务版退役后
-  已无介质携带 exe（syso 资源仍被桌面壳复用），确认无保留价值后整体清理。
+- [ ] 组件停用/启用后的浏览器半回归：每个组件的行开关在真实宿主里生效，
+  且不影响其他组件的槽位与服务。
+- [ ] 套件在线停用/启用的上游竞态观察：dsh 0.2.0 仍存在 session-controller 重挂载竞态
+  （file-upload Agent resolver 二次注册失败），套件整包启停时会经过这条路径；
+  命中时记录签名并在检查脚本里按精确签名豁免，等上游修复后移除豁免。
+- [ ] 仓库公开后实测「添加插件」用 Git 地址安装（`file:` 相对依赖在 git 依赖语境的解析基准）。
+- [ ] 按 [dsh-upgrade skill](../.agents/skills/dsh-upgrade/SKILL.md) 跟进官方 dsh 新版本，
+  完成后回写 [源码依据](02-dsh-facts.md) 的适配基线。
+- [ ] 新增插件前先更新 [决策](01-decisions.md) 与 `plugin-catalog.json`，并在
+  [插件索引](plugins.md)、组合包 README 与组件 README 同步登记。

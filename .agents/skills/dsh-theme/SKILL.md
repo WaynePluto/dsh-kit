@@ -1,6 +1,6 @@
 ---
 name: dsh-theme
-description: 编写或调整 dsh 插件的主题样式，处理表单焦点、边框、背景、深浅主题、卡片、菜单与原生 UI 一致性。涉及 dsh UI/CSS/主题 token 时先加载；完成后自动将本次已验证、可复用的新经验合并回本技能。不适用于业务逻辑、独立于 dsh 的 relay 页面；图标文字对齐同时加载 flex-centering。
+description: 编写或调整 dsh 插件的主题样式，处理表单焦点、边框、背景、深浅主题、卡片、菜单与原生 UI 一致性。涉及 dsh UI/CSS/主题 token 时先加载；完成后自动将本次已验证、可复用的新经验合并回本技能。不适用于业务逻辑或独立于 dsh 的页面；图标文字对齐同时加载 flex-centering。
 ---
 
 # dsh 主题样式
@@ -127,7 +127,6 @@ description: 编写或调整 dsh 插件的主题样式，处理表单焦点、�
 当前 `settings.section` 的 priority shadow 只影响正文 renderer；`ui-settings-general/src/client/index.ts`
 直接用原始 `slots.entries` 投影菜单，会把原条目和 shadow 条目都显示出来。增强现有页面时不能假定
 “同 id 只出现一个菜单”，测试必须连同导航登记检查；不需要页面定制时不要添加登记项。
-remote-settings 仅保留宿主 ownsHost 注入，没有浏览器菜单扩展。
 此导航例外核对于 0.1.6-alpha.2 产物，0.1.7-rc.1 待复测；不代表所有 list 槽的 owner 都有同样行为。
 
 ### 0.2.0 菜单面是 MenuSurface 半透明磨砂，不要自绘背景
@@ -142,7 +141,7 @@ dsh 0.2.0 起菜单/下拉表面是半透明磨砂设计：`--dsw-specific-menu`
 分组列表用 `MenuGroup` + `observeStickyMenuGroups(viewport)`（组头 stuck 时由官方切
 `--dsw-alias-menu-group-header-fill` 94% 不透明，viewport 须无 padding 直接子级为 MenuGroup）。
 验证方式：与同页官方菜单（如账号菜单）对比材质层 computed 值应逐项一致。实例：
-`packages/plugins/favorite-models/src/client/FavoriteModelSelect.tsx`。
+`plugins/favorite-models/src/client/FavoriteModelSelect.tsx`。
 
 ### 独立 React 根的 body 宿主必须零尺寸
 
@@ -150,15 +149,15 @@ dsh 0.2.0 起菜单/下拉表面是半透明磨砂设计：`--dsw-specific-menu`
 哪怕只渲染一个空锚点 `<span aria-hidden>`，行盒也会把 body 撑高一行、触发页面滚动条——打开弹层的瞬间
 整个工作台横移一个滚动条宽度（2026-10-10 桌面实测 5px，`bodyClientWidth` 1280→1275）。宿主必须
 `position:fixed; top:0; left:0; width:0; height:0; overflow:hidden`；portal 弹层本身是 fixed 定位不受影响。
-实例：`packages/plugins/files/src/client/nativeFilesAdapter.tsx` 的 menuHost，回归断言在
-`packages/plugins/files/tests/nativeFilesAdapter.spec.ts`。
+实例：`plugins/files/src/client/nativeFilesAdapter.tsx` 的 menuHost，回归断言在
+`plugins/files/tests/nativeFilesAdapter.spec.ts`。
 
 ### 设置分区组件与 Button 原语
 
 设置 `settings.section` 的正文组件沿用 agents-md 实例模式：inline CSSProperties + dsw token
 （`--dsw-alias-label-secondary` 等），文字 13px；primitives `Button` 的紧凑档是 `size="sm"`
 （无 `compact` 属性，2026-10-10 按 0.2.0-rc.2 类型核对），复制类操作用 `writeClipboard`。
-实例：`packages/plugins/remote-runtime/src/client/RemoteSection.tsx`。
+实例：`plugins/agents-md/src/client/index.tsx` 与 `plugins/notify/src/client/NotifySection.tsx`。
 
 ### 设置导航的插件图标
 
@@ -170,8 +169,8 @@ SVG element 序列化为 mask；项目实例是 `packages/plugin-ui/src/navigati
 `packages/client/ui-settings-general/src/client/SettingsRoot.tsx`。
 0.1.7-rc.1 的 Medium 图标先返回以纯函数 Artwork 为 `type` 的 React element，再由 Artwork 返回 `<svg>`：
 序列化时只对受控图标有界展开函数包装，不能直接把第一层当 SVG；递归包装须拒绝，避免页面插件激活失败。
-依据为已安装 `@deepseek-ai/dsh-client-ui-primitives/lib/index.js` 与本仓库 `browser-compat/tests/plugin.spec.ts`；
-Chrome 实测四个相关插件恢复激活，图标深浅主题的视觉效果仍需单独验收。
+依据为已安装 `@deepseek-ai/dsh-client-ui-primitives/lib/index.js` 与各插件导航图标的单元测试（如 `plugins/agents-md/tests/`）；
+Chrome 实测相关插件激活正常，图标深浅主题的视觉效果仍需单独验收。
 
 ### Native Sidebar tab 标题包装层的对齐
 
@@ -179,7 +178,7 @@ Chrome 实测四个相关插件恢复激活，图标深浅主题的视觉效果�
 用于斜体、双击或其它状态，新增的 wrapper 会变成外层 flex 的单个 item；不能继续让 SVG 和文本在普通 inline 行盒中按 baseline 对齐。
 正确规则是 wrapper 自己 `display:inline-flex; align-items:center; gap:5px; min-width:0; max-width:100%; overflow:hidden;
 line-height:1.4; white-space:nowrap`，SVG `display:block; flex:none`。这样既保持原生图标/标题间距，也不让 wrapper 的 inline baseline
-把图标顶高或把标题压低。当前 files 实例是 `packages/plugins/files/src/client/styles.ts` 的
+把图标顶高或把标题压低。当前 files 实例是 `plugins/files/src/client/styles.ts` 的
 `.dsh-files-preview-tab-title`；真实 dsh Chromium 页面测得 wrapper 18.2px，16px 图标 y=16..32，标题墨迹行盒
 14.9..32.5，中心差约 0.3px，无需额外 `translateY`。若换字体/字号或出现新的 CJK 残差，仍按 flex-centering 的截图量法复核，
 不要直接加 margin/top。
@@ -188,32 +187,11 @@ line-height:1.4; white-space:nowrap`，SVG `display:block; flex:none`。这样�
 
 右侧 Sidebar 的 tab body 不能默认当作普通 flex 子项：上游 `ui-dockkit/src/components/TabPanel.tsx` 的 `paneBody` 子节点通过 `display: contents` wrapper 放入，`ui-dockkit/src/components/dockkit.module.css` 的 `.paneBody` 自身是带 `overflow:auto` 的 flex item，但不是 flex 容器。现象是 body 根节点若写 `height:0; flex:1`，实际页面中会得到零高度，内容只能溢出到不可滚动的区域。
 
-正确规则：Sidebar 自有 body 的根节点给 `height:100%`、`min-height:0`，内部再用自己的 flex/grid 和滚动面；如果需要 `height:0` 的 flex 填充模型，先包一层明确的 `display:flex; flex-direction:column` 容器。用真实页面的 `getBoundingClientRect()` 同时核对根节点和主内容区高度，不要只看文字是否出现。本仓库 `packages/plugins/files/src/client/styles.ts` 的 `.dsh-files-root` 是实例；本次用临时 dsh 页面验证根节点与树/预览区域均填满 Sidebar。
+正确规则：Sidebar 自有 body 的根节点给 `height:100%`、`min-height:0`，内部再用自己的 flex/grid 和滚动面；如果需要 `height:0` 的 flex 填充模型，先包一层明确的 `display:flex; flex-direction:column` 容器。用真实页面的 `getBoundingClientRect()` 同时核对根节点和主内容区高度，不要只看文字是否出现。本仓库 `plugins/files/src/client/styles.ts` 的 `.dsh-files-root` 是实例；本次用临时 dsh 页面验证根节点与树/预览区域均填满 Sidebar。
 
 ### 可滚动预览中的固定表头
 
-需要让预览路径/操作栏在内容滚动时留在顶部时，`position: sticky; top: 0` 必须写在实际滚动容器的后代上，并配不透明的 `var(--dsw-alias-bg-base)` 背景和足够的 `z-index`，否则正文会穿过表头。滚动容器在表头上方不要保留 padding：sticky 会停在 padding edge，正文仍可能从表头上方露出；把上方留白移到 sticky 表头自身的 `padding-top`。不要改成 `position: fixed`，那会脱离 Sidebar pane 的滚动坐标和宽度。实例是 `packages/plugins/files/src/client/styles.ts` 的 `.dsh-files-preview` / `.dsh-files-preview-head`；真实 dsh 页面滚动预览区 500px 后，表头 `getBoundingClientRect().top` 与滚动容器顶部一致。
-
-### 桌面标题栏占位与页面外留白
-
-先区分卡片外部留白与标题内部 padding。0.2.0-rc.2 原生设置采用 fixed 居中 overlay，面板高度
-`min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))))`；
-依据是 `packages/client/ui-settings-general/src/client/SettingsRoot.module.css`，已按当前源码复核，本地旧 checkout 可能没有 overlay-top 变量。
-独立 relay 管理文档仍需顶部对齐，不能照搬整套居中 modal；壳注入36px标题栏时也不能直接覆盖页面24px padding。
-项目实例用 `--dsh-remote-page-top-gap`（窄屏12px）与标题栏占位 calc 相加，未定义变量的dsh回退0；
-不要一次读取 computed padding 后写死，否则响应式切换会丢失。保留border-box，防止height:100%链底部裁切。
-真实Chrome + relay页面/实际标题栏脚本验证：宽屏卡片top60、条底36，窄屏top48、条底36；
-普通浏览器仍为24/12px，深浅主题不变、无横向溢出。不代表所有原生弹窗都共享设置面板的高度公式。
-
-### 桌面标题栏的主题跟随
-
-主题偏好和解析后的配色不是同一状态：`system` 不应被保存成当时的light/dark。
-原生dsh使用根节点 `data-ds-theme-source` 与body的 `data-ds-dark-theme`；relay管理页使用根节点 `data-theme`。
-标题栏取body计算背景色时，须分别观察根节点/body自身的主题属性，并订阅 `matchMedia` 与 `visibilitychange`；
-不能只看根节点class/style，也不应观察整个子树，否则标题栏自身写样式会触发回环。
-Chrome后台页可能已匹配新的系统CSS，却延迟派发媒体事件；重新可见时需重算。隔离真dsh→relay页面验证了
-原生dark/light/system事件更新、标题栏明暗与草稿不变；背景页媒体事件延迟、激活后派发也已观察。
-实例：`packages/desktop/chromebar.go`。宿主主题持久化与只读投影契约见 `docs/dsh/plugins.md`，不要用DOM乐观变化认定设置已保存。
+需要让预览路径/操作栏在内容滚动时留在顶部时，`position: sticky; top: 0` 必须写在实际滚动容器的后代上，并配不透明的 `var(--dsw-alias-bg-base)` 背景和足够的 `z-index`，否则正文会穿过表头。滚动容器在表头上方不要保留 padding：sticky 会停在 padding edge，正文仍可能从表头上方露出；把上方留白移到 sticky 表头自身的 `padding-top`。不要改成 `position: fixed`，那会脱离 Sidebar pane 的滚动坐标和宽度。实例是 `plugins/files/src/client/styles.ts` 的 `.dsh-files-preview` / `.dsh-files-preview-head`；真实 dsh 页面滚动预览区 500px 后，表头 `getBoundingClientRect().top` 与滚动容器顶部一致。
 
 ### Modal 弹窗内自绘头部按钮
 
@@ -239,13 +217,13 @@ dock 列表行要保证任何内容长度下都单行：行容器去掉 `flexWra
 `min-width:0` + `overflow:hidden; text-overflow:ellipsis; white-space:nowrap`；行尾按钮组必须
 包一层 `flex:none` 容器——dsh `Button`（`Button.module.css`）没有 `flex-shrink:0`，直接平铺
 会被长文本压缩导致按钮文字换行。悬停全文用 `title` 补充。实例：
-`packages/plugins/services/src/client/ServiceRow.tsx`、`styles.ts` 的 `rowActionsStyle`；
+`plugins/services/src/client/ServiceRow.tsx`、`styles.ts` 的 `rowActionsStyle`；
 真实页面实测长命令行 28px 单行、facts scrollWidth 1045 > clientWidth 641 出省略号。
 
 ## 验证闭环
 
 1. 运行目标插件 test/typecheck/build 和仓库 lint；读实际 diff，确认没有改业务写入逻辑。
-2. **构建后重启对应 dsh，再刷新页面。** dsh-remote-web 没有 HMR，浏览器硬刷新也不会让
+2. **构建后重启对应 dsh，再刷新页面。** 套件所在 profile 没有 HMR，浏览器硬刷新也不会让
    宿主重读不可变客户端 bundle。先查服务管理器；用户管理的运行实例不要擅自停掉。
    可启动独立 loopback 验证实例，结束时清理，并明确提醒用户重启日常实例。
 3. 在真实 dsh 页面并排比较内置控件与插件，不用孤立 HTML 预览代替宿主环境。

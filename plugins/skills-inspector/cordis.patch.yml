@@ -1,0 +1,12 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+#
+# `./` insert 名字由 dsh 锚定到本文件目录再转成 file:// URL，故这里只写相对路径（D17）。
+#
+# 宿主半 `dist/index.js` 按 agent scope 读取技能并回放加载历史，经 `/skills-inspector`
+# RPC 交给页面；浏览器半 `dist/client.js` 向 `conversation.view` 注册「技能」tab。
+# **dist/client.js 缺失会让 dsh 的 web UI 启动失败**，不是静默降级。
+# 顺序无关：tab 位置由 `register` 的 `order` 决定，不由 overlay 行序决定。
+- insert:
+    - id: skills-inspector
+      name: './dist/index.js'

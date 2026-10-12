@@ -1,4 +1,0 @@
-# dsh-remote 的「自定义模型能力」受管 Bundle patch 层。
-- insert:
-    - id: model-capabilities
-      name: './dist/index.js'

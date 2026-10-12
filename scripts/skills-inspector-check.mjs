@@ -10,7 +10,7 @@
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, ROOT, dshPluginOverlays } from './local-config.mjs'
+import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, DSH_HOME_DEV, ROOT } from './local-config.mjs'
 import { createCheckContext, runLiveDshCheck } from './lib/check-context.mjs'
 import {
   createClientInspectionContext,
@@ -21,12 +21,12 @@ import {
 } from './lib/check-client-bundle.mjs'
 
 
-const PACKAGE_ID = '@dsh-remote/dsh-plugin-skills-inspector'
+const PACKAGE_ID = '@dsh-kit/dsh-plugin-skills-inspector'
 const portArgument = process.argv.indexOf('--port')
 const PORT = portArgument === -1 ? 3098 : Number(process.argv[portArgument + 1])
 const HOME = join(DEV_DIRECTORY, 'skills-inspector-check-home')
 /** 宿主产物路径，两处都要用。 */
-const HOST_ENTRY = join(ROOT, 'packages', 'plugins', 'skills-inspector', 'dist', 'index.js')
+const HOST_ENTRY = join(ROOT, 'plugins', 'skills-inspector', 'dist', 'index.js')
 
 let failures = 0
 
@@ -39,8 +39,8 @@ function check(ok, what, detail) {
 const context = createCheckContext({
   dshBin: DSH_BIN,
   profile: DSH_PROFILE,
-  overlays: dshPluginOverlays,
   home: HOME,
+  sourceHome: DSH_HOME_DEV,
   cwd: ROOT,
   port: PORT,
   trustedHost: '127.0.0.1',
@@ -166,7 +166,7 @@ async function inspectProjection(module) {
  * @returns {{ seats: object[], namespaces: string[], externals: string[] }}
  */
 function inspectClientBundle() {
-  const bundle = join(ROOT, 'packages', 'plugins', 'skills-inspector', 'dist', 'client.js')
+  const bundle = join(ROOT, 'plugins', 'skills-inspector', 'dist', 'client.js')
   return inspectClientArtifact({
     bundle,
     packageId: PACKAGE_ID,

@@ -7,9 +7,8 @@
 出处：`packages/api/session-controller/src/index.ts`、`packages/api/session-controller/src/commands.ts`。
 
 session.create 不带 workspaceId / cwd 时，新会话的 cwd 取 controller 构造时的
-defaultCwd，即 dsh 进程的 `process.cwd()`。dsh-remote 的 launcher 不给 dsh 指定 cwd，
-因此新会话起始目录就是启动器（systemd 部署里即 unit 的 WorkingDirectory）的 cwd；
-服务器部署把 WorkingDirectory 指到可写的工作区目录。
+defaultCwd，即 dsh 进程的 `process.cwd()`。dsh-kit 不介入 dsh 的启动，因此新会话起始目录
+就是启动 dsh 时的 cwd；需要固定工作区时从启动命令的 cwd 或新建会话时指定的目录决定。
 
 ## 失败与重试
 
@@ -83,7 +82,8 @@ apply 对无关事件必须返回同一个引用，框架以 Object.is 判断是
 - ChatView 的 `onScrollRef` 以当前 scrollTop 与 observedTop 判断读者移动；历史会话首次定位时，原生 smooth scroll 尚未移动的 scroll 事件可能触发 `toBottom`，写回底部并取消动画。ResizeObserver 的跟随也可能覆盖定位；目标 DOM 已存在不代表滚动成功。
 - chat-scroll 用 requestAnimationFrame 逐帧推进消息开头定位，按帧复核真实落点；消息行等待上限 3 秒，动画/落点等待上限 1.8 秒，超时不闪线。减少动态效果同样瞬时定位后复核下一帧，读者输入或 sessionId/messageKey 变化取消待定位动作，不需要加载更早的历史。
 - chat-scroll 对原生返回底部按钮只做局部 capture：动画先停在 dsh 24px 底部跟随阈值之外，再重放仍连接的原生 click，让 ChatView 自己清理 pending jump/分页锚点并恢复跟随；按钮识别、会话/滚动容器变化或交接失败时不伪造 React 状态。
-- 原生返回底部按钮直接内联在 `ChatView.tsx` 的 `!atBottom` 分支，无独立 slot 或滚动 action；`chatScroll.save/read` 只保存阅读位置。`toBottom` 还清理 pending jump/分页锚点、更新 observedTop 并恢复跟随，不能只替换几何写入。接近底部（当前 24px 阈值 + 1px 容差）会使按钮卸载，不能假定 scrollend 后仍能点击它。双向导航增强的待实施方案见 [chat-scroll 开发方案](../chat-scroll-plan.md)。
+- 原生返回底部按钮直接内联在 `ChatView.tsx` 的 `!atBottom` 分支，无独立 slot 或滚动 action；`chatScroll.save/read` 只保存阅读位置。`toBottom` 还清理 pending jump/分页锚点、更新 observedTop 并恢复跟随，不能只替换几何写入。接近底部（当前 24px 阈值 + 1px 容差）会使按钮卸载，不能假定 scrollend 后仍能点击它。
+chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](../../plugins/chat-scroll/README.md)。
 - 不搬动 React 拥有的 sibling rows 来套内部滚动容器。
 
 ## 原生分叉节点约束

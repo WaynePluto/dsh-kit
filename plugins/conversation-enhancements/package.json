@@ -1,0 +1,27 @@
+{
+  "name": "@dsh-kit/dsh-plugin-conversation-enhancements",
+  "version": "0.1.0",
+  "description": "整合失败重试、聊天滚动、消息分叉与通知的会话增强 Bundle。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "dependencies": {
+    "@dsh-kit/dsh-plugin-turn-retry": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-chat-scroll": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-user-message-fork": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-notify": "workspace:0.1.0"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  }
+}

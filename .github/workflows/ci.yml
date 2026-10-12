@@ -1,6 +1,5 @@
 # CI：每次 push / PR 跑 lint、build、typecheck、test、依赖版本检查。
-# 双平台矩阵：项目面向 Windows 被控机开发（托盘、taskkill、路径处理），
-# 但 relay 部署在 Linux 上，两边都得绿。
+# 双平台矩阵：插件要同时覆盖 Windows（进程、路径、PowerShell）与 Linux（PTY、路径大小写）。
 
 name: CI
 

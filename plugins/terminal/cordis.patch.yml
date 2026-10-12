@@ -1,0 +1,11 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+#
+# `./` insert 名字由 dsh 锚定到本文件目录再转成 file:// URL，故这里只写相对路径（D17）。
+#
+# 这里只能写一行：PTY 三件套的裸包名会被 loader 解析到 profile 目录，导致
+# `ERR_MODULE_NOT_FOUND`；宿主半通过 `ctx.plugin()` 挂载普通依赖。
+# 双面插件仍由 `dist/index.js` 加载宿主半并下发 `dist/client.js`；缺失客户端产物会启动失败。
+- insert:
+    - id: terminal
+      name: './dist/index.js'

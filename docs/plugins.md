@@ -1,57 +1,52 @@
 # 插件索引
 
-功能、使用入口和限制写在各插件包根的 README；本页负责导航。
-实现依据见 [dsh 核实结论](02-dsh-facts.md)，装载方式见 [架构](03-architecture.md)。
+功能、使用入口和限制写在各插件包根的 README；本页负责导航与分发组合。
+实现依据见 [dsh 源码依据](02-dsh-facts.md)，装载方式见 [架构](03-architecture.md)。
 
 ## 设置与模型
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [全局提示词](../packages/plugins/agents-md/README.md) | 设置 → 全局提示词 | 编辑 dsh 读取的全局 AGENTS.md |
-| [出网代理](../packages/plugins/proxy/README.md) | 设置 → 代理 | 跟随环境（默认）、使用插件代理地址或强制直连；覆盖原生 fetch 和官方网页抓取，不保证接管子进程或独立网络库 |
-| [Copilot 登录](../packages/plugins/copilot-auth/README.md) | 设置 → 模型 → GitHub Copilot | 设备码登录与账号模型同步 |
-| [模型目录更新](../packages/plugins/models-catalog/README.md) | 设置 → 模型 | 从 models.dev 补充模型目录 |
-| [模型能力与协议](../packages/plugins/model-capabilities/README.md) | 设置 → 模型 → 展开模型行 | 声明图片支持、推理档位与单模型协议覆盖 |
-| [常用模型](../packages/plugins/favorite-models/README.md) | 设置 → 模型；聊天模型选择器 | 收藏并筛选常用模型 |
-| [任务通知](../packages/plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
+| [全局提示词](../plugins/agents-md/README.md) | 设置 → 全局提示词 | 编辑 dsh 读取的全局 AGENTS.md |
+| [出网代理](../plugins/proxy/README.md) | 设置 → 代理 | 跟随环境（默认）、使用插件代理地址或强制直连；覆盖原生 fetch 和官方网页抓取，不保证接管子进程或独立网络库 |
+| [Copilot 登录](../plugins/copilot-auth/README.md) | 设置 → 模型 → GitHub Copilot | 设备码登录与账号模型同步 |
+| [模型目录更新](../plugins/models-catalog/README.md) | 设置 → 模型 | 从 models.dev 补充模型目录 |
+| [模型能力与协议](../plugins/model-capabilities/README.md) | 设置 → 模型 → 展开模型行 | 声明图片支持、推理档位与单模型协议覆盖 |
+| [常用模型](../plugins/favorite-models/README.md) | 设置 → 模型；聊天模型选择器 | 收藏并筛选常用模型 |
 
 ## 会话与工作区
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [失败重试](../packages/plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
-| [会话滚动导航](../packages/plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |
-| [用户消息分叉](../packages/plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿 |
-| [工具状态](../packages/plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
-| [技能状态](../packages/plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
-| [文件浏览](../packages/plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移与目录右键菜单 |
-| [常驻服务](../packages/plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
-| [交互终端](../packages/plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
+| [失败重试](../plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
+| [会话滚动导航](../plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |
+| [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿 |
+| [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
+| [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
+| [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
+| [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移与目录右键菜单 |
+| [常驻服务](../plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
+| [交互终端](../plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
 
 ## 运行环境
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [简洁模式](../packages/plugins/concise-mode/README.md) | 新建会话时选择预设 | 提供简洁预设：原生工具直呼与 run_code 程序并用，由模型自主选择；子代理深度沿用 dsh 原生设置（默认 1） |
-| [远程设置](../packages/plugins/remote-settings/README.md) | 自动生效 | 让已认证的远程浏览器使用完整设置页（自 remote-privileged 拆出；connection 注入留在壳级 overlay 不可停） |
-| [浏览器兼容](../packages/plugins/browser-compat/README.md) | 自动生效；设置 → 浏览器日志 | 为旧 WebKit 垫平 Iterator/AbortSignal/Promise 缺口，并提供当前页面临时错误日志与能力清单 |
-| [网页目录选择](../packages/plugins/directory-picker-browse/README.md) | 打开工作区 | 在浏览器内选择运行 dsh 的机器上的目录 |
-| [固定 YOLO](../packages/plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
-| [网页搜索开关](../packages/plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
-| [远程运行时](../packages/plugins/remote-runtime/README.md) | 设置 → 远程 | 查看 relay/connector 状态与远程入口地址、打开远程管理页（桌面端的常驻管理入口） |
+| [简洁模式](../plugins/concise-mode/README.md) | 新建会话时选择预设 | 提供简洁预设：原生工具直呼与 run_code 程序并用，由模型自主选择；子代理深度沿用 dsh 原生设置（默认 1） |
+| [固定 YOLO](../plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
+| [网页搜索开关](../plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
 
 ## 分发组合
 
-22 个功能组件以 11 个第三方 Bundle 随 dsh-remote 提供。组合包是安装、卸载和升级单位；
-除表中注明外，其组件行仍可在插件详情中单独停用。
+18 个功能组件以 9 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+`@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
+组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
 | 分发包 | 类型 | 包含组件或功能 |
 |---|---|---|
-| remote-experience | 组合包 | 远程设置、浏览器兼容 |
 | model-enhancements | 组合包 | Copilot 登录、模型目录更新、模型能力与协议、常用模型；模型目录和模型能力共同参与启动屏障，不可单独停用 |
 | conversation-enhancements | 组合包 | 失败重试、会话滚动、用户消息分叉、任务通知 |
 | development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
-| directory-picker-browse | 独立包 | 网页目录选择；需在 Bundle 层静态覆盖原生目录选择器，不能并入组合包 |
 | proxy | 独立包 | 出网代理 |
 | concise-mode | 独立包 | 简洁模式；预设内嵌 run_code 程序工具（both 展示模式，模型自主选择直呼或写程序） |
 | agents-md | 独立包 | 全局提示词 |
@@ -59,28 +54,27 @@
 | yolo-mode | 独立包 | 固定 YOLO |
 | web-search-switch | 独立包 | 网页搜索开关 |
 
-完整包名均为 `@dsh-remote/dsh-plugin-<上表名称>`。唯一不在该表中的项目扩展是壳级
-[remote-privileged](../packages/plugins/remote-privileged/README.md)：它提供 connection 的
-webServer 注入和模型 Bundle 在线启停所需的稳定启动屏障，随 launcher 以 `--patch` 常驻加载，
-不可停用或卸载。
+完整包名均为 `@dsh-kit/dsh-plugin-<上表名称>`（套件包为 `@dsh-kit/dsh-plugin-suite`）。
+组件顺序以根目录 [plugin-catalog.json](../plugin-catalog.json) 为唯一清单。
 
 插件页与设置清单显示的标题、描述来自每个包 `locale/{en,zh}.json` 的 `meta` 字段
-（dsh 0.1.7 本地化包元数据），文案与本页词表一致；未声明 `icon` 时使用 dsh 默认图。
+（dsh 0.1.7 起支持本地化包元数据），文案与本页词表一致；未声明 `icon` 时使用 dsh 默认图。
+另有两个不承载功能的 display 壳微包：`preset-concise`（简洁预设行的中文元数据）与
+`model-bootstrap`（模型屏障占位行），它们没有独立 Behavior，只是让裸包名行能解析到中文标题。
 
 ## 安装、升级与停用
 
-- 新建 `dsh-remote-web` profile 时，11 个分发包通过 dsh 官方插件管理器默认安装并启用；
-  官方 `web` profile 不加载它们。
-- dsh-remote 升级时会升级所有**仍安装**的随附包，包括当前停用的 Bundle；不会改变 Bundle
-  是否启用，也不会改回组件行的停用状态。
-- 从 dsh 插件页卸载包后，launcher 不自动补回。需要恢复时，在「添加插件」中输入随附包目录的
-  绝对路径：绿色发行版使用 `<解压目录>/plugins/<包目录>`，源码开发使用
-  `<仓库>/.dev/plugins/<包目录>`；安装完成后按官方流程启用。
-- 组合包卸载会一起移除其中全部组件；组件级停用只关闭对应功能。不要同时安装组合包及其内部
-  组件的旧独立 Bundle，否则稳定行 ID 会冲突。
-- 旧 profile 若留有不再随附的第三方插件，需在 dsh 官方管理器手动卸载；launcher 不清理清单外的插件。
-- 改动插件后重新构建并重启 dsh。该 profile 没有 HMR，刷新页面不会加载新产物。
-- 带浏览器半的插件依赖 `dist/client.js`；缺失时应修复构建或重新解压，不能跳过检查启动。
-- 固定 YOLO 会取消模型执行前的交互式权限边界，请阅读 [安全说明](04-security.md)。
-- 新增、删除或重新分组插件时，以根目录 `plugin-catalog.json` 为唯一清单，并同步维护本索引、
-  组合包 README 与组件 README；已完成实现的细节不追加到路线图。
+- 安装：官方 dsh → 插件 → 添加插件 → 输入 `plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
+  升级：重新构建套件后卸载再安装。
+- 停用：套件是一个普通 Bundle。插件页的 Bundle 开关停用整个套件；套件详情里的
+  组件开关停用单个组件的行。两者都写在 profile patch 的 `disabled` 或 `dsh.profile.bundles`，
+  重启后保持。
+- 卸载：官方插件页卸载套件即整体移除；dsh-kit 没有任何自动补回逻辑，
+  需要恢复时重新走「添加插件」。
+- 组合包与套件不要同时安装：两者会提供同名稳定行 id，冲突会被 dsh 拒绝。
+- 改动插件后重新构建并重启 dsh；套件所在 profile 没有 HMR，刷新页面不会加载新产物。
+- 带浏览器半的插件依赖 `dist/client.js`；缺失时应修复构建或重新安装套件，不能跳过检查启动。
+- 固定 YOLO 会取消模型执行前的交互式权限边界，请阅读 [yolo-mode README](../plugins/yolo-mode/README.md)。
+
+新增、删除或重新分组插件时，以根目录 `plugin-catalog.json` 为唯一清单，并同步维护本索引、
+组合包 README 与组件 README；新决策先写入 [决策](01-decisions.md)。

@@ -2,11 +2,11 @@
 /** files 插件真实 dsh 冒烟：验证双半装载、槽注册、只读 RPC 与认证。 */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, ROOT, dshPluginOverlays } from "./local-config.mjs"
+import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, DSH_HOME_DEV, ROOT } from "./local-config.mjs"
 import { createCheckContext, runLiveDshCheck } from './lib/check-context.mjs'
 import { inspectClientBundle as inspectClientArtifact, inspectHostBundle as inspectHostArtifact } from './lib/check-client-bundle.mjs'
 
-const PACKAGE_ID = "@dsh-remote/dsh-plugin-files"
+const PACKAGE_ID = "@dsh-kit/dsh-plugin-files"
 const CHANNEL = "files"
 const argument = process.argv.indexOf("--port")
 const PORT = argument === -1 ? 3096 : Number(process.argv[argument + 1])
@@ -21,8 +21,8 @@ function check(ok, what, detail) { if (!ok) failures += 1; console.log(`${ok ? "
 const context = createCheckContext({
   dshBin: DSH_BIN,
   profile: DSH_PROFILE,
-  overlays: dshPluginOverlays,
   home: HOME,
+  sourceHome: DSH_HOME_DEV,
   cwd: ROOT,
   port: PORT,
   trustedHost: `127.0.0.1:${PORT}`,
@@ -75,7 +75,7 @@ function inspectClientBundle() {
       nativeFilesId: body.includes('@deepseek-ai/dsh-client-ui-sidebar-files'),
       documentPreviewId: body.includes('@deepseek-ai/dsh-client-ui-sidebar-documentpreview'),
       singleEntry: !body.includes('files-pro'),
-      nativeGuideUntouched: !body.includes('dsh-remote-files-initial-guide-sentinel') && !body.includes('dsh-files-directory-guide') && !body.includes('sidebar.right.tab.guide'),
+      nativeGuideUntouched: !body.includes('dsh-kit-files-initial-guide-sentinel') && !body.includes('dsh-files-directory-guide') && !body.includes('sidebar.right.tab.guide'),
       temporaryPreview: body.includes('dsh-files-preview-tab-title-temporary') && body.includes('replaceTab'),
       imageZoom: body.includes('data-files-image-zoom') && body.includes('imageZoomFit'),
       imageZoomPortalGuards: body.includes('dsh-files-image-toolbar') && body.includes('onPointerDown') && body.includes('stopPropagation'),

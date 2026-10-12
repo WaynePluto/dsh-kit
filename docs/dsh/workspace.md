@@ -41,23 +41,19 @@ user/message 的 source.kind:skill-invocation 和 source.name。
 - 这是“历史上曾注入”的口径，不保证压缩后正文仍完整保留在当前上下文。
 - 技能页只读，不注册技能/来源/工具、不 restrict/guard，也不提供加载按钮。
 
-## 打开目标机器文件
+## 打开本机文件
 
 出处：`packages/client/ui-open-in-app/src/client/{OpenInAppAction.tsx,controller.ts}`、
-`packages/host/open-in-app/src/{catalog.ts,index.ts,resolver.ts}`、`packages/api/session-controller/src/index.ts`；
-项目兼容见 `packages/plugins/remote-settings/src/{client/index.ts,workspace-directory.ts,windows-directory.ts}`。
+`packages/host/open-in-app/src/{catalog.ts,index.ts,resolver.ts}`、`packages/api/session-controller/src/index.ts`。
 
 - 对话顶部「在本地打开」不是 session Remote：原生浏览器调用 open-in-app 的 HTTP 路由，传 app id 与当前会话 cwd；
   宿主先做 connection trust/auth、绝对路径和真实目录检查。其它文件动作仍可使用
   `remote.session.canOpenWorkspacePath/openWorkspacePath`（0.1.7 起 Session Remote 提供打开/揭示与应用列表）。
-- dsh 0.1.7 的 Windows 原生 opener 已改为直接 `explorer.exe` + 单一 file URI 参数（无 shell、无 PowerShell 中转），
+- dsh 0.1.7 的 Windows 原生 opener 直接调 `explorer.exe` + 单一 file URI 参数（无 shell、无 PowerShell 中转），
   Explorer 交接退出码 1 视为成功；`Visible:false` 问题不再存在。原生实现等待交接应答，且不做窗口激活。
-  remote-settings 仍用 `priority:-1` shadow
-  `conversation.session.header.utilities` 的原生 `open-in-app` 项，保留原组件、菜单、store、inject 和 locale；
-  仅 Explorer 转到认证私有通道 `/remote-settings/open-workspace-directory`，宿主复核绝对路径和现存目录后启动
-  可见 Explorer：spawn 成功即响应（不等交接），并异步尝试置前；VS Code、Cursor、JetBrains 等其它 app
-  仍调用原生路由。置前与立即返回相对原生实现的增益、以及是否改回原生，待实机验收后定。
-- 动作发生在运行 dsh 的目标机器桌面，手机看不到；不按 Host 判断同机，不修改 relay。
+  dsh-kit 不接管此项：插件不再 shadow `conversation.session.header.utilities` 的 `open-in-app`，
+  保持原生路由与行为；需要置前或立即返回时再评估（原来为远程访问加的私有通道已随远程能力删除）。
+- 动作发生在运行 dsh 的本机桌面；插件不按 Host 判断同机，也不假定用户在别处。
 
 ## Agent 预设
 
@@ -110,7 +106,7 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 
 出处：`packages/client/ui-sidebar-documentpreview/src/client/{zoom/ZoomViewport.tsx,zoom/ZoomControls.tsx,image/ImageBody.tsx,image/ImageBody.module.css}`、
 `src/client/document/contract.ts`（`src/client` 均属于同包）；已安装 `0.2.0-rc.2` 的 `lib/client.js`
-包含 `ZoomViewport` / `ImageBody`。项目实现见 `packages/plugins/files/src/client/imageZoomOverlay.tsx`、`imagePan.ts`。
+包含 `ZoomViewport` / `ImageBody`。项目实现见 `plugins/files/src/client/imageZoomOverlay.tsx`、`imagePan.ts`。
 
 - 原生 `ImageBody` 使用共享 `ZoomViewport`，每个 tab 单独保存缩放偏好，默认「适应宽度」（仅缩小宽于视口的图片）；
   原生工具栏提供适应宽度和固定档位（25%、50%、100%、150%、200%），增减按钮及 Ctrl+滚轮可在 25%～400% 范围缩放；`scrollportRef` 报告其滚动容器。
@@ -130,8 +126,8 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 
 ## 项目 files 增强层
 
-出处：`packages/plugins/files/src/{index.ts,git.ts,shared.ts}`、
-`packages/plugins/files/src/client/{nativeFilesAdapter.tsx,paneNavigation.ts,previewTabs.ts,previewTabTitle.tsx,imageZoomOverlay.tsx,tabContextActions.tsx,gitDecorations.ts,FileContextMenu.tsx,treePath.ts}`。
+出处：`plugins/files/src/{index.ts,git.ts,shared.ts}`、
+`plugins/files/src/client/{nativeFilesAdapter.tsx,paneNavigation.ts,previewTabs.ts,previewTabTitle.tsx,imageZoomOverlay.tsx,tabContextActions.tsx,gitDecorations.ts,FileContextMenu.tsx,treePath.ts}`。
 
 项目插件不再注册 `conversation.view`，不再提供目录/list/read 私有文件服务，也不再复制原生树或预览。
 它通过 `sidebar.right.pane.tab` 的 priority shadow 包装 dsh `ui-sidebar-files` 登记项，保留原生

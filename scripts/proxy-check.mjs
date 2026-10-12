@@ -9,10 +9,10 @@
  */
 
 import { join } from 'node:path'
-import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, ROOT, dshPluginOverlays } from './local-config.mjs'
+import { DSH_BIN, DSH_PROFILE, DEV_DIRECTORY, DSH_HOME_DEV, ROOT } from './local-config.mjs'
 import { createCheckContext, runLiveDshCheck } from './lib/check-context.mjs'
 
-const PACKAGE_ID = '@dsh-remote/dsh-plugin-proxy'
+const PACKAGE_ID = '@dsh-kit/dsh-plugin-proxy'
 const ENTRY_ID = 'proxy'
 const portArgument = process.argv.indexOf('--port')
 const PORT = portArgument === -1 ? 3097 : Number(process.argv[portArgument + 1])
@@ -29,8 +29,8 @@ function check(ok, what, detail) {
 const context = createCheckContext({
   dshBin: DSH_BIN,
   profile: DSH_PROFILE,
-  overlays: dshPluginOverlays,
   home: HOME,
+  sourceHome: DSH_HOME_DEV,
   cwd: ROOT,
   port: PORT,
   trustedHost: `127.0.0.1:${PORT}`,

@@ -1,0 +1,12 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+#
+# `./` insert 名字由 dsh 锚定到本文件目录再转成 file:// URL，故这里只写相对路径（D17）。
+#
+# 双面插件：insert 加载宿主半 `dist/index.js`，并依据 package.json 的 `dsh.client` 与
+# `exports["./client"]` 下发 `dist/client.js`；缺失客户端产物会让 dsh 启动失败。
+# `id` 让后续 `--patch` 按 id 覆盖；本插件只注册 turn projection 和重试 RPC，
+# 失败时不弹 userQuestions，自动重试仍由 dsh 自带的 llm-retry 负责。
+- insert:
+    - id: turn-retry
+      name: './dist/index.js'

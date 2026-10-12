@@ -1,0 +1,44 @@
+{
+  "name": "@dsh-kit/dsh-plugin-suite",
+  "version": "0.1.0",
+  "description": "dsh-kit 全量套件：一个包安装全部功能组件。本地安装路径即本目录；依赖以 file: 相对路径指向仓库内组件。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dependencies": {
+    "@dsh-kit/dsh-plugin-agents-md": "file:../agents-md",
+    "@dsh-kit/dsh-plugin-chat-scroll": "file:../chat-scroll",
+    "@dsh-kit/dsh-plugin-concise-mode": "file:../concise-mode",
+    "@dsh-kit/dsh-plugin-copilot-auth": "file:../copilot-auth",
+    "@dsh-kit/dsh-plugin-favorite-models": "file:../favorite-models",
+    "@dsh-kit/dsh-plugin-files": "file:../files",
+    "@dsh-kit/dsh-plugin-model-bootstrap": "file:../model-bootstrap",
+    "@dsh-kit/dsh-plugin-model-capabilities": "file:../model-capabilities",
+    "@dsh-kit/dsh-plugin-models-catalog": "file:../models-catalog",
+    "@dsh-kit/dsh-plugin-notify": "file:../notify",
+    "@dsh-kit/dsh-plugin-preset-concise": "file:../preset-concise",
+    "@dsh-kit/dsh-plugin-proxy": "file:../proxy",
+    "@dsh-kit/dsh-plugin-run-code": "file:../run-code",
+    "@dsh-kit/dsh-plugin-services": "file:../services",
+    "@dsh-kit/dsh-plugin-skills-inspector": "file:../skills-inspector",
+    "@dsh-kit/dsh-plugin-terminal": "file:../terminal",
+    "@dsh-kit/dsh-plugin-tools-inspector": "file:../tools-inspector",
+    "@dsh-kit/dsh-plugin-turn-retry": "file:../turn-retry",
+    "@dsh-kit/dsh-plugin-user-message-fork": "file:../user-message-fork",
+    "@dsh-kit/dsh-plugin-web-search-switch": "file:../web-search-switch",
+    "@dsh-kit/dsh-plugin-yolo-mode": "file:../yolo-mode"
+  }
+}
