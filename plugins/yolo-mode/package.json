@@ -1,7 +1,7 @@
 {
   "name": "@dsh-kit/dsh-plugin-yolo-mode",
   "version": "0.1.0",
-  "description": "固定 dsh 为全权限自动批准模式，同时保留用户提问。",
+  "description": "默认停用的固定全权限自动批准模式；打开后保留用户提问。",
   "license": "MIT",
   "private": true,
   "type": "module",

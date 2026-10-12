@@ -1,0 +1,9 @@
+{
+  "name": "@dsh-kit/dsh-plugin-model-bootstrap",
+  "version": "0.1.0",
+  "description": "模型启动屏障：固定 llm-pi-ai 的模型启动依赖，模型组件在线启停不触发热重启。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./index.js"
+}

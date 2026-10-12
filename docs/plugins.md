@@ -33,7 +33,7 @@
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
 | [简洁模式](../plugins/concise-mode/README.md) | 新建会话时选择预设 | 提供简洁预设：原生工具直呼与 run_code 程序并用，由模型自主选择；子代理深度沿用 dsh 原生设置（默认 1） |
-| [固定 YOLO](../plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
+| [固定 YOLO](../plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开行开关并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](../plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
 
 ## 分发组合
@@ -59,12 +59,17 @@
 
 插件页与设置清单显示的标题、描述来自每个包 `locale/{en,zh}.json` 的 `meta` 字段
 （dsh 0.1.7 起支持本地化包元数据），文案与本页词表一致；未声明 `icon` 时使用 dsh 默认图。
-另有两个不承载功能的 display 壳微包：`preset-concise`（简洁预设行的中文元数据）与
-`model-bootstrap`（模型屏障占位行），它们没有独立 Behavior，只是让裸包名行能解析到中文标题。
+另有一个不承载功能的 display 壳微包：`preset-concise`（简洁预设行的中文元数据），它没有
+独立 Behavior，只是让裸包名行能解析到中文标题。模型屏障占位行不再走独立壳包：实现内嵌在
+套件包 `plugins/suite/fallback/`，行名是套件包子路径（中文元数据经套件 exports 重映射读取）。
 
 ## 安装、升级与停用
 
 - 安装：官方 dsh → 插件 → 添加插件 → 输入 `plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
+  重启是生效的必要步骤：运行中的 dsh 点「启用」时组件行会因可解析性守卫整包延迟到重启
+  装载（不再报 failed to import；安装前启动的进程里裸包名解析不到组件，见
+  [插件机制](dsh/plugins.md)）；个别机器上首次启用还可能报一条 session-controller 的
+  file-upload 重挂载竞态（上游已知，见 [roadmap](05-roadmap.md)），同样重启即恢复。
   升级：重新构建套件后卸载再安装。
 - 停用：套件是一个普通 Bundle。插件页的 Bundle 开关停用整个套件；套件详情里的
   组件开关停用单个组件的行。两者都写在 profile patch 的 `disabled` 或 `dsh.profile.bundles`，
@@ -74,7 +79,9 @@
 - 组合包与套件不要同时安装：两者会提供同名稳定行 id，冲突会被 dsh 拒绝。
 - 改动插件后重新构建并重启 dsh；套件所在 profile 没有 HMR，刷新页面不会加载新产物。
 - 带浏览器半的插件依赖 `dist/client.js`；缺失时应修复构建或重新安装套件，不能跳过检查启动。
-- 固定 YOLO 会取消模型执行前的交互式权限边界，请阅读 [yolo-mode README](../plugins/yolo-mode/README.md)。
+- 固定 YOLO 默认停用，打开行开关并重启才会取消模型执行前的交互式权限边界，
+  关闭行开关（或套件 Bundle 开关）并重启即恢复原生权限控制；
+  详情见 [yolo-mode README](../plugins/yolo-mode/README.md)。
 
 新增、删除或重新分组插件时，以根目录 `plugin-catalog.json` 为唯一清单，并同步维护本索引、
 组合包 README 与组件 README；新决策先写入 [决策](01-decisions.md)。

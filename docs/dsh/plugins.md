@@ -18,12 +18,37 @@ profile 的 `dependencies` 是第三方 Bundle 是否安装的事实，`dsh.prof
 dsh-kit 只使用官方安装流程：「添加插件」写 dependency 与 bundles，插件页开关改 bundles，
 组件开关改 profile patch 的 `disabled`；项目不实现自己的安装、升级或状态记忆，也不在卸载后补回。
 
+行开关与 disabled 覆写的上游事实（2026-10-12 核对 `packages/boot/plugin-manager/src/patch.ts`
+与 `vendor/include/src/index.ts`）：行开关写入 profile patch 顶层 `{id, name?, disabled}` 覆写行
+（findLast 匹配非 insert 行；`document.add` 追加的行是**流式形态** `[ { id: …, disabled: false } ]`），
+patch 应用时对目标行按键整段替换——`!!js` 表达式会被布尔值整体覆盖。行自身的 `disabled: !!js`
+表达式在 loader ctx 求值，config 的 `!!js` 在行 fiber ctx 求值，`baseUrl` 都是 profile 目录
+（根 config `cordis.yml` 所在目录），因此表达式能读 profile 的 package.json 与 `cordis.patch.yml`。
+组件行开关只命中同 id 的行：bundle patch 里同一组件的兄弟覆写行（如 yolo-mode 的四个官方行
+覆写）是独立 entry，必须各自跟随组件开关；且**覆写行的 disabled 会连官方基础行一起整行禁用**
+——需要「未激活时保留官方行为」的覆写必须用 config 条件回退而不是行 disabled
+（已修复，见 [运行时](runtime.md) 固定 YOLO 一节）。
+
 套件 patch 由 `scripts/build-suite.mjs` 生成，不是手写文件：文件头是固定契约（`llm-pi-ai` 屏障行、
 connection 行覆写与模型屏障占位行），其余为各组件 `cordis.patch.yml` 顶层条目的改写（入口换成裸包名，
-逐行补 `disabled: !!js …bundles.includes('@dsh-kit/dsh-plugin-suite')…`）。生成后脚本把
-组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`；`@deepseek-ai/*` 由 dsh
+insert 子行补「套件成员 + 组件包可解析」双条件 `disabled` 表达式，顶层覆写行只补套件成员表达式）。
+生成后脚本把组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`；`@deepseek-ai/*` 由 dsh
 运行时树提供，不复制第二份单例。套件包移动目录后仍可工作（入口是包内相对路径，
 裸包名从套件自身安装目录解析）。
+
+可解析性守卫的依据（2026-10-12 核对 `packages/boot/app-boot/src/profile-resolution/resolver.ts`、
+`packages/boot/plugin-manager/src/index.ts`）：dsh 只在进程启动时用
+`createRuntimeResolution` 把选中 bundle 的依赖闭包收进 runtime resolution 表（`PluginPackages`
+拦截 ESM/CJS 解析），安装/启用 Bundle 从不调用 `replace()` 刷新该表；profile 层的本地候选只查
+`<profile>/node_modules/<name>` 一层。因此运行中首次启用套件（安装前启动的进程）时裸包名解析不到
+套件自带 `node_modules` 里的组件，loader 直接报 failed to import。守卫表达式与 loader 用同一
+baseUrl（profile 目录）`createRequire(...).resolve('<组件包>/package.json')` 探测，与真实导入同一判定，
+探测不到的行延迟到重启装载。模型屏障占位行不走裸包名而用套件包子路径
+`@dsh-kit/dsh-plugin-suite/fallback`（套件 package.json 的 exports 重映射到内嵌 `fallback/` 入口与
+locale；插件管理器的 `readPluginMeta` 经 exports 重映射读取子路径元数据），首次启用当场装载、
+`llm-pi-ai` 的屏障注入当场有服务可绑；子路径形式不适用于有浏览器半的组件行——
+`packages/client/modules/src/client/manifest.ts` 的 `exactPackageSpecifier` 只认精确 `@scope/name`，
+子路径行会被客户端模块扫描跳过（丢浏览器半）。
 
 profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖普通项目插件 config 需要更靠后的 patch，
 且目标行必须有稳定 id。用户可编辑的插件字段通过带 volatile Config 的插件行和 configForms 写入；

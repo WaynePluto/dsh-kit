@@ -31,12 +31,24 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
 - 套件 patch 里的 `llm-pi-ai` 屏障行、connection 行覆写（`inject` 扩 webServer 并复刻官方
   `trustedHosts` config）与模型屏障占位行是固定契约：模型组件随进程启动时写真实屏障，
   未启动时由占位行兜底，使在线启停模型组件不热重启 `llm-pi-ai`；宿主半 RPC 通道归属
-  connection 行 fiber，必须由该覆写注入 webServer。生成逻辑只在 `scripts/build-suite.mjs`，
-  patch 本身是生成物，不手改。
+  connection 行 fiber，必须由该覆写注入 webServer。占位行以套件包子路径
+  `@dsh-kit/dsh-plugin-suite/fallback` 装载（实现内嵌套件包 `fallback/`，exports 重映射到
+  入口与 locale），保证冷启动、git 安装与运行中首次启用都可解析、屏障当场有服务可绑。
+  生成逻辑只在 `scripts/build-suite.mjs`，patch 本身是生成物，不手改。
 - 全部功能组件在套件内以裸包名 + `disabled` 表达式装载：套件离开
-  `dsh.profile.bundles` 时全部组件行一并禁用。组件包不能依赖套件当前在工作区里存在。
-- yolo-mode 固定 danger-full-access + ask，合法 approval 自动 allowed-once，用户提问不自动回答。
-  schema 与执行/展示参数都过滤提权字段；升级运行 yolo-mode-check，任何契约变化必须响亮失败。
+  `dsh.profile.bundles` 时全部组件行一并禁用；insert 子行的表达式另带可解析性守卫——
+  运行中首次启用套件时 dsh 的 runtime resolution 表还是安装前的快照，守卫（与 loader 同一
+  baseUrl 的 createRequire 探测组件包）探测不到就整行禁用、延迟到重启装载，不产生
+  failed to import 报错（守卫只用于 insert 子行，顶层覆写行的 disabled 会连官方基础行一起
+  整行禁用，禁止加守卫）。组件包不能依赖套件当前在工作区里存在。守卫契约由
+  `plugins/suite/tests/suite-patch.spec.mjs` 与 `scripts/suite-first-enable-check.mjs`（真实
+  dsh 在线启用冒烟）守护。
+- yolo-mode 默认停用：安装后原生权限保持原样，只有 profile patch 显式启用行（行开关写入，
+  流式形态）才整体生效；sandbox-policy/approval 用 config 条件回退官方默认（覆写行 disabled
+  会连官方基础行一起整行禁用，禁止再犯），permission/ui-permission 镜像禁用，插件行取反。
+  行开关或套件关闭并重启后原生权限控制必须完整恢复。启用后固定 danger-full-access + ask，
+  合法 approval 自动 allowed-once，用户提问不自动回答；schema 与执行/展示参数都过滤提权字段；
+  升级运行 yolo-mode-check（覆盖独立 Bundle 与套件两形态），任何契约变化必须响亮失败。
 - services 在沙箱外 spawn，受限模式 start/restart 必须批准；终端沿用 dsh PTY 沙箱。
   interactive_terminal 只用于预期用户直接输入，普通 Git、构建、测试和长任务用 pwsh/bash；
   Linux sudo 管理任务的命令统一走交互终端，可在同一终端内复用系统缓存，但不建立持续 root shell。

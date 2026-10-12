@@ -1,30 +1,36 @@
 # dsh-kit 的固定 YOLO 受管 Bundle patch 层。
 #
-# 本 Bundle 必须是受管 Bundle 的最后一项：它把部署默认固定为 full-access + ask，
-# 并禁用会误导用户的权限选择器。`config` 是整段替换，
-# sandbox-policy 的 workspaceRoot 不能省略。
-#
-# 用户停用本 Bundle 即恢复 dsh 原生权限审批；用户 profile patch 也可以覆盖这里的
-# 行，那只会更严或恢复原生审批，安全方向成立。
+# 默认停用契约（2026-10-12 v2）：安装后本 Bundle 的全部行都不改变 dsh 原生权限行为，
+# 只有 profile patch 显式启用 yolo-mode 行（插件页组件开关打开，dsh 写入顶层
+# 覆写行；writePluginEnabled 追加的是流式形态 `[ { id: yolo-mode, disabled: false } ]`）
+# 时才整体生效。五行的「active = Bundle 在 bundles 且显式启用」判定表达式完全一致：
+# - sandbox-policy、approval：不用 disabled（patch 行 disabled 会连官方基础行一起
+#   整行禁用、杀掉服务），改为 config 条件表达式——active 时取 YOLO 值，否则逐字
+#   回退 dsh 官方默认表达式（DSH_PERMISSION_MODE 语义保持不变）；
+# - permission、ui-permission（原生权限服务与选择器）：disabled = active（active 时禁用）；
+# - yolo-mode 插件行：disabled = !active（active 时生效）。
+# 识别同时覆盖块状与流式两种行形态，并容忍 CRLF。
+# 套件聚合形态下 build-suite.mjs 会把表达式里的 bundles 常量改写为套件包名。
+# `config` 是整段替换，sandbox-policy 的 workspaceRoot 不能省略。
 # `./dist/index.js` 是相对本文件的路径，dsh 会在加载时锚定它；不要写开发机绝对路径。
 - id: sandbox-policy
   config:
-    mode: danger-full-access
+    mode: !!js '(() => { const fs = process.getBuiltinModule("node:fs"); const read = (file) => { try { return fs.readFileSync(new URL(file, baseUrl), "utf8") } catch { return "" } }; let active = false; try { const bundles = JSON.parse(read("package.json") || "{}").dsh?.profile?.bundles ?? []; active = Array.isArray(bundles) && bundles.includes("@dsh-kit/dsh-plugin-yolo-mode") } catch { active = false } if (active) { const text = read("cordis.patch.yml").replace(/\r\n/g, "\n"); const names = ["@dsh-kit/dsh-plugin-yolo-mode", "./dist/index.js"]; const value = (m) => m?.[1]?.trim().replace(/^["\u0027]?|["\u0027]?$/g, ""); const nameOk = (span) => { const v = value(span.match(/\bname:[ \t]*([^,\n}]+)/)); return v === undefined || v === "" || names.includes(v) }; const disabledOf = (span) => { const m = span.match(/\bdisabled:[ \t]*(true|false)\b/); return m === null ? undefined : m[1] === "false" }; let enabled = false; const blocks = text.split(/^-/m); for (let i = 1; i < blocks.length; i += 1) { const block = "-" + blocks[i]; if (!/^-[ \t]*id:[ \t]*["\u0027]?yolo-mode["\u0027]?[ \t]*$/m.test(block)) continue; const rest = block.replace(/^-[^\n]*\n/, ""); if (!nameOk(rest)) continue; const d = disabledOf(rest); if (d !== undefined) enabled = d } for (const m of text.matchAll(/\{[^{}]*\bid:[ \t]*["\u0027]?yolo-mode["\u0027]?(?=[ \t]*[,}])[^{}]*\}/g)) { if (!nameOk(m[0])) continue; const d = disabledOf(m[0]); if (d !== undefined) enabled = d } active = enabled } return active ? "danger-full-access" : (process.env.DSH_PERMISSION_MODE ?? "workspace-write") })()'
     workspaceRoot: !!js process.cwd()
 
 # `never` 的含义是自动拒绝，不是自动允许；YOLO answerer 必须收到请求。
 - id: approval
   config:
-    policy: ask
+    policy: !!js '(() => { const fs = process.getBuiltinModule("node:fs"); const read = (file) => { try { return fs.readFileSync(new URL(file, baseUrl), "utf8") } catch { return "" } }; let active = false; try { const bundles = JSON.parse(read("package.json") || "{}").dsh?.profile?.bundles ?? []; active = Array.isArray(bundles) && bundles.includes("@dsh-kit/dsh-plugin-yolo-mode") } catch { active = false } if (active) { const text = read("cordis.patch.yml").replace(/\r\n/g, "\n"); const names = ["@dsh-kit/dsh-plugin-yolo-mode", "./dist/index.js"]; const value = (m) => m?.[1]?.trim().replace(/^["\u0027]?|["\u0027]?$/g, ""); const nameOk = (span) => { const v = value(span.match(/\bname:[ \t]*([^,\n}]+)/)); return v === undefined || v === "" || names.includes(v) }; const disabledOf = (span) => { const m = span.match(/\bdisabled:[ \t]*(true|false)\b/); return m === null ? undefined : m[1] === "false" }; let enabled = false; const blocks = text.split(/^-/m); for (let i = 1; i < blocks.length; i += 1) { const block = "-" + blocks[i]; if (!/^-[ \t]*id:[ \t]*["\u0027]?yolo-mode["\u0027]?[ \t]*$/m.test(block)) continue; const rest = block.replace(/^-[^\n]*\n/, ""); if (!nameOk(rest)) continue; const d = disabledOf(rest); if (d !== undefined) enabled = d } for (const m of text.matchAll(/\{[^{}]*\bid:[ \t]*["\u0027]?yolo-mode["\u0027]?(?=[ \t]*[,}])[^{}]*\}/g)) { if (!nameOk(m[0])) continue; const d = disabledOf(m[0]); if (d !== undefined) enabled = d } active = enabled } return active ? "ask" : ((process.env.DSH_PERMISSION_MODE ?? "workspace-write") === "danger-full-access" ? "never" : "ask") })()'
 
-# YOLO 接管权限策略，不再给用户展示实际无效的权限选择。
+# YOLO 接管权限策略，不再给用户展示实际无效的权限选择；停用时恢复原生服务与选择器。
 - id: permission
-  disabled: true
+  disabled: !!js '(() => { const fs = process.getBuiltinModule("node:fs"); const read = (file) => { try { return fs.readFileSync(new URL(file, baseUrl), "utf8") } catch { return "" } }; let active = false; try { const bundles = JSON.parse(read("package.json") || "{}").dsh?.profile?.bundles ?? []; active = Array.isArray(bundles) && bundles.includes("@dsh-kit/dsh-plugin-yolo-mode") } catch { active = false } if (active) { const text = read("cordis.patch.yml").replace(/\r\n/g, "\n"); const names = ["@dsh-kit/dsh-plugin-yolo-mode", "./dist/index.js"]; const value = (m) => m?.[1]?.trim().replace(/^["\u0027]?|["\u0027]?$/g, ""); const nameOk = (span) => { const v = value(span.match(/\bname:[ \t]*([^,\n}]+)/)); return v === undefined || v === "" || names.includes(v) }; const disabledOf = (span) => { const m = span.match(/\bdisabled:[ \t]*(true|false)\b/); return m === null ? undefined : m[1] === "false" }; let enabled = false; const blocks = text.split(/^-/m); for (let i = 1; i < blocks.length; i += 1) { const block = "-" + blocks[i]; if (!/^-[ \t]*id:[ \t]*["\u0027]?yolo-mode["\u0027]?[ \t]*$/m.test(block)) continue; const rest = block.replace(/^-[^\n]*\n/, ""); if (!nameOk(rest)) continue; const d = disabledOf(rest); if (d !== undefined) enabled = d } for (const m of text.matchAll(/\{[^{}]*\bid:[ \t]*["\u0027]?yolo-mode["\u0027]?(?=[ \t]*[,}])[^{}]*\}/g)) { if (!nameOk(m[0])) continue; const d = disabledOf(m[0]); if (d !== undefined) enabled = d } active = enabled } return active })()'
 
 - id: ui-permission
-  disabled: true
+  disabled: !!js '(() => { const fs = process.getBuiltinModule("node:fs"); const read = (file) => { try { return fs.readFileSync(new URL(file, baseUrl), "utf8") } catch { return "" } }; let active = false; try { const bundles = JSON.parse(read("package.json") || "{}").dsh?.profile?.bundles ?? []; active = Array.isArray(bundles) && bundles.includes("@dsh-kit/dsh-plugin-yolo-mode") } catch { active = false } if (active) { const text = read("cordis.patch.yml").replace(/\r\n/g, "\n"); const names = ["@dsh-kit/dsh-plugin-yolo-mode", "./dist/index.js"]; const value = (m) => m?.[1]?.trim().replace(/^["\u0027]?|["\u0027]?$/g, ""); const nameOk = (span) => { const v = value(span.match(/\bname:[ \t]*([^,\n}]+)/)); return v === undefined || v === "" || names.includes(v) }; const disabledOf = (span) => { const m = span.match(/\bdisabled:[ \t]*(true|false)\b/); return m === null ? undefined : m[1] === "false" }; let enabled = false; const blocks = text.split(/^-/m); for (let i = 1; i < blocks.length; i += 1) { const block = "-" + blocks[i]; if (!/^-[ \t]*id:[ \t]*["\u0027]?yolo-mode["\u0027]?[ \t]*$/m.test(block)) continue; const rest = block.replace(/^-[^\n]*\n/, ""); if (!nameOk(rest)) continue; const d = disabledOf(rest); if (d !== undefined) enabled = d } for (const m of text.matchAll(/\{[^{}]*\bid:[ \t]*["\u0027]?yolo-mode["\u0027]?(?=[ \t]*[,}])[^{}]*\}/g)) { if (!nameOk(m[0])) continue; const d = disabledOf(m[0]); if (d !== undefined) enabled = d } active = enabled } return active })()'
 
 - insert:
     - id: yolo-mode
       name: './dist/index.js'
-      disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-yolo-mode")'
+      disabled: !!js '(() => { const fs = process.getBuiltinModule("node:fs"); const read = (file) => { try { return fs.readFileSync(new URL(file, baseUrl), "utf8") } catch { return "" } }; let active = false; try { const bundles = JSON.parse(read("package.json") || "{}").dsh?.profile?.bundles ?? []; active = Array.isArray(bundles) && bundles.includes("@dsh-kit/dsh-plugin-yolo-mode") } catch { active = false } if (active) { const text = read("cordis.patch.yml").replace(/\r\n/g, "\n"); const names = ["@dsh-kit/dsh-plugin-yolo-mode", "./dist/index.js"]; const value = (m) => m?.[1]?.trim().replace(/^["\u0027]?|["\u0027]?$/g, ""); const nameOk = (span) => { const v = value(span.match(/\bname:[ \t]*([^,\n}]+)/)); return v === undefined || v === "" || names.includes(v) }; const disabledOf = (span) => { const m = span.match(/\bdisabled:[ \t]*(true|false)\b/); return m === null ? undefined : m[1] === "false" }; let enabled = false; const blocks = text.split(/^-/m); for (let i = 1; i < blocks.length; i += 1) { const block = "-" + blocks[i]; if (!/^-[ \t]*id:[ \t]*["\u0027]?yolo-mode["\u0027]?[ \t]*$/m.test(block)) continue; const rest = block.replace(/^-[^\n]*\n/, ""); if (!nameOk(rest)) continue; const d = disabledOf(rest); if (d !== undefined) enabled = d } for (const m of text.matchAll(/\{[^{}]*\bid:[ \t]*["\u0027]?yolo-mode["\u0027]?(?=[ \t]*[,}])[^{}]*\}/g)) { if (!nameOk(m[0])) continue; const d = disabledOf(m[0]); if (d !== undefined) enabled = d } active = enabled } return !active })()'

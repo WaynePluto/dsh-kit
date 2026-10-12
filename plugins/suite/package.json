@@ -12,11 +12,15 @@
   },
   "files": [
     "cordis.patch.yml",
-    "locale"
+    "locale",
+    "fallback"
   ],
   "exports": {
     "./package.json": "./package.json",
-    "./locale/*.json": "./locale/*.json"
+    "./locale/*.json": "./locale/*.json",
+    "./fallback": "./fallback/index.js",
+    "./fallback/package.json": "./fallback/package.json",
+    "./fallback/locale/*.json": "./fallback/locale/*.json"
   },
   "dependencies": {
     "@dsh-kit/dsh-plugin-agents-md": "file:../agents-md",
@@ -25,7 +29,6 @@
     "@dsh-kit/dsh-plugin-copilot-auth": "file:../copilot-auth",
     "@dsh-kit/dsh-plugin-favorite-models": "file:../favorite-models",
     "@dsh-kit/dsh-plugin-files": "file:../files",
-    "@dsh-kit/dsh-plugin-model-bootstrap": "file:../model-bootstrap",
     "@dsh-kit/dsh-plugin-model-capabilities": "file:../model-capabilities",
     "@dsh-kit/dsh-plugin-models-catalog": "file:../models-catalog",
     "@dsh-kit/dsh-plugin-notify": "file:../notify",
@@ -40,5 +43,11 @@
     "@dsh-kit/dsh-plugin-user-message-fork": "file:../user-message-fork",
     "@dsh-kit/dsh-plugin-web-search-switch": "file:../web-search-switch",
     "@dsh-kit/dsh-plugin-yolo-mode": "file:../yolo-mode"
+  },
+  "devDependencies": {
+    "vitest": "4.1.11"
+  },
+  "scripts": {
+    "test": "vitest run"
   }
 }

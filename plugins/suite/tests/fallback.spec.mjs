@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { apply, name } from '../index.js'
+import { apply, name } from '../fallback/index.js'
 
 const MODEL_BUNDLE = '@dsh-kit/dsh-plugin-model-enhancements'
 

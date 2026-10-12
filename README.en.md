@@ -34,7 +34,13 @@ See the [plugin index](docs/plugins.md) and each package README (Chinese).
    pnpm suite:build      # generates the suite patch and materializes dependencies
    ```
 3. dsh → Plugins → Add plugin → enter the absolute path of `plugins/suite`
-   → Install → Enable → restart dsh. To upgrade, rebuild, then uninstall and reinstall.
+   → Install → Enable → restart dsh. The restart is required for the suite to take
+   effect: when enabling from a dsh process that started before the install, every
+   component row defers loading until the restart (a resolvability guard prevents
+   `failed to import` errors); on some machines the first enable may additionally
+   report one session-controller remount race (a known upstream issue, see
+   [roadmap](docs/05-roadmap.md)) which also recovers after the restart.
+   To upgrade, rebuild, then uninstall and reinstall.
 
 Installing from a single GitHub repository URL is structurally ready (`file:` relative
 dependencies) and will be verified once the repository is public.
@@ -47,8 +53,9 @@ re-adds anything.
 
 - No project-specific data directory and no environment variables; everything lives in
   dsh's own profile and settings.
-- Pinned YOLO removes the interactive permission boundary; read
-  [its README](plugins/yolo-mode/README.md) first.
+- Pinned YOLO is disabled by default; turning on its row switch and restarting removes
+  the interactive permission boundary (turning it off and restarting restores native
+  permission control). Read [its README](plugins/yolo-mode/README.md) first.
 
 ## Development
 

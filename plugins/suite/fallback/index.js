@@ -1,4 +1,6 @@
-// 模型启动屏障占位行。它由 scripts/build-suite.mjs 生成的套件 patch 以裸包名挂载，
+// 模型启动屏障占位行。套件 patch 以套件包子路径装载本文件
+// （`@dsh-kit/dsh-plugin-suite/fallback`，见套件 package.json 的 exports 重映射），
+// 保证冷启动、git 安装与运行中首次启用三种形态都能解析：
 // 只为「模型增强没随本次进程启动」的情况提供占位服务，使 llm-pi-ai 的注入契约稳定：
 // 运行中停用或启用模型组件时不需要热重启 llm-pi-ai。
 const MODEL_BUNDLE = '@dsh-kit/dsh-plugin-model-enhancements'

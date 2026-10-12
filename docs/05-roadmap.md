@@ -6,6 +6,22 @@
 
 ## 已实现
 
+- [x] yolo-mode 默认停用契约（2026-10-12，v2）：安装后默认停用；行开关写入的流式启用行
+  （`[ { id: yolo-mode, disabled: false } ]`）驱动五行整体生效/退场。v1 暴露两个缺陷并已修复：
+  套件里 permission/ui-permission 硬编码 disabled（行开关与套件开关都无法恢复原生选择器），
+  以及对 sandbox-policy/approval 用行 disabled（覆写行 disabled 会连官方基础行一起整行禁用，
+  服务消失导致 8 项 pending 级联）、未识别流式覆写行形态。v2 改为 sandbox-policy/approval 的
+  config 条件回退官方默认 + 镜像行/插件行 disabled 表达式。yolo-mode-check 覆盖独立 Bundle 与
+  套件两种形态的启用/默认停用实机启动（含服务健康探针；probe overlay 补齐 dsh 0.2.0
+  connection 行 webServer 注入覆写）。
+- [x] 运行中首次启用整包不再报 failed to import（2026-10-12，套件侧修复）：组件 insert 行的
+  disabled 表达式加可解析性守卫（与 loader 同一 baseUrl 的 createRequire 探测组件包；dsh 的
+  runtime resolution 表随进程冻结，安装前启动的进程里在线启用只能看到
+  `<profile>/node_modules` 一层），探测不到的行整行禁用、延迟到重启装载；模型屏障占位行
+  改用套件包子路径 `@dsh-kit/dsh-plugin-suite/fallback`（实现内嵌套件包 `fallback/`，
+  三种安装形态都可解析），首次启用当场给 `llm-pi-ai` 屏障注入供服务。守卫契约由
+  `plugins/suite/tests/suite-patch.spec.mjs` 守护；`scripts/suite-first-enable-check.mjs`
+  用隔离 home + junction-only profile 跑真实 dsh 在线启用冒烟（含冷重启后全量装载断言）。
 - [x] 套件单包分发（2026-10-10）：`@dsh-kit/dsh-plugin-suite` 经官方「添加插件」一条路径
   安装/启用/卸载；`scripts/build-suite.mjs` 生成聚合 patch（`llm-pi-ai` 屏障 + 模型屏障占位 +
   全部组件行）并把组件与 registry 依赖闭包物化进 `plugins/suite/node_modules/`。
@@ -49,6 +65,7 @@
 | 插件 | 待确认 |
 |---|---|
 | 套件生命周期 | 停用/启用整个套件后重启仍保持；组件级停用保持；卸载后不自动补回，重装仍走「添加插件」；深浅主题与中英文界面 |
+| 首次在线启用 | 安装完成弹窗点「立即启用」不再报整包 failed to import（组件行延迟到重启装载）；重启后全部组件装载、yolo 保持默认停用 |
 | copilot-auth | 设备码登录成功，凭据持久化，账号模型可使用 |
 | proxy | 跟随环境（默认）、使用插件代理地址、强制直连三态：测试 URL、原生 fetch 模型请求和官方网页抓取按所选策略出网；不以子进程或独立网络库作验收前提 |
 | models-catalog | 检查、选择、应用与重启持久化已实机通过；撤销与其余新增模型仍待实机确认 |
@@ -63,7 +80,7 @@
 | skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 子会话只继承前置历史，草稿可编辑，原会话不变 |
 | concise-mode | 简洁会话可直呼工具，也可写 run_code 程序批量/组合调用（both，模型自主选择）；run_code 调用卡片与子调用展示正常 |
-| yolo-mode | 用户提问正常，常驻服务可启动；停用重启后原生权限可恢复 |
+| yolo-mode | 安装后默认停用、原生权限选择器可见；打开行开关并重启后用户提问正常、常驻服务可启动；关闭行开关并重启后原生权限控制恢复 |
 | web-search-switch | 开关热加载即时生效并落盘，重启 dsh 后保持；官方「网页搜索」卡片随之消失/恢复 |
 | agents-md | 设置页编辑、保存与 dsh 加载器反向认领一致 |
 
@@ -74,6 +91,12 @@
 - [ ] 套件在线停用/启用的上游竞态观察：dsh 0.2.0 仍存在 session-controller 重挂载竞态
   （file-upload Agent resolver 二次注册失败），套件整包启停时会经过这条路径；
   命中时记录签名并在检查脚本里按精确签名豁免，等上游修复后移除豁免。
+  2026-10-12 定位触发链：重组合中套件的 `llm-pi-ai` 覆写行加 inject → `llm` provider 重启 →
+  注入 llm 的 session-controller 随之重挂载，其内嵌 file-upload 在旧注册未释放时二次注册
+  （覆写行的 disabled 会连官方基础行一起整行禁用，kit 侧无法规避）。
+  `scripts/suite-first-enable-check.mjs` 已按精确签名豁免这一条并会在上游修复后提示移除；
+  套件侧的 19 项 failed to import 已由可解析性守卫消除（见已实现），首次启用残留的这一条
+  报错与暂时的会话不可用需要重启 dsh 恢复。
 - [ ] 仓库公开后实测「添加插件」用 Git 地址安装（`file:` 相对依赖在 git 依赖语境的解析基准）。
 - [ ] 按 [dsh-upgrade skill](../.agents/skills/dsh-upgrade/SKILL.md) 跟进官方 dsh 新版本，
   完成后回写 [源码依据](02-dsh-facts.md) 的适配基线。

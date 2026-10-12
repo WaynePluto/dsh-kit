@@ -31,7 +31,7 @@
 | [常驻服务](plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
 | [简洁模式](plugins/concise-mode/README.md) | 新建会话时选择预设 | 原生工具直呼与 run_code 程序并用，模型自主选择 |
-| [固定 YOLO](plugins/yolo-mode/README.md) | 自动生效 | 固定全权限并自动允许权限请求；用户提问仍需回答 |
+| [固定 YOLO](plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
 
 分组、顺序与停用粒度见 [插件索引](docs/plugins.md) 与根目录 [plugin-catalog.json](plugin-catalog.json)。
@@ -46,6 +46,10 @@
    pnpm suite:build      # 生成套件 patch 并物化依赖闭包
    ```
 3. dsh → 插件 → 添加插件 → 输入 `plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
+   重启是生效的必要步骤：在安装前就启动的 dsh 里点「启用」，组件行会整包延迟到重启
+   装载（可解析性守卫，不会报 failed to import）；个别机器上首次启用还可能报一条
+   session-controller 的重挂载竞态（dsh 上游已知，见 [roadmap](docs/05-roadmap.md)），
+   同样重启即恢复。
    升级：重新构建后卸载再安装（官方桌面暂不支持插件自动更新）。
    用一条 GitHub 仓库地址安装的结构已就绪（`file:` 相对依赖），待仓库公开后实测收口。
 
@@ -56,7 +60,8 @@
 
 - 不写项目专属数据目录，也不注入环境变量；所有配置存在 dsh 自己的 profile 与 settings 里。
 - 通知、代理、模型目录等插件各自的作用范围见对应包 README。
-- 固定 YOLO 会取消模型执行前的交互式权限边界，请先读 [安全说明](plugins/yolo-mode/README.md)。
+- 固定 YOLO 默认停用；打开行开关并重启才会取消模型执行前的交互式权限边界，
+  关闭行开关并重启即恢复，请先读 [安全说明](plugins/yolo-mode/README.md)。
 
 ## 开发
 

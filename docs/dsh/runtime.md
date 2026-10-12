@@ -60,7 +60,17 @@ ask_user_question 保持用户回答，原生工具的结果、diff、取消与�
 - 只删 schema 不够，模型的既有上下文仍可能发送字段；不能让原参数直接流入工具。
 - 意外受限窗口由 wrapper 使用固定内部 widening 参数经过 dsh 原生链，再修正会话策略。
 - session/event 通知内不能重入 append，修正用 queueMicrotask 并确认 Agent 仍 live。
-- 禁用原生权限服务与选择器；停用插件并重启后恢复服务，已有历史策略仍需重新选择权限预设。
+- 默认停用契约（2026-10-12 v2）：五行共用同一「active = Bundle 在 bundles 且 profile patch
+  显式启用 yolo-mode 行」判定，识别块状与流式两种覆写行形态（writePluginEnabled 追加的是
+  流式 `[ { id: yolo-mode, disabled: false } ]`）。sandbox-policy 与 approval **不用行 disabled**：
+  patch 覆写行的 disabled 会连官方基础行一起整行禁用、直接杀掉 sandboxPolicy/approval 服务
+  （v1 的 8 项 pending 级联即此因），改为 config 条件表达式——active 时取 YOLO 值，未激活时
+  逐字回退官方默认（DSH_PERMISSION_MODE 语义不变）。permission/ui-permission 为镜像行
+  （disabled = active，active 时禁用原生权限服务与选择器），yolo-mode 插件行 disabled = !active。
+  安装后默认停用、原生权限保持原样；行开关关闭（或套件 Bundle 开关）并重启即恢复原生控制。
+  判定表达式直接读 profile 根的 package.json 与 cordis.patch.yml（行表达式的求值 baseUrl 是
+  profile 目录；config 表达式在行 fiber ctx 求值，baseUrl 同样可达），已有历史策略事件仍需
+  重新选择权限预设。
 
 工具参数出处：`packages/shell/tool-bash/src/index.ts`、`packages/shell/tool-pwsh/src/index.ts`、
 `packages/fs/tool-fs/src/{write,edit}.ts`、`packages/sandbox/sandbox/src/escalation.ts`。

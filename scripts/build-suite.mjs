@@ -3,7 +3,10 @@
 // 套件必须自带；git 地址安装时 pnpm 从克隆仓库解析 file: 依赖，物化内容被忽略）。
 // 组件行来自各组件包自己的 patch：`name: './dist/index.js'` 改写为裸包名
 // （loader 从套件 node_modules 解析），并追加「套件不在 bundles 时禁用」的
-// 官方组合包表达式；其余行（preset、官方行覆盖等）原样保留。
+// 官方组合包表达式；insert 子行的表达式还带可解析性守卫——dsh 的 runtime
+// resolution 表随进程冻结，运行中首次启用套件的 HMR 重组合只查 <profile>/node_modules
+// 一层，守卫探测不到组件包时整行禁用（延迟到重启装载），避免 failed to import 报错。
+// 模型屏障占位行以套件包子路径装载（fallback/ 内嵌于套件包，三种安装形态都可解析）。
 // 运行：node scripts/build-suite.mjs（先 pnpm plugins:build 保证 dist 存在）。
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -24,7 +27,7 @@ const LAST = ['yolo-mode']
 
 // 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。preset-concise
 // 是显示壳微包（行名改写目标）；run-code 由 concise 预设的嵌套行按裸包名引用。
-const DISPLAY_PACKAGE_DIRS = ['model-bootstrap', 'preset-concise', 'run-code']
+const DISPLAY_PACKAGE_DIRS = ['preset-concise', 'run-code']
 
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
@@ -68,53 +71,124 @@ const ROW_NAME_OVERRIDES = new Map([
   ['preset-concise', '@dsh-kit/dsh-plugin-preset-concise'],
 ])
 
+// 不注入套件 disabled 表达式的顶层覆写行（yolo-mode 段）：这两行的 config 自带
+// active 条件回退，行本身必须始终装载——行 disabled 会连官方基础行一起整行禁用，
+// 直接杀掉 sandboxPolicy/approval 服务（套件离开 bundles 时整层 patch 消失，无需表达式）。
+const ROWS_WITHOUT_SUITE_DISABLED = new Set(['sandbox-policy', 'approval'])
+
 function suiteDisabledExpr(indent) {
   return `${indent}disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("${SUITE_PACKAGE}")'`
 }
 
-/** 逐行改写一个顶层条目块；同一 insert 块可含多行（如 concise-mode 的两个 preset），各自独立处理。 */
+/**
+ * 与 loader 同一解析基址（树 ctx 的 baseUrl，即 profile 目录）探测组件包是否可解析。
+ * dsh 只在进程启动时构建 runtime resolution 表（bundle 闭包 BFS），运行中安装套件后
+ * 点「启用」触发的 HMR 重组合不会刷新该表，裸包名只能命中 <profile>/node_modules 一层
+ * （套件是 junction，组件在套件自带 node_modules 更深一层）。探测不到时返回 true
+ * （整行禁用），组件行延迟到重启装载，避免 failed to import 报错弹窗。
+ */
+function resolvableProbe(packageName) {
+  return `try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("${packageName}/package.json") } catch { return true }`
+}
+
+/** insert 成员行的守卫表达式：套件未选、或组件包当前解析不到时禁用。 */
+function suiteGuardedDisabledExpr(indent, packageName) {
+  return `${indent}disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("${SUITE_PACKAGE}"); if (selected) { ${resolvableProbe(packageName)} return false } return true })()'`
+}
+
+/** 组件行自带 disabled 表达式（如 yolo-mode 的 v2 判定）时在外面套同一守卫。 */
+function wrapDisabledWithGuard(packageName, expr) {
+  return `(() => { ${resolvableProbe(packageName)} return (${expr}) })()`
+}
+
+/**
+ * 逐行改写一个顶层条目块；同一 insert 块可含多行（如 concise-mode 的两个 preset），各自独立处理。
+ * 按行段（一条 `- id:` 到下一条）收集：先改写段内 name/includes/disabled，再依据改写后的
+ * 行名决定在 id 行后插入哪种 disabled 表达式——裸包名 insert 子行用守卫表达式，
+ * 顶层覆写行与相对路径行（锚定到 patch 所在目录、天然可解析）只用套件成员表达式；
+ * 顶层覆写行永远不加守卫：其 disabled 会连官方基础行一起整行禁用。
+ */
 function transformEntry(block, packageName) {
-  const out = []
-  let rowId
-  for (let index = 0; index < block.length; index += 1) {
-    const line = block[index]
+  const prologue = []
+  const segments = []
+  let segment = null
+  for (const line of block) {
     const idMatch = /^(\s*)- id: (.+)$/u.exec(line)
     if (idMatch !== null) {
-      rowId = idMatch[2].trim()
-      out.push(line)
-      // 只给装载层行（顶层覆盖行缩进 0、insert 成员行缩进 4）补套件 disabled 表达式；
-      // preset 组合等嵌套行（缩进 ≥6）随父行生死，不单独插。行内已有 disabled
-      // （可能排在 name 之后，如 yolo-mode）时改写其 includes 常量、不重复插。
-      const loaderLevel = idMatch[1] === '' || idMatch[1] === '    '
-      let hasDisabled = false
-      for (let scan = index + 1; scan < block.length; scan += 1) {
-        if (/^\s*- id: /u.test(block[scan])) break
-        if (/^\s*disabled: /u.test(block[scan])) { hasDisabled = true; break }
-      }
-      if (loaderLevel && !hasDisabled) {
-        out.push(suiteDisabledExpr(`${idMatch[1]}  `))
+      if (segment !== null) segments.push(segment)
+      segment = {
+        idIndent: idMatch[1],
+        rowId: idMatch[2].trim(),
+        lines: [line],
+        hasOwnDisabled: false,
+        finalName: undefined,
       }
       continue
     }
-    const nameMatch = /^(\s*)name: '([^']+)'$/u.exec(line)
-    if (nameMatch !== null) {
-      const indent = nameMatch[1]
-      const current = nameMatch[2]
-      let replacement
-      if (ROW_NAME_OVERRIDES.has(rowId)) {
-        replacement = ROW_NAME_OVERRIDES.get(rowId)
-      } else if (current.startsWith('./dist/')) {
-        const file = current.slice('./dist/'.length)
-        replacement = file === 'index.js' ? packageName : `./node_modules/${packageName}/${file}`
+    if (segment === null) {
+      prologue.push(line)
+    } else {
+      if (/^\s*disabled: /u.test(line)) segment.hasOwnDisabled = true
+      segment.lines.push(line)
+    }
+  }
+  if (segment !== null) segments.push(segment)
+
+  const out = [...prologue]
+  for (const current of segments) {
+    const isInsertChild = current.idIndent === '    '
+    const rewritten = []
+    for (const line of current.lines.slice(1)) {
+      const nameMatch = /^(\s*)name: '([^']+)'$/u.exec(line)
+      if (nameMatch !== null) {
+        const indent = nameMatch[1]
+        const before = nameMatch[2]
+        let replacement
+        if (ROW_NAME_OVERRIDES.has(current.rowId)) {
+          replacement = ROW_NAME_OVERRIDES.get(current.rowId)
+        } else if (before.startsWith('./dist/')) {
+          const file = before.slice('./dist/'.length)
+          replacement = file === 'index.js' ? packageName : `./node_modules/${packageName}/${file}`
+        }
+        if (replacement !== undefined) current.finalName = replacement
+        rewritten.push(replacement === undefined ? line : `${indent}name: '${replacement}'`)
+        continue
       }
-      out.push(replacement === undefined ? line : `${indent}name: '${replacement}'`)
-      continue
+      const disabledMatch = /^(\s*)disabled: !!js '([^']+)'$/u.exec(line)
+      if (disabledMatch !== null) {
+        // 组件段内 disabled 表达式的 bundles 常量改写为套件包名；自带判定的 insert
+        // 子行（yolo-mode）再套可解析性守卫。
+        let expr = disabledMatch[2].replaceAll(`includes("${packageName}")`, `includes("${SUITE_PACKAGE}")`)
+        if (isInsertChild) {
+          if (current.finalName === undefined || current.finalName.startsWith('./')) {
+            throw new Error(`组件 ${packageName} 的行 ${current.rowId} 的 disabled 表达式先于 name 出现或行名非裸包名，无法套守卫`)
+          }
+          expr = wrapDisabledWithGuard(current.finalName, expr)
+        }
+        rewritten.push(`${disabledMatch[1]}disabled: !!js '${expr}'`)
+        continue
+      }
+      // 段内任何行的 bundles 常量（config 条件表达式等）都改写为套件包名；
+      // names 数组等普通字符串不含 includes(...) 前缀，不受影响。
+      if (line.includes(`includes("${packageName}")`)) {
+        rewritten.push(line.replaceAll(`includes("${packageName}")`, `includes("${SUITE_PACKAGE}")`))
+        continue
+      }
+      rewritten.push(line)
     }
-    if (/^\s*disabled: !!js '/u.test(line) && line.includes('includes("')) {
-      out.push(line.replace(/includes\("[^"]*"\)/u, `includes("${SUITE_PACKAGE}")`))
-      continue
+    // 装载层行（顶层覆盖行缩进 0、insert 成员行缩进 4）补套件 disabled 表达式；
+    // preset 组合等嵌套行（缩进 ≥6）随父行生死，不单独插。
+    const loaderLevel = current.idIndent === '' || isInsertChild
+    const insertion = []
+    if (loaderLevel && !current.hasOwnDisabled && !ROWS_WITHOUT_SUITE_DISABLED.has(current.rowId)) {
+      const exprIndent = `${current.idIndent}  `
+      if (isInsertChild && current.finalName !== undefined && !current.finalName.startsWith('./')) {
+        insertion.push(suiteGuardedDisabledExpr(exprIndent, current.finalName))
+      } else {
+        insertion.push(suiteDisabledExpr(exprIndent))
+      }
     }
-    out.push(line)
+    out.push(current.lines[0], ...insertion, ...rewritten)
   }
   return out.join('\n')
 }
@@ -137,7 +211,9 @@ function componentSection() {
 const header = `# dsh-kit 全量套件 Bundle（本文件由 scripts/build-suite.mjs 生成，勿手改）。
 # 单输入安装：官方 dsh 插件管理页「添加插件」输入本目录路径（或仓库地址），
 # 即安装/升级全部组件。组件行沿用组合包的裸包名 + disabled 表达式约定：
-# 套件被停用/卸载（离开 bundles 列表）时全部组件行一并禁用。
+# 套件被停用/卸载（离开 bundles 列表）时全部组件行一并禁用；insert 子行的表达式
+# 另带可解析性守卫——运行中首次启用套件时（HMR 重组合的解析表仍是安装前的快照）
+# 组件行整行禁用、延迟到重启装载，不产生 failed to import 报错弹窗。
 #
 # 模型 HMR 启动屏障：随进程固定契约，避免运行中停用模型组件时热重启 llm-pi-ai。
 - id: llm-pi-ai
@@ -158,13 +234,14 @@ const header = `# dsh-kit 全量套件 Bundle（本文件由 scripts/build-suite
   config:
     trustedHosts: !!js 'ctx.webRuntime.trustedHosts'
 
-# 套件常驻行：模型组件未随进程启动时提供占位屏障，与简洁预设行一起通过生成的
-# 「显示壳」微包装载（裸包名 + 中文 locale meta）：插件管理器只给裸包名行解析
-# 元数据，相对路径行会退化为显示完整文件 URL，非套件的官方包（如
-# @deepseek-ai/dsh-agent-preset）则只会显示英文包名与描述。
+# 套件常驻行：模型组件未随进程启动时提供占位屏障。占位实现内嵌在套件包
+# fallback/ 目录，行名用套件包子路径（套件 package.json 的 exports 重映射到
+# fallback 入口与 locale）：该形态在冷启动（junction/hoisted）、git 安装与运行中
+# 首次启用（此时套件 junction 已在 <profile>/node_modules，子路径可解析）都成立，
+# 保证 llm-pi-ai 的屏障注入在首次启用当场就有服务可绑。
 - insert:
     - id: dsh-kit-model-bootstrap-fallback
-      name: '@dsh-kit/dsh-plugin-model-bootstrap'
+      name: '@dsh-kit/dsh-plugin-suite/fallback'
 `
 
 const output = `${header}\n${componentSection()}\n`
