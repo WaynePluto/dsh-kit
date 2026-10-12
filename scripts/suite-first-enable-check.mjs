@@ -202,7 +202,7 @@ async function checkFirstEnable() {
       check(rowOf(before.rows, 'proxy') === undefined, '启用前套件组件行不在装载树中')
 
       writeManifest(join(HOME, 'profiles', DSH_PROFILE), true)
-      const after = await waitFor(context, cookie, value => rowOf(value.rows, 'proxy') !== undefined, 40_000)
+      await waitFor(context, cookie, value => rowOf(value.rows, 'proxy') !== undefined, 40_000)
       // 重组合的行重启有先后（llm → 注入方），等官方核心行回稳（session-controller
       // 命中上游竞态时停在 FAILED，也算终态）再断言。
       const settled = await waitFor(context, cookie,
