@@ -8,8 +8,8 @@
 // 一层，守卫探测不到组件包时整行禁用（延迟到重启装载），避免 failed to import 报错。
 // 模型屏障占位行以套件包子路径装载（fallback/ 内嵌于套件包，三种安装形态都可解析）。
 // 运行：node scripts/build-suite.mjs（先 pnpm plugins:build 保证 dist 存在）。
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative as relativePath, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -26,8 +26,9 @@ const FIRST = ['proxy']
 const LAST = ['yolo-mode']
 
 // 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。preset-concise
-// 是显示壳微包（行名改写目标）；run-code 由 concise 预设的嵌套行按裸包名引用。
-const DISPLAY_PACKAGE_DIRS = ['preset-concise', 'run-code']
+// 是显示壳微包（行名改写目标）；run-code 与 prompt-filter 由 concise 预设的嵌套行
+// 按裸包名引用（嵌套行以声明方 baseUrl 解析，即套件包根）。
+const DISPLAY_PACKAGE_DIRS = ['preset-concise', 'run-code', 'prompt-filter']
 
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
@@ -256,6 +257,29 @@ process.stdout.write(`已生成 ${target}\n`)
 const SUITE_DIR = join(PLUGINS, 'suite')
 const SUITE_MODULES = join(SUITE_DIR, 'node_modules')
 
+/**
+ * 重置套件 node_modules。不使用原地 rmSync：脚本在 rmSync 之后、复制完成之前
+ * 被中断（Ctrl-C、进程被杀）会留下空目录，所有组件行失去解析兜底（已实机复现：
+ * 「2 entries did not activate … failed to import」）。改为整体改名让旧内容自然
+ * 消亡——失败窗口内旧目录仍完整可用，新目录原子换代。.ignored_* 是 pnpm install
+ * 回收 file: 依赖条目时留下的备份，一并带走。
+ */
+function resetSuiteModules() {
+  if (!existsSync(SUITE_MODULES)) return
+  const trash = SUITE_MODULES + `.obsolete-${process.pid}-${Date.now()}`
+  try {
+    renameSync(SUITE_MODULES, trash)
+  } catch (error) {
+    throw new Error(`套件 node_modules 无法改名（可能被占用）：${String(error)}`, { cause: error })
+  }
+  try {
+    rmSync(trash, { recursive: true, force: true })
+  } catch {
+    // 删除失败不影响本次构建结果；留待下次构建或用户手动清理。
+    process.stdout.write(`提示：旧物化目录未能删除，保留在 ${trash}\n`)
+  }
+}
+
 function packageNameOf(source) {
   return JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).name
 }
@@ -306,7 +330,7 @@ function copyRegistryClosure(seedNames) {
 }
 
 function materializeSuiteModules() {
-  rmSync(SUITE_MODULES, { recursive: true, force: true })
+  resetSuiteModules()
   mkdirSync(join(SUITE_MODULES, '@dsh-kit'), { recursive: true })
   const registrySeeds = new Set()
   const componentDirs = [...componentDirectories(), ...DISPLAY_PACKAGE_DIRS]
@@ -322,4 +346,24 @@ function materializeSuiteModules() {
   process.stdout.write(`物化完成：${componentDirs.length} 个 @dsh-kit 包 + ${copied.size} 个 registry 依赖（${[...copied].join(', ')}）\n`)
 }
 
+/**
+ * 组件行有三条解析路径：套件物化 node_modules、根 hoisted junction（根 devDependencies
+ * 必须登记全部组件，pnpm install 才会建 junction）、profile 内安装。物化缺失时根
+ * junction 是唯一的本地兜底（本地 link: 安装形态），漏登组件会在物化损坏时静默失去
+ * 解析（已实机复现），在这里响亮失败而不是留给 dsh 报 failed to import。
+ */
+function verifyRootHoistedJunctions(componentDirs) {
+  const missing = componentDirs
+    .map(dir => join(PLUGINS, dir))
+    .filter(source => !existsSync(join(ROOT, 'node_modules', '@dsh-kit', packageNameOf(source).split('/')[1])))
+  if (missing.length > 0) {
+    throw new Error(
+      `根 node_modules/@dsh-kit 缺少以下组件的 junction（根 package.json 的 devDependencies 漏登）：\n` +
+      missing.map(dir => `  ${relativePath(ROOT, dir)}`).join('\n') +
+      `\n修复：在根 package.json 的 devDependencies 补登 "workspace:*" 后运行 pnpm install。`,
+    )
+  }
+}
+
+verifyRootHoistedJunctions([...componentDirectories(), ...DISPLAY_PACKAGE_DIRS])
 materializeSuiteModules()

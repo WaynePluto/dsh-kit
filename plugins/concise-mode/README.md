@@ -9,16 +9,29 @@
 |---|---|
 | `concise` | 原生工具照常直呼；同时供供 `run_code`，模型可写 TypeScript 程序组合调用工具，由模型自主选择 |
 
-预设供供项目供示词、文件读写与搜索、技能、当前平台 shell、前台一次性子代理、用户供问、待办和上下文压缩。
+预设提供 persona 提示词、文件读写与搜索、技能、当前平台 shell、前台一次性子代理、用户提问、待办和上下文压缩。
 它继承 profile 中的常驻服务与交互终端工具；不包含计划文件、后台任务管理、工作流或网页搜索工具。
 普通 shell 与子代理调用不供供后台执行，常驻服务使用 `service_*`。
 子代理深度继承 dsh 原生设置（默认 1，可由用户调整）；本预设不单独指定深度。
 
 `run_code` 双通道由嵌套行 `run-code`（`@dsh-kit/dsh-plugin-run-code`，作 本分发包组件
-随包供供）声明  both 展示模式：参考 pi 的 codemode，批量并发、链式依赖与大结果过滤
-优先写程序，单次简单调用直呼工具。PTC 的规则、SDK、执行器和 UI 均复用 dsh。
+随包供供）声明  both 展示模式：默认直呼工具，只有一步内需要多次调用（参考 pi 的 codemode：
+批量并发、链式依赖、大结果过滤）才写程序，单个工具调用不包成程序。PTC 的规则、SDK、执行器和 UI 均复用 dsh。
 工具状态页只统计顶层调用，一次 `run_code` 程序显示 一次调用，不展开计算内部子调用次数。
 旧的 `concise-ptc` 预设已删除；已有会话请改选「简洁模式」。
+
+## 提示词构成
+
+简洁会话的系统提示词只有三个来源：persona 那一句（`You are a helpful software engineer assistant.`，
+与 dsh 原生「极简模式」同一句）、各工具行注册的工具指引、以及 `run_code` 的 `tools:sdk` 声明与
+使用指引。dsh 在部署层注册的段落（`harness:identity`、`context:file-reference`、
+`ui:deliverable-file-references`、`harness:source`、`app:web-surface`）由嵌套行 `prompt-filter`
+（`@dsh-kit/dsh-plugin-prompt-filter`）在预设作用域里按名摘除，清单即该行的 `dropSections`。
+
+persona 的 `complete` 开关表达不了这个范围：`complete: false` 只替换 persona 槽位，部署级段落一条
+也过滤不掉；`complete: true` 会把整个提示词覆盖成那一句，连 `tools:sdk` 一起滤掉（run_code 就看不到
+`tools.*` 声明）。`node scripts/concise-mode-check.mjs` 断言最终段落集合，以及无作用域的部署组装
+不受影响；section 名是 dsh 契约，升级 dsh 时必须复核。
 
 ## 装载、分发与限制
 

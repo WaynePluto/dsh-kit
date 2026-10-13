@@ -211,6 +211,40 @@ base 与 :hover 放同一局部 stylesheet 规则，不用 inline style。若卡
 真实页面实测两个弹窗按钮均与关闭按钮逐像素同高（28×28）、全屏 1872×815 对应 viewport−48、
 退出后精确恢复原尺寸与位移，深浅主题下图标色跟随 `--dsw-alias-label-secondary`。
 
+### 原生设置卡操作区注入（模型页 provider-card 槽）
+
+给设置 → 模型的供应商卡片补操作按钮时，槽位 `settings.models.provider-card`（keyed，key =
+`settingsNs`）的座位在卡片 `li` 内 rowHead 之后，按钮要与原生「编辑/删除」同行必须 portal 进
+操作区 span。定位只许结构化：锚点用隐藏 span，`anchor.closest('li')` 后取
+`:scope > div:first-of-type`（rowHead）的 `lastElementChild`（tag 必须是 SPAN，否则是 setup
+卡等无操作区形态，一律不渲染）；以 MutationObserver(childList, subtree) + setTimeout(0) 防抖
+重扫，宿主 React 重建行时自动重新 portal。不引用构建后哈希类名（如 `zGbnIq_rowActions`），
+槽位 props（provider/configured/keyConfigured）才是身份事实。
+实例：`plugins/deepseek-official-switch/src/client/CardActions.tsx`、
+`plugins/model-capabilities/src/client/ProviderCapabilitiesPortal.tsx`。
+
+注入按钮逐项复刻模型页原生紧凑按钮（`packages/client/ui-settings-models/src/client/ModelsSection.module.css`
+的 `.dangerButton` + `.rowActions .dangerButton`，源码核对 0.2.0-rc.2；真实页面深浅主题验收待做）：
+`box-sizing:border-box`、28px 高、`padding: 0 10px`、`border-radius: var(--dsw-radius-sm)`、
+`font: inherit` 12px/18px、transparent 背景、危险色 `var(--dsw-alias-state-error-primary)`、
+hover `var(--dsw-alias-interactive-bg-hover-danger)`、禁用 `opacity: 0.4; cursor: default`、
+`:focus-visible` 用 `box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))`
+（模型页按钮无 outline 而是焦点圈，与卡片 header 同案）。次级按钮把颜色换成 label-primary、
+加 `0.5px solid var(--dsw-alias-border-l3)`、hover 用 `--dsw-alias-interactive-bg-hover-solid`。
+rowActions 自带 `display:inline-flex; gap:4px; margin-left:auto`，portal 追加的按钮自动获得间距，
+不要自带 margin。确认弹窗复用 primitives `Modal` + `Button variant="outline"`，危险确认键类名
+`:not(:disabled)` 覆写 `border-color/color` 为 state-error-primary（同 `.deleteConfirm` 的最低
+覆写强度，不加 `!important`）。
+
+### portal 插件的 react-dom 必须进构建模块表
+
+portal 把内容渲染进页面 React 管理的原生 DOM，react 与 react-dom 必须是页面同一次实例；
+构建工厂 `packages/plugin-build` 的 `DEFAULT_CLIENT_MODULE_TABLE` 只有 react 与
+ui-primitives，portal 插件必须显式追加 `react-dom`，否则 tsdown 会内联第二份 react-dom
+（曾产出 220KB bundle 且 portal 脱离页面 reconciler）。实例
+`plugins/model-capabilities/tsdown.config.ts`、`plugins/deepseek-official-switch/tsdown.config.ts`；
+契约记录在仓库根 `docs/dsh/plugins.md` 的「客户端产物」。
+
 ### Dock 列表行的单行省略
 
 dock 列表行要保证任何内容长度下都单行：行容器去掉 `flexWrap`，可变长文本格给

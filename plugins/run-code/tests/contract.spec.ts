@@ -22,14 +22,15 @@ describe('run-code package contract', () => {
     expect(inject).toEqual(['tools', 'systemPrompt'])
   })
 
-  it('guidance covers batching, chaining, filtering and direct calls', () => {
+  it('guidance defaults to direct calls and reserves run_code for multi-call steps', () => {
     expect(GUIDANCE_SECTION).toBe('run-code:guidance')
-    expect(GUIDANCE_TEXT).toContain('`run_code`')
+    expect(GUIDANCE_TEXT).toContain('Call tools directly whenever a step is a single call')
+    expect(GUIDANCE_TEXT).toContain('Never wrap a single tool call')
     expect(GUIDANCE_TEXT).toContain('`Promise.all`')
     expect(GUIDANCE_TEXT).toContain('intermediate results stay out of the conversation')
-    expect(GUIDANCE_TEXT).toContain('invoke the tool directly')
-    // 指引不得把 run_code 说成唯一通道（那是 ptc 模式的规则）。
+    // 指引不得把 run_code 说成唯一通道（那是 ptc 模式的规则），也不得再写「优先写程序」的旧措辞。
     expect(GUIDANCE_TEXT).not.toContain('only tool')
+    expect(GUIDANCE_TEXT).not.toContain('Prefer `run_code`')
   })
 })
 
@@ -62,8 +63,9 @@ describe('run-code apply', () => {
           return () => undefined
         },
         getSectionOrder: (slot: string): number => {
-          expect(slot).toBe('TOOLS_SDK')
-          return 5000
+          // 规则落在 dsh 自己的模式规则槽位之后、工具指引与 SDK 之前。
+          expect(slot).toBe('PTC_ONLY')
+          return 800
         },
       },
     }
@@ -76,11 +78,12 @@ describe('run-code apply', () => {
     expect(calls).toEqual(['inject', 'presentAs:both'])
   })
 
-  it('registers the guidance section right after the official SDK section', () => {
+  it('registers the guidance rule before the tool sections and the SDK', () => {
     const { sections } = mount()
     expect(sections).toHaveLength(1)
     expect(sections[0]?.name).toBe('run-code:guidance')
-    expect(sections[0]?.order).toBe(5100)
+    // PTC_ONLY(800)+10：早于 TOOL_PWSH(1010) 等工具指引与 TOOLS_SDK(5000)。
+    expect(sections[0]?.order).toBe(810)
     expect(sections[0]?.text).toBe(GUIDANCE_TEXT)
   })
 })

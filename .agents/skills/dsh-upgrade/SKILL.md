@@ -61,7 +61,10 @@ npm view @deepseek-ai/dsh versions --json
 - **index 注入契约**：`IndexInjection` 的 kind/placement 取值与
   `__DSH_TRANSPORT__` 的壳语义（当前没有组件使用，仍需在升级时确认未破坏）
 - **预设与模型**：`@deepseek-ai/dsh-agent-preset` 行内联、run-code 双通道行、`llm-pi-ai` 启动屏障、
-  `settings.models.*` 子槽
+  `settings.models.*` 子槽；`prompt-filter` 的 `dropSections` 名单依赖 dsh 的 section 名
+  （`harness:identity`、`context:file-reference`、`ui:deliverable-file-references`、`harness:source`、
+  `app:web-surface`）与 `system-prompt/assemble` 的作用域路由语义，改名或改路由即失效，
+  `concise-mode-check` 必须仍然全绿
 - **会话契约**：turn-retry 依赖的 `TurnEndReasonMap`、`sessionProjections.register` wire 契约、
   `Agent.inbox.nextTurn`、`followup()` 语义（升级后必跑排队消息回归）
 - **官方「添加插件」安装器**：patch 校验时机、bundle 列表语义、安装/升级两条路径

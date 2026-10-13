@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DeepSeek 官方 API 开关",
+    "description": "移除或恢复设置 → 模型里的内置 DeepSeek（API 密钥）供应商卡片；官方没有提供删除。"
+  }
+}

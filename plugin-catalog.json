@@ -15,7 +15,8 @@
         { "name": "@dsh-kit/dsh-plugin-copilot-auth", "rowId": "copilot-auth" },
         { "name": "@dsh-kit/dsh-plugin-models-catalog", "rowId": "models-catalog", "toggleable": false },
         { "name": "@dsh-kit/dsh-plugin-model-capabilities", "rowId": "model-capabilities", "toggleable": false },
-        { "name": "@dsh-kit/dsh-plugin-favorite-models", "rowId": "favorite-models" }
+        { "name": "@dsh-kit/dsh-plugin-favorite-models", "rowId": "favorite-models" },
+        { "name": "@dsh-kit/dsh-plugin-deepseek-official-switch", "rowId": "deepseek-official-switch" }
       ]
     },
     {
@@ -23,7 +24,8 @@
       "source": "plugins/concise-mode",
       "components": [
         { "name": "@dsh-kit/dsh-plugin-concise-mode", "rowId": "agent-presets" },
-        { "name": "@dsh-kit/dsh-plugin-run-code" }
+        { "name": "@dsh-kit/dsh-plugin-run-code" },
+        { "name": "@dsh-kit/dsh-plugin-prompt-filter" }
       ]
     },
     {

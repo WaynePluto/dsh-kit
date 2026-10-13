@@ -142,11 +142,30 @@
           - id: run-code
             name: '@dsh-kit/dsh-plugin-run-code'
 
+          # dsh 在部署层（预设之外）注册的 section：persona 行的 complete 开关都关不掉
+          # （false 只换 persona 槽位、true 会连 tools:sdk 一起滤掉），因此在预设作用域里按名摘除，
+          # 让提示词只剩 persona 那一句 + 工具 section + SDK。section 名由 dsh 定义，升级时复核。
+          - id: prompt-filter
+            name: '@dsh-kit/dsh-plugin-prompt-filter'
+            config:
+              dropSections:
+                - 'harness:identity'
+                - 'context:file-reference'
+                - 'ui:deliverable-file-references'
+                - 'harness:source'
+                - 'app:web-surface'
+
 # ── @dsh-kit/dsh-plugin-copilot-auth ──
 - insert:
     - id: copilot-auth
       disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-copilot-auth/package.json") } catch { return true } return false } return true })()'
       name: '@dsh-kit/dsh-plugin-copilot-auth'
+
+# ── @dsh-kit/dsh-plugin-deepseek-official-switch ──
+- insert:
+    - id: deepseek-official-switch
+      disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-deepseek-official-switch/package.json") } catch { return true } return false } return true })()'
+      name: '@dsh-kit/dsh-plugin-deepseek-official-switch'
 
 # ── @dsh-kit/dsh-plugin-favorite-models ──
 - insert:

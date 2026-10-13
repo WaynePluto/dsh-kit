@@ -5,7 +5,7 @@
 对应官方 dsh：`0.2.0-rc.2`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
-个人体验增强，共 18 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
+个人体验增强，共 19 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
 
 - 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
 - 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
@@ -21,6 +21,7 @@
 | [模型目录更新](plugins/models-catalog/README.md) | 设置 → 模型 | 从 models.dev 补充模型目录 |
 | [模型能力与协议](plugins/model-capabilities/README.md) | 设置 → 模型 → 展开模型行 | 声明图片支持、推理档位与单模型协议覆盖 |
 | [常用模型](plugins/favorite-models/README.md) | 设置 → 模型；聊天模型选择器 | 收藏并筛选常用模型 |
+| [DeepSeek 官方 API 开关](plugins/deepseek-official-switch/README.md) | 设置 → 模型 | 移除或恢复内置 DeepSeek（API 密钥）供应商卡片，并提供恢复入口 |
 | [失败重试](plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
 | [会话滚动导航](plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |
 | [用户消息分叉](plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿 |
@@ -30,7 +31,7 @@
 | [文件浏览](plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览与目录右键菜单 |
 | [常驻服务](plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
-| [简洁模式](plugins/concise-mode/README.md) | 新建会话时选择预设 | 原生工具直呼与 run_code 程序并用，模型自主选择 |
+| [简洁模式](plugins/concise-mode/README.md) | 新建会话时选择预设 | 原生工具直呼与 run_code 程序并用，模型自主选择；提示词只保留 persona 那句 + 工具指引 + SDK |
 | [固定 YOLO](plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
 

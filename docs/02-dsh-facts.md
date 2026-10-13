@@ -27,7 +27,7 @@
 | 主题 | 检查入口 |
 |---|---|
 | 套件装载层 | node scripts/concise-mode-check.mjs（预设、注册表与套件 Bundle 在线启停）；node scripts/verify-suite-client.mjs --token `<宿主打印的 token>`（浏览器行图） |
-| 模型 | node scripts/copilot-auth-check.mjs；node scripts/favorite-models-check.mjs |
+| 模型 | node scripts/copilot-auth-check.mjs；node scripts/favorite-models-check.mjs；node scripts/deepseek-official-switch-check.mjs |
 | 代理 | node scripts/proxy-check.mjs |
 | 重试与消息 | node scripts/turn-retry-check.mjs；node scripts/user-message-fork-check.mjs；node scripts/chat-scroll-check.mjs |
 | 通知 | node scripts/notify-check.mjs |

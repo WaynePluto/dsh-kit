@@ -27,3 +27,8 @@
     - id: favorite-models
       name: './node_modules/@dsh-kit/dsh-plugin-favorite-models/dist/index.js'
       disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-model-enhancements")'
+
+- insert:
+    - id: deepseek-official-switch
+      name: './node_modules/@dsh-kit/dsh-plugin-deepseek-official-switch/dist/index.js'
+      disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-model-enhancements")'

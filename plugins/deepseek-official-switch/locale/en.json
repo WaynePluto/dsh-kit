@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DeepSeek API Switch",
+    "description": "Remove or restore the built-in DeepSeek (API key) provider card in Settings → Models; the official page ships no delete."
+  }
+}

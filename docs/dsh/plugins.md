@@ -79,8 +79,10 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 
 ### dsh-kit 分发约束
 
-- 根 `plugin-catalog.json` 将 18 个功能组件映射为 3 个组合包与 6 个独立包；
-  它们又收进 `plugins/suite` 一个套件包，用本地绝对目录走上述官方安装流程。
+- 根 `plugin-catalog.json` 将 19 个功能组件映射为 3 个组合包与 6 个独立包；
+  它们又收进 `plugins/suite` 一个套件包，用本地绝对目录走上述官方安装流程。目录里另有两个
+  没有 profile 行的嵌套行组件（`run-code`、`prompt-filter`），只被简洁预设按裸包名引用，
+  不占组件行计数。
 - 组合包是安装/卸载/升级单位，其 `cordis.patch.yml` 仍为组件保留独立稳定行。组件从 Bundle
   内嵌依赖的相对路径装载，并用 Bundle 选择状态跳过 HMR 卸载阶段的瞬时残留行。普通组件可以
   单独 disabled；models-catalog 与 model-capabilities 共同构成 `llm-pi-ai` 启动屏障，不能只停一行。
@@ -100,14 +102,17 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 出处：`packages/bundle/web-app/cordis.patch.yml`、`packages/preset/agent-preset-registry/src/index.ts`、
 `packages/preset/agent-preset/src/index.ts`、`packages/preset/persona/src/index.ts`、
 `packages/core/agent-tool-presentation/src/index.ts`、`packages/core/tools/src/index.ts`（presentAs/wireSchemas/collapses）、
-`packages/core/system-prompt/src/index.ts`；项目定义见 `plugins/concise-mode/cordis.patch.yml`。
+`packages/core/system-prompt/src/index.ts`（section 组装与 `system-prompt/assemble` waterfall）、
+`packages/core/scope/src/index.ts`（`scopeTarget` 的作用域路由）；项目定义见
+`plugins/concise-mode/cordis.patch.yml`。
 
 dsh-web-app 提供 `agent-preset-registry` 与原生预设；concise-mode Bundle 排在其后，用 patch 直接
 插入一行 `preset-concise` 的 `@deepseek-ai/dsh-agent-preset` 声明，`config.plugins` 内联声明
 persona、工具与压缩插件，行尾嵌套 `run-code` 行（`@dsh-kit/dsh-plugin-run-code`）。
 这里没有 preset root、locator entry 或以文件系统目录加载预设的逻辑；套件所在 profile 里
-只增加这一个预设。preset 嵌套行以声明方 baseUrl 解析裸包名，因此 run-code 由
-`build-suite.mjs` 物化进套件 `node_modules/`。
+只增加这一个预设。preset 嵌套行以声明方 baseUrl 解析裸包名，因此两个嵌套行组件
+（run-code、prompt-filter）由 `build-suite.mjs` 物化进套件 `node_modules/`；它们没有自己的
+profile 行，也不出现在插件管理器里。
 
 0.1.7-rc.1 不再支持旧版「复制预设 → 写入用户预设目录」：预设现在是 profile/Bundle 中的
 `@deepseek-ai/dsh-agent-preset` 声明，原生设置页只提供「查看配置」（只读）及「让 Agent 帮我创建预设模式」。
@@ -124,12 +129,23 @@ shell 与 subagent 的 enableRunInBackground 为 false，subagent 使用 one-sho
 profile 根层的 service_* 和 interactive_terminal 仍可继承。
 
 - concise：complete:false、includeRuntimeContext:false；嵌套 run-code 行等待 `ptcRuntime` 后
-  `presentAs('both')`，并在 `tools:sdk`（TOOLS_SDK=5000）后注册 `run-code:guidance` 指引 section。
+  `presentAs('both')`，并在 `tools:ptc-only`（PTC_ONLY=800）之后、工具指引与 `tools:sdk`（TOOLS_SDK=5000）
+  之前注册 `run-code:guidance` 频道选择规则：默认直呼工具，只有一步内需要多次调用（并发、链式依赖、
+  大结果过滤）才写程序，单个工具调用禁止包成程序。位置与 dsh 自己的 ptc 模式规则同槽位族，理由同样是
+  规则必须早于工具指引被读到（出处：`packages/core/tools/src/index.ts` 的 `collapseSection()` 注释）。
 - both 模式下 wireSchemas 返回全部可见工具 + `run_code`，collapses 谓词不收缩直呼；
   模型自主选择直呼或写 run_code 程序（参考 pi codemode 的「mode on」）。旧的 concise-ptc
   （纯 ptc、只暴露 run_code）已删除。
 - complete:true 会过滤 system-prompt section，连 tools:ptc-only 与 tools:sdk 一起过滤，
   不能用于任何需要 SDK 声明的预设。
+- 提示词范围由嵌套行 `prompt-filter`（`@dsh-kit/dsh-plugin-prompt-filter`）在预设作用域内收口：
+  按 config 的 `dropSections` 摘除 dsh 部署层注册的 section（`harness:identity`、
+  `context:file-reference`、`ui:deliverable-file-references`、`harness:source`、`app:web-surface`），
+  只留 persona 那句 + 工具指引 + `tools:sdk`。机制是按作用域路由的 waterfall——注册在祖先作用域的
+  监听器经 scopeTarget 祖先准入收到每个后代 agent 的组装，返回值即最终 assembly（effective
+  complete section 之后会被还原）；只摘 section、不动能力（插件、服务与工具仍在）。section 名是
+  dsh 契约：升级时必须复核 `dropSections` 名单，`scripts/concise-mode-check.mjs` 断言段落集合精确，
+  且无作用域的部署组装仍保有这些 section（证明过滤只作用于本预设）。
 - PTC SDK、提示词、并发、worker、子调用日志均由 dsh 提供，不复制实现。
 - PTC 内部调用记录 tool/ptc-dispatch，项目统计只使用顶层 tool/call。
 
@@ -140,6 +156,10 @@ profile 根层的 service_* 和 interactive_terminal 仍可继承。
 客户端扫描会从 --patch 的入口向上寻找 package.json，读取 dsh.client 与 exports["./client"]。
 浏览器 bundle 使用 lazy CJS factory，由 window.__ModuleLoader__.load 注册，必须匹配页面模块表。
 React、Cordis、store、slots、ui-primitives 等共享运行时保持 external，其他依赖按需内联。
+构建工厂 `packages/plugin-build` 的 `DEFAULT_CLIENT_MODULE_TABLE` 只含 `react`、
+`react/jsx-runtime` 与 `@deepseek-ai/dsh-client-ui-primitives`；使用 portal 把内容渲染进
+页面 React 管理的原生 DOM 的插件（model-capabilities、deepseek-official-switch）必须显式
+追加 `react-dom`，portal 与页面 reconciler 必须共用同一次 React 实例。
 跨插件通过 Cordis 服务协作，避免重复打包造成模块实例不一致。
 
 缺失 dist/client.js 会导致客户端模块激活失败，可能使整个 Web UI 无法启动。

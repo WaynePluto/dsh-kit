@@ -1,7 +1,7 @@
 # DSH 增强套件（suite）
 
 dsh-kit 的唯一分发包：在官方 dsh（桌面版或 web 版）的插件管理页「+ 添加插件」
-输入**一条路径**（本目录）即可安装或升级全部内容——18 个功能组件与模型启动屏障。
+输入**一条路径**（本目录）即可安装或升级全部内容——19 个功能组件与模型启动屏障。
 套件被停用或卸载时全部组件行一并禁用（组合包官方 disabled 表达式约定）。
 
 ## 安装
@@ -19,6 +19,13 @@ dsh-kit 的唯一分发包：在官方 dsh（桌面版或 web 版）的插件管
 物化内容被忽略——两种来源共用同一 package.json。
 **git 地址安装尚未实测**（待仓库公开后验证 `file:./plugins/...` 在 git
 依赖语境的解析基准）。
+
+组件行的解析有三条兜底路径，缺一不一定报错、全缺才 failed to import：
+套件物化 `node_modules/`、根 hoisted junction（根 devDependencies 必须登记
+全部组件，`build-suite.mjs` 会响亮检查）、profile 内安装。物化目录在
+`build-suite.mjs` 中以整体改名换代（中断不再留空目录）；在仓库内运行
+`pnpm install` 会把物化目录里 `file:` 依赖的条目回收成指向工作区的 junction
+并留下 `.ignored_*` 备份，重新执行 `pnpm suite:build` 即恢复纯副本。
 
 ## 组成
 

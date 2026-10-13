@@ -41,6 +41,23 @@ const EXPECTED_TOOLS = [
 ]
 // both 展示模式：注册表与模型协议都看到全部工具 + run_code。
 const EXPECTED_REGISTRY_TOOLS = [...EXPECTED_TOOLS, 'run_code']
+// 预设站立作用域里保留的提示词段落：persona 那句 + 工具指引 + run_code SDK。
+// 名字由 dsh 与各组件行定义，段落集合漂移必须响亮失败（新增部署级段落会落进 unexpected）。
+const EXPECTED_SECTIONS = [
+  'deployment:persona-prefix', 'deployment:persona-suffix',
+  'tool:pwsh', 'tool:read', 'tool:write', 'tool:edit', 'tool:glob', 'tool:grep', 'tool:pty',
+  // MCP 未配置服务器时渲染为空，但 section 仍在注册表里可见。
+  'mcp-resource-servers',
+  'run-code:guidance', 'tools:ptc-only', 'tools:sdk',
+]
+// 预设作用域里 prompt-filter 摘掉的 dsh 部署级段落。
+const DROPPED_SECTIONS = [
+  'harness:identity', 'context:file-reference', 'ui:deliverable-file-references', 'harness:source', 'app:web-surface',
+]
+// 其中这些在部署全局（无作用域）组装里仍然注册：过滤只作用于本预设，不能是全局摘除。
+const DEPLOYMENT_SECTIONS = [
+  'harness:identity', 'ui:deliverable-file-references', 'harness:source', 'app:web-surface',
+]
 const PROBE_SOURCE = [
   "export const inject = ['agentPresets', 'tools', 'systemPrompt', 'connection', 'pluginManager']",
   '',
@@ -61,6 +78,8 @@ const PROBE_SOURCE = [
   '  const scope = lease.key',
   '  try {',
   '  const prompt = await ctx.systemPrompt.assemble({ scope })',
+  '  // 部署全局组装（无作用域）：prompt-filter 的监听器只挂在预设作用域，这里必须看不到它。',
+  '  const deploymentPrompt = await ctx.systemPrompt.assemble()',
   '  const schemas = ctx.tools.schemas(scope)',
   '  return {',
   '    tools: schemas.map(schema => schema.name),',
@@ -70,6 +89,7 @@ const PROBE_SOURCE = [
   '      sections: prompt.sections.map(ownedPrompt),',
   '      contexts: prompt.contexts.map(ownedPrompt),',
   '    },',
+  '    deploymentSections: deploymentPrompt.sections.map(ownedPrompt),',
   '  }',
   '  } finally { await lease[Symbol.asyncDispose]() }',
   '}',
@@ -275,6 +295,24 @@ function diagnoseTools(actual, expectedTools, label) {
     && actual.length === expectedTools.length, label + ' tool set is exact', detail)
 }
 
+function diagnoseSections(actual, label) {
+  const expected = new Set(EXPECTED_SECTIONS)
+  const actualSet = new Set(actual)
+  const missing = EXPECTED_SECTIONS.filter(name => !actualSet.has(name)).toSorted()
+  const unexpected = [...actualSet].filter(name => !expected.has(name)).toSorted()
+  const counts = new Map()
+  for (const name of actual) counts.set(name, (counts.get(name) ?? 0) + 1)
+  const duplicates = [...counts].filter(([, count]) => count > 1)
+    .map(([name, count]) => name + '×' + count).toSorted()
+  check(missing.length === 0 && unexpected.length === 0 && duplicates.length === 0
+    && actual.length === EXPECTED_SECTIONS.length, label + ' section set is exact',
+  'expected total=' + EXPECTED_SECTIONS.length
+    + '; actual total=' + actual.length
+    + '; missing=[' + missing.join(', ') + ']'
+    + '; unexpected=[' + unexpected.join(', ') + ']'
+    + '; duplicates=[' + duplicates.join(', ') + ']')
+}
+
 function diagnoseForbidden(actual) {
   const groups = [
     ['job_*', name => name.startsWith('job_')],
@@ -345,6 +383,23 @@ async function main() {
     check(persona?.text === 'You are a helpful software engineer assistant.',
       'concise persona prefix replaces the deployment persona',
       'actual=' + JSON.stringify(persona?.text))
+    const conciseSectionNames = conciseSections
+      .map(section => section?.name).filter(sectionName => typeof sectionName === 'string')
+    check(conciseSectionNames[0] === 'deployment:persona-prefix',
+      'concise prompt starts at the minimal persona line',
+      'actual=[' + conciseSectionNames.join(', ') + ']')
+    diagnoseSections(conciseSectionNames, 'concise prompt')
+    const stillPresent = DROPPED_SECTIONS.filter(sectionName => conciseSectionNames.includes(sectionName))
+    check(stillPresent.length === 0, 'deployment-level prompt sections stay out of the preset scope',
+      'present=[' + stillPresent.join(', ') + ']')
+    const deploymentNames = (Array.isArray(value?.concise?.deploymentSections) ? value.concise.deploymentSections : [])
+      .map(section => section?.name).filter(sectionName => typeof sectionName === 'string')
+    if (deploymentNames.length === 0) {
+      throw new Error('probe returned no deployment assembly sections: value.concise.deploymentSections is missing')
+    }
+    const deploymentMissing = DEPLOYMENT_SECTIONS.filter(sectionName => !deploymentNames.includes(sectionName))
+    check(deploymentMissing.length === 0, 'prompt-filter leaves the deployment assembly untouched',
+      'missing=[' + deploymentMissing.join(', ') + ']; actual=[' + deploymentNames.join(', ') + ']')
     const sdk = conciseSections.find(section => section?.name === 'tools:sdk')?.text
     check(typeof sdk === 'string' && sdk.includes('Program-only SDK bindings:'),
       'concise keeps the generated PTC SDK section')
@@ -352,9 +407,18 @@ async function main() {
       check(typeof sdk === 'string' && sdk.includes('  ' + tool + ':'),
         'concise SDK declares ' + tool)
     }
+    const guidanceIndex = conciseSectionNames.indexOf('run-code:guidance')
     const guidance = conciseSections.find(section => section?.name === 'run-code:guidance')?.text
-    check(typeof guidance === 'string' && guidance.includes('`run_code`'),
-      'run-code guidance section follows the SDK')
+    check(typeof guidance === 'string'
+      && guidance.includes('Call tools directly whenever a step is a single call')
+      && guidance.includes('Never wrap a single tool call'),
+    'run-code guidance defaults to direct calls', 'actual=' + JSON.stringify(guidance))
+    // 频道规则必须早于各工具指引与 SDK 被读到（dsh 自己的 ptc 模式规则也在 PTC_ONLY 槽位）。
+    check(guidanceIndex > 0
+      && guidanceIndex < conciseSectionNames.indexOf('tools:sdk')
+      && guidanceIndex < conciseSectionNames.indexOf('tool:pwsh'),
+    'run-code guidance is read before the tool sections and the SDK',
+    'guidanceIndex=' + guidanceIndex + '; order=[' + conciseSectionNames.join(', ') + ']')
     const ptcOnly = conciseSections.find(section => section?.name === 'tools:ptc-only')?.text ?? ''
     check(!ptcOnly.includes('`run_code` is the only tool you can call directly'),
       'both mode keeps direct tool calls allowed (no collapse instruction)')

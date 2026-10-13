@@ -40,6 +40,30 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
 pi-ai 的 providers/data/<provider>.json 按 api → modelId 分组，含 input、reasoning、cost、
 contextWindow、maxTokens、thinkingLevelMap 等；.manifest.json 记录生成时间。
 
+### 删空模型列表会让该供应商卡片消失
+
+出处：`packages/client/ui-settings-models/src/client/{store.ts,ModelsSection.tsx}`、
+`packages/llm/llm-deepseek/src/{config.ts,models.ts}`、
+`packages/api/session-controller/src/catalog.ts`。
+
+`models` 是整份替换：schema 只在字段缺失时回退 `DEFAULT_MODELS`，把卡片里的行全部删掉会写入
+`models: []`，该 route 从此不再 advertise 任何模型。dsh 自带的两条 DeepSeek route
+（`deepseek-account` = 账号登录，显示名「DeepSeek 账号」、无凭据点；`deepseek-official` =
+API key，显示名「DeepSeek」、无 key 时红点）的目录都取自自身 config 的 `models`，
+而 `buildModelCatalog` 丢弃空组、模型页又只保留目录非空的 account 行——删空登录账号的目录后
+整行卡片消失，卡片里的「恢复默认模型」也随之不可达；`deepseek-official` 是整段供应商，
+卡片仍在，能自行「恢复默认模型」自救。登录/登出不会重写该配置，唯一恢复路径是删掉 profile
+patch 里对应 entry 的 `models`（等价于该按钮的 deletePath），HMR 监听 profile patch 会自动重算。
+卡片不给整段供应商（`settingsPath` 为空）提供「删除」。出处另见
+`packages/llm/llm-deepseek-api-key/src/index.ts`、`packages/llm/llm-deepseek-account/src/index.ts`。
+
+项目 deepseek-official-switch 因此以官方 `pluginManager` 停用 base bundle 的 `llm-deepseek`
+行实现「删除」（`registerConfigurableProviders` 随行装载，行停用即整卡消失），恢复入口挂在
+`settings.models.footer`；只操作该行，不触碰 `llm-deepseek-account`、`web-search-deepseek`
+（独立向 `ctx.web` 注册搜索 provider，见 `packages/web/web-search-deepseek/src/index.ts`）
+与已存凭据。目录采纳的第三方 `deepseek` 路由由 `llm-pi-ai` 行从 pi-ai 目录声明
+（`packages/llm/llm-pi-ai/src/index.ts` 的 `directoryEntries`），与 `llm-deepseek` 行无关。
+
 ## Models.dev 与协议
 
 PiAiModelProfile 没有 api 字段，解析顺序是路由 api → 同 id 内置模型 → 路由唯一 sharedCatalogApi。

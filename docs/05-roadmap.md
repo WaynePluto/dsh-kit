@@ -6,6 +6,34 @@
 
 ## 已实现
 
+- [x] 修复「2 entries did not activate … failed to import」（2026-10-13）：套件物化目录被中断的
+  `build-suite.mjs` 清空（rmSync 后复制前退出）时，preset-concise 与 deepseek-official-switch
+  恰好是仅有的两个未登记根 devDependencies 的组件——根 hoisted junction 缺失使它们失去
+  最后的解析兜底，用户层行开关覆写（`disabled: false` 字面量）又绕过了可解析性守卫，
+  强制激活的行在导入失败时报警。修复：两个组件补登根依赖；`build-suite.mjs` 改用
+  整体改名换代物化目录（中断不再留空目录）并新增根 junction 完整性响亮检查
+  （漏登组件在构建时即失败，不等 dsh 报错）。
+- [x] DeepSeek 官方 API 开关（deepseek-official-switch，2026-10-13）：设置 → 模型的内置
+  「DeepSeek」（`deepseek-official`）卡片补「删除」——经官方 `pluginManager` 停用 base bundle
+  的 `llm-deepseek` 行（整段供应商 settingsPath 为空，原生删除永远不出现，见
+  [模型](dsh/models.md)），重启后卡片与路由消失；`settings.models.footer` 槽提供恢复入口，
+  经控制器共享的「待生效」状态在删除确认后立即出现（待重启期间可点恢复直接撤回）。
+  不触碰 `DEEPSEEK_API_KEY` 凭据、`llm-deepseek-account` 行与官方网页搜索；卡片操作区按钮经
+  provider-card keyed 槽（key = `llm-deepseek`）+ 隐藏锚点 MutationObserver + portal 注入，
+  复刻原生 rowActions 紧凑危险按钮 token。随 model-enhancements 组合包分发（组件总数 19）。
+- [x] 频道选择规则前置（2026-10-12）：`run-code:guidance` 从 `tools:sdk` 之后移到
+  `tools:ptc-only` 槽位族（PTC_ONLY+10），措辞改为「默认直呼工具；只有一步内需要多次调用
+  （并发、链式依赖、大结果过滤）才写程序；单个工具调用禁止包成程序」。起因是 both 模式下模型
+  几乎只用 run_code（真实会话 100 次顶层调用里 96 次 run_code，其中 20% 的程序只调一个工具）。
+  同一提示词、同一模型的真机 A/B：旧措辞单工具任务会写单调用程序，新措辞单工具任务 3/3 直呼、
+  三个独立 shell 检查 3/3 仍写程序。`concise-mode-check` 断言规则文本与「早于工具指引与 SDK」。
+- [x] 简洁模式提示词范围收口（2026-10-12）：预设内联嵌套行 `prompt-filter`
+  （`@dsh-kit/dsh-plugin-prompt-filter`）在预设作用域里按名摘除 dsh 部署级 section
+  （`harness:identity`、`context:file-reference`、`ui:deliverable-file-references`、
+  `harness:source`、`app:web-surface`），提示词只剩 persona 那一句 + 工具指引 + run_code SDK；
+  persona 的 `complete` 两档都表达不了这个范围（false 只换 persona 槽位，true 连 `tools:sdk`
+  一起滤掉）。`scripts/concise-mode-check.mjs` 断言段落集合精确、部署层组装不受影响，
+  `plugins/prompt-filter/tests/contract.spec.ts` 守护摘除与作用域行为。
 - [x] yolo-mode 默认停用契约（2026-10-12，v2）：安装后默认停用；行开关写入的流式启用行
   （`[ { id: yolo-mode, disabled: false } ]`）驱动五行整体生效/退场。v1 暴露两个缺陷并已修复：
   套件里 permission/ui-permission 硬编码 disabled（行开关与套件开关都无法恢复原生选择器），
@@ -69,6 +97,7 @@
 | copilot-auth | 设备码登录成功，凭据持久化，账号模型可使用 |
 | proxy | 跟随环境（默认）、使用插件代理地址、强制直连三态：测试 URL、原生 fetch 模型请求和官方网页抓取按所选策略出网；不以子进程或独立网络库作验收前提 |
 | models-catalog | 检查、选择、应用与重启持久化已实机通过；撤销与其余新增模型仍待实机确认 |
+| deepseek-official-switch | 删除按钮出现且确认后卡片经重启消失；底部恢复入口可恢复；删除/恢复对「DeepSeek 账号」卡、网页搜索与已存密钥无影响；深浅主题与中英文界面 |
 | favorite-models | 输入框筛选、全部失效回退、当前模型不跳转，/model 目录完整 |
 | model-capabilities | 协议覆盖生效；图片支持后向实际端点发送图片 |
 | turn-retry | 失败重试、停止继续、错误详情；有排队消息时不发送或修改队列；详情弹窗全屏（含深色主题）待实机确认 |
@@ -79,7 +108,7 @@
 | tools-inspector | 工具清单与历史调用、失败次数统计与只读性 |
 | skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 子会话只继承前置历史，草稿可编辑，原会话不变 |
-| concise-mode | 简洁会话可直呼工具，也可写 run_code 程序批量/组合调用（both，模型自主选择）；run_code 调用卡片与子调用展示正常 |
+| concise-mode | 简洁会话可直呼工具，也可写 run_code 程序批量/组合调用（both，模型自主选择）；run_code 调用卡片与子调用展示正常；实际请求的系统提示词以 persona 那句开头，不含身份行、present 展示指引、harness 源码与 web surface |
 | yolo-mode | 安装后默认停用、原生权限选择器可见；打开行开关并重启后用户提问正常、常驻服务可启动；关闭行开关并重启后原生权限控制恢复 |
 | web-search-switch | 开关热加载即时生效并落盘，重启 dsh 后保持；官方「网页搜索」卡片随之消失/恢复 |
 | agents-md | 设置页编辑、保存与 dsh 加载器反向认领一致 |

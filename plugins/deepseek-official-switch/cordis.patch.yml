@@ -1,0 +1,7 @@
+# dsh-kit 的独立组件 patch；行 id 是插件行在 loader 树里的稳定身份。
+# 宿主半刻意为空：移除/恢复状态记录在 dsh profile 自己的用户层 cordis.patch.yml
+# （官方 pluginManager 写入），浏览器半经 ctx.remote.pluginManager 操作官方行，
+# 并在设置 → 模型的原生卡片区与底部扩展槽渲染删除与恢复入口。
+- insert:
+    - id: deepseek-official-switch
+      name: './dist/index.js'

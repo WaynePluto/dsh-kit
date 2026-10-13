@@ -79,4 +79,19 @@ describe('concise composition', () => {
     expect(section).toContain('complete: false')
     expect(section).toContain(`name: '@dsh-kit/dsh-plugin-run-code'`)
   })
+
+  it('drops deployment-level prompt sections through the nested prompt-filter row', () => {
+    const section = presetSection(patch, 'concise')
+    // dsh 部署级 section 名：persona 的 complete 开关关不掉，只能按名摘除；名单变化必须响亮失败。
+    expect(section).toContain(`name: '@dsh-kit/dsh-plugin-prompt-filter'`)
+    for (const dropped of [
+      'harness:identity',
+      'context:file-reference',
+      'ui:deliverable-file-references',
+      'harness:source',
+      'app:web-surface',
+    ]) {
+      expect(section).toContain(`- '${dropped}'`)
+    }
+  })
 })
