@@ -22,9 +22,10 @@
 
 ## 提示词构成
 
-简洁会话的系统提示词只有三个来源：persona 那一句（`You are a helpful software engineer assistant.`，
-与 dsh 原生「极简模式」同一句）、各工具行注册的工具指引、以及 `run_code` 的 `tools:sdk` 声明与
-使用指引。dsh 在部署层注册的段落（`harness:identity`、`context:file-reference`、
+简洁会话的系统提示词只有三个来源：persona 那一句（dsh 原生「极简模式」那句
+`You are a helpful software engineer assistant.`，其后追加英文思考指引
+`When you thought, thought in ENGLISH, start with "We need.."`）、各工具行注册的工具指引、
+以及 `run_code` 的 `tools:sdk` 声明与使用指引。dsh 在部署层注册的段落（`harness:identity`、`context:file-reference`、
 `ui:deliverable-file-references`、`harness:source`、`app:web-surface`）由嵌套行 `prompt-filter`
 （`@dsh-kit/dsh-plugin-prompt-filter`）在预设作用域里按名摘除，清单即该行的 `dropSections`。
 

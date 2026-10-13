@@ -65,7 +65,7 @@
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
-              prefix: You are a helpful software engineer assistant.
+              prefix: You are a helpful software engineer assistant. When you thought, thought in ENGLISH, start with "We need.."
               complete: false
               includeRuntimeContext: false
 

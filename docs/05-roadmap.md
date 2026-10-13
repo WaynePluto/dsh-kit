@@ -6,6 +6,9 @@
 
 ## 已实现
 
+- [x] 简洁模式 persona 追加英文思考指引（2026-10-13）：预设 `persona` 行的 `prefix` 在原生
+  「极简模式」那句之后追加 `When you thought, thought in ENGLISH, start with "We need.."`；
+  其余提示词段落集合不变，`concise-mode-check` 断言完整 persona 文本。
 - [x] 修复「2 entries did not activate … failed to import」（2026-10-13）：套件物化目录被中断的
   `build-suite.mjs` 清空（rmSync 后复制前退出）时，preset-concise 与 deepseek-official-switch
   恰好是仅有的两个未登记根 devDependencies 的组件——根 hoisted junction 缺失使它们失去

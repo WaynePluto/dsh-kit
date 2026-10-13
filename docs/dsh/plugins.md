@@ -128,7 +128,10 @@ profile 行，也不出现在插件管理器里。
 shell 与 subagent 的 enableRunInBackground 为 false，subagent 使用 one-shot。
 profile 根层的 service_* 和 interactive_terminal 仍可继承。
 
-- concise：complete:false、includeRuntimeContext:false；嵌套 run-code 行等待 `ptcRuntime` 后
+- concise：persona `prefix` 取 dsh 原生「极简模式」那一句并在其后追加英文思考指引，完整文本为
+  `You are a helpful software engineer assistant. When you thought, thought in ENGLISH, start with "We need.."`，
+  由 `scripts/concise-mode-check.mjs` 断言；complete:false、includeRuntimeContext:false；
+  嵌套 run-code 行等待 `ptcRuntime` 后
   `presentAs('both')`，并在 `tools:ptc-only`（PTC_ONLY=800）之后、工具指引与 `tools:sdk`（TOOLS_SDK=5000）
   之前注册 `run-code:guidance` 频道选择规则：默认直呼工具，只有一步内需要多次调用（并发、链式依赖、
   大结果过滤）才写程序，单个工具调用禁止包成程序。位置与 dsh 自己的 ptc 模式规则同槽位族，理由同样是

@@ -380,7 +380,7 @@ async function main() {
     const conciseSections = Array.isArray(value?.concise?.systemPrompt?.sections)
       ? value.concise.systemPrompt.sections : []
     const persona = conciseSections.find(section => section?.name === 'deployment:persona-prefix')
-    check(persona?.text === 'You are a helpful software engineer assistant.',
+    check(persona?.text === 'You are a helpful software engineer assistant. When you thought, thought in ENGLISH, start with "We need.."',
       'concise persona prefix replaces the deployment persona',
       'actual=' + JSON.stringify(persona?.text))
     const conciseSectionNames = conciseSections
