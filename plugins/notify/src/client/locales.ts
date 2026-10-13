@@ -4,7 +4,7 @@
 export const en = {
   nav: 'Notifications',
   title: 'Desktop notifications',
-  intro: 'When a turn finishes and the agent goes back to waiting for you, this machine raises a Windows notification. It stays on screen until you dismiss it.',
+  intro: 'When a turn finishes and the agent goes back to waiting for you, this machine raises a Windows notification. It stays on screen until you dismiss it. Clicking the card (not its Close button) brings the official DeepSeek Harness desktop app to the front.',
   whereNote: 'The notification appears on the machine that runs dsh — not in this browser. Opening this page from a phone or another computer does not move it.',
   enable: 'Notify me when a turn finishes',
   enableHint: 'Covers every ending: finished, failed, stopped, and out of room.',
@@ -30,7 +30,7 @@ export type NotifyKey = keyof typeof en
 export const zh: Record<NotifyKey, string> = {
   nav: '通知',
   title: '桌面通知',
-  intro: '一轮跑完、agent 重新等你输入时，这台机器会弹一条 Windows 通知。它会一直留在屏幕上，直到你手动关掉。',
+  intro: '一轮跑完、agent 重新等你输入时，这台机器会弹一条 Windows 通知。它会一直留在屏幕上，直到你手动关掉。点击通知卡片（不是关闭按钮）会把官方 DSH 桌面版带到前台。',
   whereNote: '通知弹在跑 dsh 的那台机器上，不在这个浏览器里。从手机或别的电脑打开这个页面，不会把通知带过去。',
   enable: '一轮跑完时通知我',
   enableHint: '各种结束方式都算：正常跑完、失败、被停止、到达长度上限。',

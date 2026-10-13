@@ -121,5 +121,11 @@ approval/request 与 user-questions/request 是 waterfall，观察者必须 prep
 
 会话 cwd 在 session.header，标题来自 title projection，首次完成时标题可能尚未生成。
 Windows toast 使用 reminder 场景并有关闭 action；AUMID 不可用时 API 可能成功但不显示，必须保留测试通知按钮。
+点击卡片唤起桌面版：脚本发送前现查桌面协议注册（`HKCU/HKLM …Classes\dsh\shell\open\command`），
+已注册才声明 `launch="dsh://open"` + `activationType="protocol"`——点击由 Shell 直接执行协议 URL，
+与发送进程存活无关（出处：`apps/desktop/src/main.ts` 的 `setAsDefaultProtocolClient`、
+`open-url` 对 `dsh://open` 精确匹配 `focusPrimaryWindow`，Windows 协议激活经
+`second-instance` 走同一函数，见 [官方桌面应用](desktop-app.md)）。
+未注册时不声明 launch，点击退化为关闭，避免系统的「如何打开此链接」错误。
 文案经环境变量传入固定 PowerShell 脚本，XML 用 CreateTextNode，不拼接可执行文本。
 这是目标机器的 Windows 桌面通知，不是手机 Web Push。

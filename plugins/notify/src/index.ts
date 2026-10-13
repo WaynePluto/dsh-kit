@@ -31,7 +31,7 @@ export {
 } from './notice.js'
 export type { Outcome, SettledFacts, WaitingFacts } from './notice.js'
 export {
-  APP_ID, clampLine, ENV, TOAST_SCRIPT, WindowsToastNotifier,
+  APP_ID, clampLine, ENV, FOCUS_LAUNCH, TOAST_SCRIPT, WindowsToastNotifier,
 } from './toast.js'
 export type { Notice, Notifier } from './toast.js'
 

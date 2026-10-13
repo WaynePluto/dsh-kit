@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  APP_ID, clampLine, DISMISS_LABEL, ENV, MAX_IN_FLIGHT, TOAST_SCRIPT, WindowsToastNotifier,
+  APP_ID, clampLine, DISMISS_LABEL, ENV, FOCUS_LAUNCH, MAX_IN_FLIGHT, TOAST_SCRIPT, WindowsToastNotifier,
 } from '../src/toast.js'
 import type { ExecFile } from '../src/toast.js'
 
@@ -73,6 +73,20 @@ describe('the script', () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     expect(TOAST_SCRIPT).toContain(`SetAttribute('scenario', 'reminder')`)
     expect(TOAST_SCRIPT).toContain(`CreateElement('actions')`)
+  })
+
+  it('brings the desktop app forward when its protocol is registered', () => {
+    // launch 值必须是桌面壳 open-url 精确匹配的字面量；换协议名或路径都不会聚焦。
+    expect(FOCUS_LAUNCH).toBe('dsh://open')
+    expect(TOAST_SCRIPT).toContain(`SetAttribute('launch', '${FOCUS_LAUNCH}')`)
+    expect(TOAST_SCRIPT).toContain(`SetAttribute('activationType', 'protocol')`)
+    // 探测在脚本内现查：桌面版没注册协议的机器不声明 launch，
+    // 点击退化为关闭，不弹系统的「如何打开此链接」错误。
+    expect(TOAST_SCRIPT).toContain(`Test-Path 'HKCU:\\Software\\Classes\\dsh\\shell\\open\\command'`)
+    expect(TOAST_SCRIPT).toContain(`Test-Path 'HKLM:\\Software\\Classes\\dsh\\shell\\open\\command'`)
+    expect(TOAST_SCRIPT).toContain('if ($focus)')
+    // system 关闭按钮与协议激活并存，点击关闭仍只是关闭。
+    expect(TOAST_SCRIPT).toContain(`SetAttribute('activationType', 'system')`)
   })
 })
 

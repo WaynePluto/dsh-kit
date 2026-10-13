@@ -26,6 +26,15 @@ export const APP_ID = 'DeepSeek Harness'
 /** `scenario=reminder` 要求 toast 携带的按钮标签。 */
 export const DISMISS_LABEL = '关闭'
 
+/**
+ * 点击通知卡片时让 Windows Shell 执行的协议 URL。
+ * 官方桌面版打包态注册 OS 级协议 `dsh`（`apps/desktop/src/main.ts` 的
+ * `setAsDefaultProtocolClient`），并对 `dsh://open` 精确匹配调用
+ * `focusPrimaryWindow()`；Windows 上协议激活经 single-instance 的
+ * `second-instance` 事件走到同一个聚焦函数。必须与桌面壳的字面量完全一致。
+ */
+export const FOCUS_LAUNCH = 'dsh://open'
+
 /** 通知器等待多久后放弃并终止。 */
 export const TOAST_TIMEOUT_MS = 10_000
 
@@ -49,7 +58,11 @@ export const ENV = {
 /** WinRT namespace，集中定义一次。 */
 const WINRT = 'Windows.UI.Notifications'
 
-/** 完整且不插值的 toast script；用 `; ` 拼成一个 `-Command` 参数。 */
+/**
+ * 完整的 toast script；用 `; ` 拼成一个 `-Command` 参数。
+ * 调用者的文本仍只走环境变量；唯一的字符串插值 `${FOCUS_LAUNCH}` 来自本模块的
+ * 编译期常量，不引入任何运行时输入。
+ */
 export const TOAST_SCRIPT = [
   `[${WINRT}.ToastNotificationManager, ${WINRT}, ContentType = WindowsRuntime] > $null`,
   `$xml = [${WINRT}.ToastNotificationManager]::GetTemplateContent([${WINRT}.ToastTemplateType]::ToastText02)`,
@@ -66,6 +79,12 @@ export const TOAST_SCRIPT = [
   `$action.SetAttribute('activationType', 'system')`,
   `$actions.AppendChild($action) > $null`,
   `$xml.DocumentElement.AppendChild($actions) > $null`,
+  // 点击卡片时唤起官方桌面版。协议是否注册每次发通知时现查（官方桌面版运行过一次
+  // 就会写入 HKCU，个别安装方式写 HKLM）：探测到才声明 launch，activationType=protocol
+  // 让 Shell 直接执行 `dsh://open`，不依赖本进程存活，也不用常驻任何监听者；
+  // 没装桌面版时保持原样，点击只是关闭，不会弹出系统的「如何打开此链接」错误。
+  `$focus = (Test-Path 'HKCU:\\Software\\Classes\\dsh\\shell\\open\\command') -or (Test-Path 'HKLM:\\Software\\Classes\\dsh\\shell\\open\\command')`,
+  `if ($focus) { $xml.DocumentElement.SetAttribute('launch', '${FOCUS_LAUNCH}'); $xml.DocumentElement.SetAttribute('activationType', 'protocol') }`,
   `$toast = [${WINRT}.ToastNotification]::new($xml)`,
   `[${WINRT}.ToastNotificationManager]::CreateToastNotifier($env:${ENV.appId}).Show($toast)`,
 ].join('; ')

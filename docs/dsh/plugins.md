@@ -221,6 +221,18 @@ composition Config：
 写入 UX 约定不变：保存前用宿主与浏览器共享的纯函数校验；mutate 返回 false 报错并保留草稿，
 确认成功才清草稿和显示已保存；错误贴近字段，成功提交触发的刷新不能立即抹掉成功提示。
 
+已知上游缺陷（0.2.0-rc.2，2026-10-14 查证）：CLI/dev 形态下 `settings/mutate` 的 volatile 写入
+一律被拒（`settings/rejected: profile reload requires the root Include entry`）。链条：settings 的
+写入经 `packages/boot/config-editor/src/index.ts` 的 `edit()` 无守卫调用 `reconcileProfilePatches`
+（`packages/boot/app-boot/src/index.ts`，root Include entry 记在模块级 WeakMap）；boot（`apps/cli` 的
+`runProfile` → `boot` → `mountRootInclude`）在 dsh bin 解析的 app-boot 实例上登记，而 settings/
+config-editor 行从 profile 的 hoisted node_modules 解析出第二份 app-boot 实例，WeakMap 永远 miss。
+官方桌面不受影响：运行时树整体打进 app.asar 单实例解析。`packages/boot/plugin-manager` 的
+`reload()` 有 `hmr === undefined → return []` 守卫，config-editor 没有——这是上游两处不对称。
+探针实测：真实 dsh 进程内 `reconcileProfilePatches(ctx.root)` 在 boot 实例上 WeakMap 命中、
+在 profile 解析实例上 miss。CLI 冒烟（scripts/notify-check.mjs 的「开关能被写入」项）因此被阻塞，
+升级 dsh 时复核该缺陷是否修复；官方桌面里的设置页不受此影响。
+
 ## 槽位与导航
 
 出处：`packages/client/ui-slots/src/index.ts`、`packages/client/ui-settings-models/src/client/slot-contract.ts`、

@@ -40,6 +40,19 @@
 6. 关窗即隐藏，宿主常驻；再次双击走 single-instance 只 focus
    （`main.ts` "Closing hides" 注释与 `single-instance.ts`）。
 
+## 协议唤起（外部把桌面版带到前台）
+
+出处：`apps/desktop/src/main.ts`、`apps/desktop/src/single-instance.ts`。
+
+- 打包版启动时调用 `app.setAsDefaultProtocolClient('dsh')`（仅 `app.isPackaged` 或
+  `DSH_DESKTOP_DEV_APP=1`；写入 HKCU `Software\Classes\dsh\shell\open\command`）。
+- macOS 的 `open-url` 对 `dsh://open` 与 `dsh://open/` 精确匹配后调用 `focusPrimaryWindow()`。
+- Windows 上协议激活是启动第二实例：`requestSingleInstanceLock()` 失败即退出，
+  主实例经 `second-instance`（`claimDesktopSingleInstance` 的 focusOwner 回调）调用
+  同一个 `focusPrimaryWindow()`——不检查 URL，restore + show + focus；窗口不存在则重建。
+- 因此外部唤起统一用 `dsh://open`：notify 插件点击 toast 时经
+  `activationType="protocol"` 由 Shell 执行该 URL（见 [会话与消息](conversation.md)）。
+
 ## 对插件开发的结论
 
 - 宿主启动约 2.6s 到端口监听（冷启动本机实测），其中 asar 化的运行时树是主要加速来源；
