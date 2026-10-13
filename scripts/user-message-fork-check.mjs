@@ -96,6 +96,7 @@ async function main() {
   check(report.namespaces.includes('dsh-plugin-user-message-fork'), '产物注册了自己的文案命名空间')
   check(report.disposers >= 2, '产物 apply() 注册了文案和样式两个可撤销副作用', `${report.disposers} 个`)
   check(report.bundle.includes('sessions.fork'), 'bundle 包含 sessions.fork 调用')
+  check(report.bundle.includes('sessions.create'), 'bundle 包含首轮消息的新会话创建路径')
   check(report.bundle.includes('setDraft'), 'bundle 包含输入框 setDraft 回填')
 
   prepareHome()

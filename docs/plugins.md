@@ -21,7 +21,7 @@
 |---|---|---|
 | [失败重试](../plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
 | [会话滚动导航](../plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |
-| [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿 |
+| [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填 |
 | [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |

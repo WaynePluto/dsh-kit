@@ -1,7 +1,7 @@
 {
   "name": "@dsh-kit/dsh-plugin-user-message-fork",
   "version": "0.1.0",
-  "description": "从指定用户消息前的历史创建可编辑的新会话分支。",
+  "description": "从指定用户消息重新开始：新建会话或子会话并回填草稿。",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -33,6 +33,7 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
     "@deepseek-ai/dsh-api-session-controller": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-api-workspace-controller": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-locale": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-chat": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-conversation": "0.2.0-rc.2",

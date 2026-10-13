@@ -18,15 +18,22 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // oxlint-disable-next-line unicorn/require-module-specifiers -- 激活 uiWorkspace Context 合并（openSession 导航）
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+// oxlint-disable-next-line unicorn/require-module-specifiers -- 激活 workspaces Context 合并（新会话归组）
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import { SELF_NAMESPACE } from '../shared.js'
-import { forkAndSeedUserMessage, resolvePreviousTurnEnd } from './fork.js'
+import {
+  createAndSeedUserMessage, forkAndSeedUserMessage, resolvePreviousTurnEnd, type FreshConversationTarget,
+} from './fork.js'
 import { UserMessageForkNodeView } from './UserMessageForkNodeView.js'
 import { en, NS, zh, type UserMessageForkKey } from './locales.js'
 import { installUserMessageForkStyles } from './styles.js'
 
-export { forkAndSeedUserMessage, resolvePreviousTurnEnd } from './fork.js'
+export {
+  createAndSeedUserMessage, forkAndSeedUserMessage, resolvePreviousTurnEnd,
+  type FreshConversationTarget,
+} from './fork.js'
 export { previousCompletedTurnEnd, userMessageContentFacts, userMessageForkAvailability } from '../shared.js'
 export { UserMessageForkNodeView } from './UserMessageForkNodeView.js'
 export type { UserMessageForkKey } from './locales.js'
@@ -38,14 +45,28 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
+/** 从消息之前最后一个已完成轮次创建子会话。 */
+export interface UserMessageForkRequestAtTurn {
+  readonly mode: 'fork'
+  /** 已解析的 `turn/end` 边界；缺省时由插件先分页补齐前缀。 */
+  readonly atSeq?: number
+  readonly currentTurn: number
+  readonly turnStartSeq?: number
+  readonly text: string
+}
+
+/** 消息之前没有可继承前缀：新建普通会话并回填这条消息。 */
+export interface UserMessageForkRequestFresh {
+  readonly mode: 'fresh'
+  readonly text: string
+}
+
+/** user message 分叉按钮的一次点击意图。 */
+export type UserMessageForkRequest = UserMessageForkRequestAtTurn | UserMessageForkRequestFresh
+
 /** 提供给 shadow user-message renderer 的 runtime 接口。 */
 export interface UserMessageForkInjected {
-  forkMessage: (request: {
-    atSeq?: number
-    currentTurn: number
-    turnStartSeq?: number
-    text: string
-  }) => Promise<void>
+  forkMessage: (request: UserMessageForkRequest) => Promise<void>
 }
 
 /** shadow 普通 user message renderer 的 props。 */
@@ -55,10 +76,24 @@ export type UserMessageForkNodeProps =
   & PropsLocale<typeof NS>
 
 /** browser half 使用的 service。 */
-export const inject = ['slots', 'locale', 'sessions', 'uiConversation', 'uiWorkspace']
+export const inject = ['slots', 'locale', 'sessions', 'uiConversation', 'uiWorkspace', 'workspaces']
 
 /** keyed shadow priority；dsh 自己的 user renderer 位于默认 priority 0。 */
 export const USER_RENDERER_PRIORITY = -1
+
+/**
+ * 新会话的落点：优先源会话所在工作区（新对话与源会话同组），不属于任何工作区时退回源会话目录。
+ * @param ctx - client 根 context。
+ * @param sessionId - 被点击消息所在会话。
+ * @returns `sessions.create()` 的目标位置。
+ */
+function freshConversationTarget(ctx: Context, sessionId: SessionId): FreshConversationTarget {
+  const workspace = ctx.workspaces.list.getSnapshot().items
+    .find(item => item.sessionIds.includes(sessionId))
+  if (workspace !== undefined) return { workspaceId: workspace.workspaceId }
+  const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+  return cwd === undefined ? {} : { cwd }
+}
 
 /** 注册 renderer、字典和 stylesheet。 */
 export function apply(ctx: Context): void {
@@ -73,21 +108,30 @@ export function apply(ctx: Context): void {
     priority: USER_RENDERER_PRIORITY,
     locale: NS,
     inject: (sessionId: SessionId): UserMessageForkInjected => ({
-      forkMessage: async ({ atSeq, currentTurn, turnStartSeq, text }) => {
+      forkMessage: async request => {
         const source = ctx.sessions.binding(sessionId)
         if (source === undefined) throw new Error(`user-message-fork: source "${String(sessionId)}" has no binding`)
+        if (request.mode === 'fresh') {
+          await createAndSeedUserMessage(
+            ctx.sessions,
+            id => ctx.uiWorkspace.openSession(id),
+            freshConversationTarget(ctx, sessionId),
+            request.text,
+          )
+          return
+        }
         const chat = ctx.uiConversation.binding(source).target('chat')
         const anchor = await resolvePreviousTurnEnd(
-          atSeq,
-          currentTurn,
-          turnStartSeq,
+          request.atSeq,
+          request.currentTurn,
+          request.turnStartSeq,
           seq => source.session.loadThrough(seq as SessionSeq),
           () => {
             const snapshot = chat.getSnapshot()
             return snapshot === undefined ? undefined : snapshot.timeline
           },
         )
-        await forkAndSeedUserMessage(ctx.sessions, id => ctx.uiWorkspace.openSession(id), sessionId, anchor, text)
+        await forkAndSeedUserMessage(ctx.sessions, id => ctx.uiWorkspace.openSession(id), sessionId, anchor, request.text)
       },
     }),
   }, UserMessageForkNodeView))

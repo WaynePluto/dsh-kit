@@ -18,7 +18,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { UserMessageForkNodeView, type UserMessageForkNodeProps } from '../src/client/index.js'
 import type { UserMessageForkKey } from '../src/client/locales.js'
 
-function props(options: { currentTurn: number; hasMore?: boolean }): UserMessageForkNodeProps {
+function props(options: {
+  currentTurn: number
+  hasMore?: boolean
+  content?: readonly unknown[]
+}): UserMessageForkNodeProps {
   const timeline = options.hasMore
     ? {
       turnOrder: [options.currentTurn],
@@ -53,7 +57,7 @@ function props(options: { currentTurn: number; hasMore?: boolean }): UserMessage
       kind: 'user',
       seq: 11,
       time: Date.now(),
-      content: [{ type: 'text', text: '原始问题' }],
+      content: options.content ?? [{ type: 'text', text: '原始问题' }],
       source: { kind: 'user' },
     },
   }
@@ -68,8 +72,8 @@ function props(options: { currentTurn: number; hasMore?: boolean }): UserMessage
     t: (key: UserMessageForkKey, params?: Record<string, unknown>) => {
       const values: Record<string, string> = {
         branch: '从此消息重新开始',
+        branchFresh: '新开会话并填入这条消息',
         branchBusy: '正在打开新会话',
-        branchUnavailableFirst: '第一条消息没有可继承的前置内容',
         branchUnavailableEmpty: '空消息不能编辑后重新发送',
         branchUnavailableContent: '包含附件的消息暂不支持编辑后重新发送',
         copy: '复制',
@@ -93,14 +97,23 @@ describe('UserMessageForkNodeView', () => {
     expect(markup).not.toContain('data-unavailable="true"')
   })
 
-  it('keeps the first user message visibly unavailable', () => {
+  it('offers a fresh conversation on the first user message', () => {
     const markup = renderToStaticMarkup(<UserMessageForkNodeView {...props({ currentTurn: 1 })} />)
-    expect(markup).toContain('data-unavailable="true"')
-    expect(markup).toContain('第一条消息没有可继承的前置内容')
+    expect(markup).not.toContain('data-unavailable="true"')
+    expect(markup).toContain('新开会话并填入这条消息')
   })
 
   it('keeps the button usable when the previous turn must be paged in', () => {
     const markup = renderToStaticMarkup(<UserMessageForkNodeView {...props({ currentTurn: 2, hasMore: true })} />)
     expect(markup).not.toContain('data-unavailable="true"')
+  })
+
+  it('keeps a lossy message visibly unavailable', () => {
+    const markup = renderToStaticMarkup(<UserMessageForkNodeView {...props({
+      currentTurn: 1,
+      content: [{ type: 'text', text: '看图' }, { type: 'image', attachment: { id: 'image-1' } }],
+    })} />)
+    expect(markup).toContain('data-unavailable="true"')
+    expect(markup).toContain('包含附件的消息暂不支持编辑后重新发送')
   })
 })

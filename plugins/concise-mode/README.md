@@ -1,21 +1,21 @@
 # 简洁模式
 
-`@dsh-kit/dsh-plugin-concise-mode`   `dsh-kit-web` 供供简洁 Agent 预设。
+`@dsh-kit/dsh-plugin-concise-mode` 为 `dsh-kit-web` 提供简洁 Agent 预设。
 新建会话时选择对应预设即可使用，不影响官方 `web` profile。
 
 ## 预设
 
 | 预设 | 工具调用方式 |
 |---|---|
-| `concise` | 原生工具照常直呼；同时供供 `run_code`，模型可写 TypeScript 程序组合调用工具，由模型自主选择 |
+| `concise` | 原生工具照常直呼；同时提供 `run_code`，模型可写 TypeScript 程序组合调用工具，由模型自主选择 |
 
 预设提供 persona 提示词、文件读写与搜索、技能、当前平台 shell、前台一次性子代理、用户提问、待办和上下文压缩。
 它继承 profile 中的常驻服务与交互终端工具；不包含计划文件、后台任务管理、工作流或网页搜索工具。
-普通 shell 与子代理调用不供供后台执行，常驻服务使用 `service_*`。
+普通 shell 与子代理调用不提供后台执行，常驻服务使用 `service_*`。
 子代理深度继承 dsh 原生设置（默认 1，可由用户调整）；本预设不单独指定深度。
 
-`run_code` 双通道由嵌套行 `run-code`（`@dsh-kit/dsh-plugin-run-code`，作 本分发包组件
-随包供供）声明  both 展示模式：默认直呼工具，只有一步内需要多次调用（参考 pi 的 codemode：
+`run_code` 双通道由嵌套行 `run-code`（`@dsh-kit/dsh-plugin-run-code`，作为本分发包组件
+随包提供）声明 `both` 展示模式：默认直呼工具，只有一步内需要多次调用（参考 pi 的 codemode：
 批量并发、链式依赖、大结果过滤）才写程序，单个工具调用不包成程序。PTC 的规则、SDK、执行器和 UI 均复用 dsh。
 工具状态页只统计顶层调用，一次 `run_code` 程序显示 一次调用，不展开计算内部子调用次数。
 旧的 `concise-ptc` 预设已删除；已有会话请改选「简洁模式」。

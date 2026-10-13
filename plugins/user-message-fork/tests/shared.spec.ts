@@ -45,10 +45,18 @@ describe('user-message-fork shared boundaries', () => {
     const text = { text: '重试这条', hasUnsupportedContent: false }
     expect(userMessageForkAvailability(12, text)).toEqual({ kind: 'ready', atSeq: 12 })
     expect(userMessageForkAvailability(undefined, text, true)).toEqual({ kind: 'needs-history' })
-    expect(userMessageForkAvailability(undefined, text)).toEqual({ kind: 'unavailable', reason: 'no-previous-turn' })
     expect(userMessageForkAvailability(12, { text: '  ', hasUnsupportedContent: false }))
       .toEqual({ kind: 'unavailable', reason: 'empty-text' })
     expect(userMessageForkAvailability(12, { text: '说明', hasUnsupportedContent: true }))
+      .toEqual({ kind: 'unavailable', reason: 'unsupported-content' })
+  })
+
+  it('routes a message without any completed prefix to a fresh conversation', () => {
+    const text = { text: '第一条', hasUnsupportedContent: false }
+    expect(userMessageForkAvailability(undefined, text)).toEqual({ kind: 'fresh' })
+    expect(userMessageForkAvailability(undefined, { text: ' ', hasUnsupportedContent: false }))
+      .toEqual({ kind: 'unavailable', reason: 'empty-text' })
+    expect(userMessageForkAvailability(undefined, { text: '看图', hasUnsupportedContent: true }))
       .toEqual({ kind: 'unavailable', reason: 'unsupported-content' })
   })
 })

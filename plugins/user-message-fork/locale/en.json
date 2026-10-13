@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Message Fork",
-    "description": "Fork a sub-session from earlier history with the draft restored"
+    "description": "Fork a sub-session from earlier history with the draft restored; a first message starts a fresh conversation with it"
   }
 }

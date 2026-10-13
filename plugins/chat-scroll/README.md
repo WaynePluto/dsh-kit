@@ -5,7 +5,7 @@
 ## 行为
 
 - 按钮位于 dsh 原生的 `conversation.chat.assistant-actions` 槽，与复制、点赞、分支按钮处在同一个操作组中。
-- 每条正式 Agent 消息都有自己的按钮；按钮只绑定前前操作组收到的 `messageId`，不局限于最后一条消息。
+- 每条正式 Agent 消息都有自己的按钮；按钮只绑定当前操作组收到的 `messageId`，不局限于最后一条消息。
 - 提示文案为「回到消息开头」；英文环境显示 `Back to the start of the message`。
 - 通过 Chat snapshot 的 `assistant-step.finalNode.messageId` 找到对应消息行，再用 dsh 的
   `data-chat-flow-key` 找到真实 DOM，不猜 URL、不移动 React 拥有的节点。
@@ -37,11 +37,11 @@ pnpm --filter @dsh-kit/dsh-plugin-chat-scroll typecheck
 
 浏览器回归：首次打开仍有「加载更早」的历史会话，不滚动、不加载更多，直接点击最后一条回复的「回到消息开头」，确认其开头到达阅读线且有中间滚动位置；再检查短回复、其他回复各自的按钮、切换会话以及「减少动态效果」。手动上滚后点击右下角原生向下箭头，确认有中间滚动位置、最终回到底部，继续生成内容时仍自动跟随；深浅主题与中英文都需验收。
 
-插件改完后必须重启 dsh；前前 `dsh-kit-web` profile 没有 HMR，单纯刷新页面不会重新加载新的浏览器 bundle。
+插件改完后必须重启 dsh；当前 `dsh-kit-web` profile 没有 HMR，单纯刷新页面不会重新加载新的浏览器 bundle。
 
 ## 分发与管理
 
 本包不作为独立安装项分发，而是 `@dsh-kit/dsh-plugin-conversation-enhancements`（会话增强 Bundle）的组件。停用后，消息开头定位与返回底部按钮消失，回到 dsh 原生滚动行为。
 可在该 Bundle 详情中单独停用或重新启用本组件；安装、卸载和升级以整个会话增强 Bundle 为单位。
-件件安装后本组件默认启用；后续升级以整个件件为单位，并保留 Bundle 与组件的停用状态；卸载后不会自动补回。
-需要重装时，在 dsh「添加插件」中填写件件目录 `plugins/suite` 的绝对目录。
+套件安装后本组件默认启用；后续升级以整个套件为单位，并保留 Bundle 与组件的停用状态；卸载后不会自动补回。
+需要重装时，在 dsh「添加插件」中填写套件目录 `plugins/suite` 的绝对目录。

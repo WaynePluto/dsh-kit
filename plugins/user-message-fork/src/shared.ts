@@ -14,7 +14,6 @@ export interface ForkTimeline {
 
 /** user-message fork control 不能激活的原因。 */
 export type UserMessageForkUnavailableReason =
-  | 'no-previous-turn'
   | 'empty-text'
   | 'unsupported-content'
 
@@ -23,6 +22,8 @@ export type UserMessageForkAvailability =
   | { readonly kind: 'ready'; readonly atSeq: number }
   /** 更早边界不在已加载窗口中；点击时需要分页加载。 */
   | { readonly kind: 'needs-history' }
+  /** 消息之前没有可继承的已完成轮次：新建普通会话并回填这条消息。 */
+  | { readonly kind: 'fresh' }
   | { readonly kind: 'unavailable'; readonly reason: UserMessageForkUnavailableReason }
 
 /**
@@ -78,7 +79,8 @@ export function userMessageContentFacts(content: readonly unknown[]): UserMessag
  * 判断 user-message fork 是否能保留请求的编辑流程。
  * @param previousEndSeq - 被点击消息前的完成边界。
  * @param content - 提取后的消息事实。
- * @returns 安全 anchor，或禁用 control 的稳定原因。
+ * @param previousHistoryMayBeUnloaded - 前面的边界可能还没分页进来。
+ * @returns 安全 anchor、需要分页、无可继承前缀的新会话，或禁用 control 的稳定原因。
  */
 export function userMessageForkAvailability(
   previousEndSeq: number | undefined,
@@ -93,5 +95,5 @@ export function userMessageForkAvailability(
   }
   if (previousEndSeq !== undefined) return { kind: 'ready', atSeq: previousEndSeq }
   if (previousHistoryMayBeUnloaded) return { kind: 'needs-history' }
-  return { kind: 'unavailable', reason: 'no-previous-turn' }
+  return { kind: 'fresh' }
 }

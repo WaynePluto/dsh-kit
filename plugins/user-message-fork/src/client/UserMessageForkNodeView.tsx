@@ -5,7 +5,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { UserMessageNode } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { MessageImageSource, RenderMessageImages } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { UserMessageForkNodeProps } from './index.js'
+import type { UserMessageForkNodeProps, UserMessageForkRequest } from './index.js'
 import {
   previousCompletedTurnEnd, userMessageContentFacts, userMessageForkAvailability,
   type UserMessageForkAvailability,
@@ -87,15 +87,20 @@ function formatMessageClock(
   return `${t(key, params)} ${clock}`
 }
 
-function branchUnavailableText(
+function branchLabel(
   availability: UserMessageForkAvailability,
   t: (key: UserMessageForkKey, params?: Record<string, unknown>) => string,
 ): string {
-  if (availability.kind === 'ready' || availability.kind === 'needs-history') return ''
-  switch (availability.reason) {
-    case 'no-previous-turn': return t('branchUnavailableFirst')
-    case 'empty-text': return t('branchUnavailableEmpty')
-    case 'unsupported-content': return t('branchUnavailableContent')
+  switch (availability.kind) {
+    case 'ready':
+    case 'needs-history':
+      return t('branch')
+    case 'fresh':
+      return t('branchFresh')
+    case 'unavailable':
+      return availability.reason === 'empty-text'
+        ? t('branchUnavailableEmpty')
+        : t('branchUnavailableContent')
   }
 }
 
@@ -135,20 +140,25 @@ function UserMessageActions({
   const branch = useCallback(() => {
     if (availability.kind === 'unavailable' || busy) return
     setBusy(true)
-    void forkMessage({
-      ...(availability.kind === 'ready' ? { atSeq: availability.atSeq } : {}),
-      currentTurn,
-      ...(turnStartSeq === undefined ? {} : { turnStartSeq }),
-      text,
-    })
+    const request: UserMessageForkRequest = availability.kind === 'fresh'
+      ? { mode: 'fresh', text }
+      : {
+        mode: 'fork',
+        ...(availability.kind === 'ready' ? { atSeq: availability.atSeq } : {}),
+        currentTurn,
+        ...(turnStartSeq === undefined ? {} : { turnStartSeq }),
+        text,
+      }
+    void forkMessage(request)
       .finally(() => { setBusy(false) })
       .catch(() => {
         // 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。
       })
   }, [availability, busy, currentTurn, forkMessage, text, turnStartSeq])
 
-  const unavailable = availability.kind === 'unavailable' || busy
-  const reason = busy ? t('branchBusy') : branchUnavailableText(availability, t)
+  const unavailable = availability.kind === 'unavailable'
+  const disabled = unavailable || busy
+  const label = busy ? t('branchBusy') : branchLabel(availability, t)
   return (
     <div className={ACTIONS_CLASS}>
       <span className={`${ACTIONS_CLASS}__time`}>{formatMessageClock(time, t)}</span>
@@ -157,20 +167,20 @@ function UserMessageActions({
           {copied ? <IconCheckOutlineMedium /> : <IconCopyOutlineMedium />}
         </button>
       </Tooltip>
-      <Tooltip label={reason === '' ? t('branch') : reason} side="bottom">
+      <Tooltip label={label} side="bottom">
         <button
           type="button"
           className={ACTION_CLASS}
-          aria-label={reason === '' ? t('branch') : reason}
-          aria-disabled={unavailable || undefined}
-          aria-describedby={reason === '' ? undefined : reasonId}
+          aria-label={label}
+          aria-disabled={disabled || undefined}
+          aria-describedby={disabled ? reasonId : undefined}
           data-unavailable={unavailable || undefined}
-          onClick={unavailable ? undefined : branch}
+          onClick={disabled ? undefined : branch}
         >
           <IconBranchOutlineMedium />
         </button>
       </Tooltip>
-      {reason !== '' && <span id={reasonId} className={VISUALLY_HIDDEN_CLASS}>{reason}</span>}
+      {disabled && <span id={reasonId} className={VISUALLY_HIDDEN_CLASS}>{label}</span>}
     </div>
   )
 }
@@ -191,7 +201,8 @@ function UserStyleBubble({
   const facts = useMemo(() => userMessageContentFacts(data.content), [data.content])
   const compactImages = parts.attachments.length > 1
   const availability = useMemo(() => {
-    if (currentTurn === undefined) return { kind: 'unavailable' as const, reason: 'no-previous-turn' as const }
+    // 没有 turn 归属的 user message（会话级节点）解析不出更早边界：按“没有可继承前缀”走新会话。
+    if (currentTurn === undefined) return userMessageForkAvailability(undefined, facts)
     return userMessageForkAvailability(
       previousEndSeq,
       facts,

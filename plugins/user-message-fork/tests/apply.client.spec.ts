@@ -30,9 +30,12 @@ function fakeContext() {
     },
     sessions: {
       fork: vi.fn(async () => 'child'),
+      create: vi.fn(async () => 'fresh'),
       scope: vi.fn(() => ({ get: () => ({ input: { for: () => ({ setDraft: vi.fn() }) } }) })),
+      list: { getSnapshot: () => ({ ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }) },
       open: vi.fn(),
     },
+    workspaces: { list: { getSnapshot: () => ({ items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null }) } },
     slots: {
       inject: (name: string, run: () => unknown) => { injected.push(name); run() },
       register: (options: Registration['options'], component: unknown) => {
@@ -48,7 +51,7 @@ describe('user-message-fork client wiring', () => {
   it('shadows only dsh ordinary user messages at a lower priority', () => {
     const world = fakeContext()
     apply(world.ctx as never)
-    expect(inject).toEqual(['slots', 'locale', 'sessions', 'uiConversation', 'uiWorkspace'])
+    expect(inject).toEqual(['slots', 'locale', 'sessions', 'uiConversation', 'uiWorkspace', 'workspaces'])
     expect(world.locales).toEqual(['dsh-plugin-user-message-fork'])
     expect(world.injected).toEqual(['conversation.chat.node'])
     expect(world.registrations).toHaveLength(1)

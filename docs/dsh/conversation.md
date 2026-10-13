@@ -104,7 +104,11 @@ fork(sessionId,atSeq) 找 atSeq 后的完整 turn/end 前缀，创建带 parentS
 子会话通过 scoped SessionInput.setDraft 回填文本，标题由 increaseTitle 递增。
 客户端导航：0.1.6 起 ISessions 不再有 open/openSubagent（导航归 view owner），打开子会话用 ctx.uiWorkspace.openSession(id)。
 没有普通 user-actions 子槽，项目以 user keyed renderer 影子覆盖并保留复制/时间操作。
-首轮、空文本、附件或未知内容块不能无损回填时禁用动作；历史不全先分页补齐。
+首轮消息之前没有已完成 turn/end，不能 fork：项目改为 sessions.create（同工作区，未归组时用相同 cwd）
+新建普通会话、回填同一条文本，再按 view owner 规则导航；空文本、附件或未知内容块仍禁用，历史不全先分页补齐。
+dsh 只为已 retain 的会话物化 client scope：fork()/create() 只登记目录行，ISessions.scope() 此时是 undefined，
+input.for(scope) 也拒绝没有 retained binding 的 scope，所以回填草稿必须放在 openSession 之后。
+fork 子会话继承源会话的 agent preset（presetForObservation），sessions.create 的新会话按 Host 默认预设组合，与「新会话」按钮一致。
 
 ## 任务通知
 
