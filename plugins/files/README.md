@@ -1,6 +1,6 @@
 # @dsh-kit/dsh-plugin-files
 
-给 dsh 原生右侧 Sidebar 文件能力增加 Git 状态和文件树右键菜单。
+给 dsh 原生右侧 Sidebar 文件能力增加 Git 状态、文件树右键菜单和 Git 变更面板。
 本插件不再提供第二套目录树或文件预览；原生 `ui-sidebar-files` 负责树，原生
 `ui-sidebar-documentpreview` 负责文件资源预览。
 
@@ -40,14 +40,38 @@ status 命令总预算为 3 秒、stdout 1 MiB、最多投影 2000 项。Git 状
 
 ## 目录右键菜单
 
-目录和文件行均保留两个只读操作：
+目录行保留两个只读操作，文件行多一个 Git 查看入口：
 
 - **复制路径**：复制目标机器上的绝对路径；Windows 使用目标平台分隔符；
-- **复制相对路径**：复制相对于当前 Session 工作区根的 slash 路径。
+- **复制相对路径**：复制相对于当前 Session 工作区根的 slash 路径；
+- **查看 Git 变更**（仅文件行）：在右侧 Sidebar 打开「Git 变更」页签（见下一节）。
 
 菜单使用 dsh external `Menu` 和 `writeClipboard`，通过局部事件委托挂在原生树外层，支持鼠标右键、
 ContextMenu/Shift+F10、portal 定位、Escape 关闭和焦点归还。右键不会触发展开、预览或任何写入操作。
 复制失败会保留菜单并显示错误。菜单不劫持树外或右侧预览区域的浏览器右键。
+
+## Git 变更面板
+
+文件右键的「查看 Git 变更」打开一个独立资源页签（每会话一个，`dsh-resource://files-git-review/session/<sessionId>`），
+视觉与交互复刻 dsh 原生每轮「已编辑 n 个文件」的改动面板（文件选择器、增删计数、左右对比/自动换行切换、
+在侧边栏打开文件、带行号与语法高亮的 diff 正文），但内容口径是**工作区对 HEAD 的 Git 变更**：
+
+- 清单 = 已暂存 + 未暂存 + 未跟踪文件（与树上的 Git 状态同源），右键的文件自动预选；
+  右键到未变更文件时，该文件会临时列入清单并显示「无未提交的改动」；
+- 单文件 diff 为 `git diff --no-renames HEAD -- <path>`（未跟踪与空仓库文件按整文件新增合成）；
+- 二进制显示「二进制」、超过输出上限显示「过大」，纯重命名按删除旧文件 + 新建新文件呈现；
+- 页签按 Sidebar 原生去重：同一会话右键不同文件会复用页签并切换预选；每次右键导航都会重新读取清单，
+  Sidebar 的刷新入口也会重新拉取；切换文件时 diff 单独读取。
+
+数据走插件私有通道的两个只读端点，采集无 shell、有界（每命令 3 秒、stdout 1 MiB）：
+
+```text
+/files/review { sessionId } → { available, files: [{ path, status, added, deleted, binary?, oversized? }], truncated }
+/files/diff   { sessionId, path } → { kind: 'text' | 'binary' | 'oversized', ... }
+```
+
+未跟踪文件的行数统计来自有界单文件读取（最多统计 200 个未跟踪文件，之后计为 0/0）。
+Git 状态不承诺实时；面板每次导航与刷新时重新采集。
 
 ## 读取边界
 
@@ -60,6 +84,8 @@ ContextMenu/Shift+F10、portal 定位、Escape 关闭和焦点归还。右键不
 
 ```text
 /files/snapshot { sessionId } → { workspacePath, git }
+/files/review   { sessionId } → Git 变更清单（右键面板用）
+/files/diff     { sessionId, path } → 单文件对 HEAD 的比较（右键面板用）
 ```
 
 它不提供写入、新建、重命名、删除、Git 修改或模型工具。
@@ -74,7 +100,9 @@ node scripts/files-check.mjs
 ```
 
 源码依赖当前 dsh `0.2.0-rc.2` 的 Sidebar/slot 契约及原生图片滚动容器 `data-document-zoom-scrollport`。插件通过 `dsh.client.inject`
-声明对 `@deepseek-ai/dsh-client-ui-sidebar-files` 的模块图依赖，但不深层 import 上游源码。
+声明对 `@deepseek-ai/dsh-client-ui-sidebar-files` 的模块图依赖，但不深层 import 上游源码；Git 变更面板按同版本
+`ui-deliverables` 的 changes-review 结构与样式复刻（该包的组件不在发布物导出里，无法直接 import），并经页面冻结模块表
+复用 `@deepseek-ai/dsh-client-store` 与 `@deepseek-ai/dsh-client-ui-primitives`。
 如果上游登记项、行 data 属性或 Sidebar 导航契约变化，检查必须响亮失败并重新适配。
 
 `dsh-kit-web` 没有 HMR。修改宿主、浏览器代码或样式后，必须重新构建并重启 dsh；只刷新页面不会
@@ -82,7 +110,7 @@ node scripts/files-check.mjs
 
 ## 分发与管理
 
-本插件作为独立 Bundle 分发，可单独停用、卸载和升级。停用后，Git 状态、目录右键菜单与预览增强消失，回到 dsh 原生文件树；本插件不提供写入接口的性质不变。
+本插件作为独立 Bundle 分发，可单独停用、卸载和升级。停用后，Git 状态、目录右键菜单、Git 变更面板与预览增强消失，回到 dsh 原生文件树；本插件不提供写入接口的性质不变。
 套件安装后本插件默认启用；后续升级以整个套件为单位并保留停用状态，卸载后不会自动补回。
 需要重装时，在 dsh「添加插件」中填写套件目录 `plugins/suite` 的绝对目录，而不是源码目录或 `dist/index.js`。
 

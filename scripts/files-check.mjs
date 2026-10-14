@@ -11,9 +11,9 @@ const CHANNEL = "files"
 const argument = process.argv.indexOf("--port")
 const PORT = argument === -1 ? 3096 : Number(process.argv[argument + 1])
 const HOME = join(DEV_DIRECTORY, "files-check-home")
-const HOST_ENTRY = join(ROOT, "packages", "plugins", "files", "dist", "index.js")
-const CLIENT_BUNDLE = join(ROOT, "packages", "plugins", "files", "dist", "client.js")
-const PACKAGE_MANIFEST = join(ROOT, "packages", "plugins", "files", "package.json")
+const HOST_ENTRY = join(ROOT, "plugins", "files", "dist", "index.js")
+const CLIENT_BUNDLE = join(ROOT, "plugins", "files", "dist", "client.js")
+const PACKAGE_MANIFEST = join(ROOT, "plugins", "files", "package.json")
 let failures = 0
 const noop = () => {}
 function check(ok, what, detail) { if (!ok) failures += 1; console.log(`${ok ? "[ok]  " : "[fail]"} ${what}${detail === undefined ? "" : ` — ${detail}`}`) }
@@ -40,7 +40,7 @@ const { prepareHome } = context
 async function inspectHostBundle() {
   const channels = []
   let disposers = 0
-  await inspectHostArtifact({
+  const { module } = await inspectHostArtifact({
     entry: HOST_ENTRY,
     createContext: ({ cleanup }) => {
       const ctx = {
@@ -56,23 +56,24 @@ async function inspectHostBundle() {
       return ctx
     },
   })
-  return { channels, disposers }
+  return { channels, disposers, dispatch: module.dispatch }
 }
 function inspectClientBundle() {
   return inspectClientArtifact({
     bundle: CLIENT_BUNDLE,
     packageId: PACKAGE_ID,
     externalShims: new Map([
-      ['react', { useState: noop, useEffect: noop, useMemo: noop, createElement: noop }],
+      ['react', { useState: noop, useEffect: noop, useMemo: noop, useRef: noop, createElement: noop }],
       ['react/jsx-runtime', { jsx: noop, jsxs: noop, Fragment: noop }],
       ['react-dom', { createPortal: noop }],
       ['@deepseek-ai/dsh-client-ui-primitives', {}],
+      ['@deepseek-ai/dsh-client-store', { defineStore: () => ({}) }],
     ]),
     unknownExternal: (id) => new Error('bundle requested a non-platform module: ' + id),
     buildContext: ({ source: body }) => ({
       loader: body.includes('__ModuleLoader__.load'),
       sidebar: body.includes('sidebar.right.pane.tab'),
-      nativeFilesId: body.includes('@deepseek-ai/dsh-client-ui-sidebar-files'),
+      nativeFilesId: body.includes('data-files-state'),
       documentPreviewId: body.includes('@deepseek-ai/dsh-client-ui-sidebar-documentpreview'),
       singleEntry: !body.includes('files-pro'),
       nativeGuideUntouched: !body.includes('dsh-kit-files-initial-guide-sentinel') && !body.includes('dsh-files-directory-guide') && !body.includes('sidebar.right.tab.guide'),
@@ -82,6 +83,8 @@ function inspectClientBundle() {
       tabBulkClose: body.includes('close-others') && body.includes('close-all'),
       gitSnapshot: body.includes('gitUnavailable') && body.includes('snapshot'),
       contextMenu: body.includes('copy-relative-path'),
+      gitReview: body.includes('files-git-review') && body.includes('gitReviewMenu') && body.includes('dsh-files-gr'),
+      gitReviewStore: body.includes('dsh-client-store'),
       noConversationView: !body.includes('conversation.view'),
       channel: body.includes('/files'),
       primitives: body.includes('dsh-client-ui-primitives'),
@@ -96,10 +99,14 @@ async function main() {
   const host = await inspectHostBundle()
   check(host.channels.includes("/files"), "宿主产物挂上了 /files 通道", host.channels.join(", "))
   check(host.disposers >= 1, "通道注册挂在可撤销的 ctx.effect 上", String(host.disposers))
+  const reviewRpc = await host.dispatch?.({ agents: { get: () => undefined } }, "review", { sessionId: "no-such-session" })
+  check(reviewRpc?.ok === false && reviewRpc?.error?.code === "files/session-not-found", "宿主 review 端点校验 live session")
+  const diffRpc = await host.dispatch?.({ agents: { get: () => ({ session: { header: { cwd: process.cwd() } } }) } }, "diff", { sessionId: "s", path: "../escape" })
+  check(diffRpc?.ok === false && diffRpc?.error?.code === "files/bad-payload", "宿主 diff 端点拒绝非规范路径")
   const client = inspectClientBundle()
   check(client.loader, "浏览器产物使用 dsh ModuleLoader 格式")
   check(client.sidebar, "浏览器产物注册 Sidebar tab body")
-  check(client.nativeFilesId, "浏览器产物绑定原生 ui-sidebar-files")
+  check(client.nativeFilesId, "浏览器产物经 data-files-state 发现原生文件树（DOM 级契约）")
   check(client.documentPreviewId, "浏览器产物绑定原生 documentpreview")
   check(client.singleEntry, "浏览器产物不再提供 files-pro 页面入口")
   check(client.nativeGuideUntouched, "浏览器产物不替换原生开始页或插入虚假入口")
@@ -109,6 +116,8 @@ async function main() {
   check(client.tabBulkClose, "浏览器产物保留当前分栏批量关闭")
   check(client.gitSnapshot, "浏览器产物请求 Git snapshot")
   check(client.contextMenu, "浏览器产物保留目录右键菜单操作")
+  check(client.gitReview, "浏览器产物注册 Git 变更页签与右键入口")
+  check(client.gitReviewStore, "浏览器产物经页面模块表复用 dsh-client-store")
   check(client.noConversationView, "浏览器产物不再注册 conversation.view")
   check(client.channel, "浏览器产物调用 /files 私有通道")
   check(client.primitives, "浏览器产物复用 external ui-primitives")
@@ -132,6 +141,12 @@ async function main() {
     liveAssertions: async ({ cookie }) => {
       const snapshot = await context.callChannel("snapshot", { sessionId: "no-such-session" }, cookie)
       check(snapshot.status === 200 && snapshot.body?.result?.ok === false && snapshot.body.result.error?.code === "files/session-not-found", "真实 dsh 通道返回明确的 session-not-found", JSON.stringify(snapshot.body).slice(0, 180))
+      const review = await context.callChannel("review", { sessionId: "no-such-session" }, cookie)
+      check(review.status === 200 && review.body?.result?.ok === false && review.body.result.error?.code === "files/session-not-found", "真实 dsh 通道 review 端点返回明确的 session-not-found", JSON.stringify(review.body).slice(0, 180))
+      const diff = await context.callChannel("diff", { sessionId: "no-such-session", path: "src/a.ts" }, cookie)
+      check(diff.status === 200 && diff.body?.result?.ok === false && diff.body.result.error?.code === "files/session-not-found", "真实 dsh 通道 diff 端点返回明确的 session-not-found", JSON.stringify(diff.body).slice(0, 180))
+      const diffPath = await context.callChannel("diff", { sessionId: "s", path: "../escape" }, cookie)
+      check(diffPath.status === 200 && diffPath.body?.result?.error?.code === "files/bad-payload", "真实 dsh 通道 diff 端点拒绝非规范路径", JSON.stringify(diffPath.body).slice(0, 180))
       const legacyList = await context.callChannel("list", { sessionId: "x", path: "../escape" }, cookie)
       check(legacyList.status === 200 && legacyList.body?.result?.ok === false && legacyList.body.result.error?.code === "files/unknown-endpoint", "旧 list 端点已移除", JSON.stringify(legacyList.body).slice(0, 180))
       const legacyRead = await context.callChannel("read", { sessionId: "x", path: "README.md" }, cookie)

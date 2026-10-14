@@ -8,6 +8,6 @@ export default defineConfig(
     hostDeps: { neverBundle: [/^@deepseek-ai\//] },
     client: true,
     clientEntry: { client: 'src/client/index.tsx' },
-    clientModuleTable: ['react', 'react/jsx-runtime', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives'],
+    clientModuleTable: ['react', 'react/jsx-runtime', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-store'],
   }),
 )

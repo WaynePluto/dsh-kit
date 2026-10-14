@@ -5,6 +5,8 @@ import { absolutePathOf } from './treePath.js'
 
 export interface ContextMenuTarget {
   readonly path: string
+  /** 行类型：文件行额外提供「查看 Git 变更」，目录行维持只复制路径。 */
+  readonly kind: 'file' | 'directory'
   readonly x: number
   readonly y: number
   readonly focus: HTMLButtonElement | null
@@ -15,6 +17,8 @@ export interface FileContextMenuProps {
   readonly workspaceRoot: string | undefined
   readonly t: Translate
   readonly onClose: () => void
+  /** 打开该文件（工作区相对 slash 路径）的 Git 变更页签；仅文件行提供。 */
+  readonly onGitReview?: (path: string) => void
 }
 
 /** Find a native tree row without mistaking the path header for a row. */
@@ -24,8 +28,8 @@ export function contextMenuRow(target: EventTarget | null): HTMLElement | undefi
   return row?.dataset.filesPath === undefined ? undefined : row
 }
 
-/** The two read-only operations kept from the former files view. */
-export function FileContextMenu({ target, workspaceRoot, t, onClose }: FileContextMenuProps): ReactNode {
+/** The read-only operations the file rows keep; directories only copy paths. */
+export function FileContextMenu({ target, workspaceRoot, t, onClose, onGitReview }: FileContextMenuProps): ReactNode {
   const [failure, setFailure] = useState<string | undefined>()
   const restoreFocus = useRef(false)
 
@@ -66,6 +70,12 @@ export function FileContextMenu({ target, workspaceRoot, t, onClose }: FileConte
     const root = workspaceRoot
     if (current === undefined || root === undefined) return
     const relative = current.path
+    if (id === 'git-review') {
+      onGitReview?.(relative)
+      restoreFocus.current = true
+      close()
+      return
+    }
     const value = id === 'copy-path' ? absolutePathOf(root, relative) : relative
     if (await writeClipboard(value)) {
       setFailure(undefined)
@@ -74,7 +84,7 @@ export function FileContextMenu({ target, workspaceRoot, t, onClose }: FileConte
     } else {
       setFailure(t('copyFailed'))
     }
-  }, [close, t, target, workspaceRoot])
+  }, [close, onGitReview, t, target, workspaceRoot])
 
   if (target === undefined || workspaceRoot === undefined) return null
   return (
@@ -86,6 +96,9 @@ export function FileContextMenu({ target, workspaceRoot, t, onClose }: FileConte
       anchor={<span aria-hidden="true" />}
       getAnchorRect={() => new DOMRect(target.x, target.y, 0, 0)}
       items={[
+        ...(target.kind === 'file' && onGitReview !== undefined
+          ? [{ id: 'git-review', label: t('gitReviewMenu') }]
+          : []),
         { id: 'copy-path', label: t('copyPath') },
         { id: 'copy-relative-path', label: t('copyRelativePath') },
       ]}

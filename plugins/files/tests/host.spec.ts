@@ -68,24 +68,53 @@ describe('Git porcelain v2', () => {
 describe('Git snapshot RPC', () => {
   const deps = {
     git: async () => ({ available: false, entries: [], truncated: false }),
+    review: async () => ({ available: false, files: [], truncated: false }),
+    fileDiff: async () => ({ kind: 'binary' as const, path: 'a.png' }),
   }
 
-  it('exposes only snapshot and rejects malformed/unknown endpoint requests', async () => {
+  it('exposes only the read-only endpoints and rejects malformed/unknown requests', async () => {
     expect(await dispatch(context(), 'delete', {})).toMatchObject({ ok: false, error: { code: UNKNOWN_ENDPOINT_CODE } })
     expect(await dispatch(context(), 'list', { sessionId: 's', path: 'src' }, deps))
       .toMatchObject({ ok: false, error: { code: UNKNOWN_ENDPOINT_CODE } })
     expect(await dispatch(context(), 'snapshot', {}, deps))
       .toMatchObject({ ok: false, error: { code: BAD_PAYLOAD_CODE } })
+    expect(await dispatch(context(), 'review', { sessionId: 's' }, deps)).toEqual({
+      ok: true, value: { available: false, files: [], truncated: false },
+    })
+    expect(await dispatch(context(), 'diff', { sessionId: 's' }, deps))
+      .toMatchObject({ ok: false, error: { code: BAD_PAYLOAD_CODE } })
+    expect(await dispatch(context(), 'diff', { sessionId: 's', path: '../escape' }, deps))
+      .toMatchObject({ ok: false, error: { code: BAD_PAYLOAD_CODE } })
+    expect(await dispatch(context(), 'diff', { sessionId: 's', path: 'src/a.ts' }, deps)).toEqual({
+      ok: true, value: { kind: 'binary', path: 'a.png' },
+    })
+  })
+
+  it('rejects an unsafe diff path before consulting agents', async () => {
+    let consulted = false
+    const ctx = { agents: { get: () => { consulted = true; return undefined } } } as unknown as Context
+    const result = await dispatch(ctx, 'diff', { sessionId: 's', path: '/abs' })
+    expect(result).toMatchObject({ ok: false, error: { code: BAD_PAYLOAD_CODE } })
+    expect(consulted).toBe(false)
   })
 
   it('takes cwd from the requested live session', async () => {
     expect(await dispatch(context(), 'snapshot', { sessionId: 's' }, deps)).toEqual({
       ok: true, value: { workspacePath: root, git: { available: false, entries: [], truncated: false } },
     })
+    const review = await dispatch(context(), 'review', { sessionId: 's' }, {
+      ...deps,
+      review: async () => ({ available: true, files: [{ path: 'a', status: 'modified' as const, added: 1, deleted: 0 }], truncated: false }),
+    })
+    expect(review).toEqual({
+      ok: true, value: { available: true, files: [{ path: 'a', status: 'modified', added: 1, deleted: 0 }], truncated: false },
+    })
   })
 
   it('does not fall back to process.cwd for a missing session', async () => {
     expect(await dispatch(context(null), 'snapshot', { sessionId: 'missing' }, deps))
+      .toMatchObject({ ok: false, error: { code: SESSION_NOT_FOUND_CODE } })
+    expect(await dispatch(context(null), 'diff', { sessionId: 'missing', path: 'a.ts' }, deps))
       .toMatchObject({ ok: false, error: { code: SESSION_NOT_FOUND_CODE } })
   })
 })

@@ -55,8 +55,9 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
 - Windows 杀进程树用 taskkill /T /F；常驻服务用两级启动器并记录 L2 pid，不以 detached:true 保证存活。
 - 全局提示词只保存 DSH_HOME/AGENTS.md，UTF-8 字节上限 1 MiB、原子写入，冒烟由 dsh 加载器反向认领。
 - files 插件的 Git 根只取 live session.header.cwd，Git 采集无 shell 且有界；文件树、读取与预览跟随
-  dsh 原生 workspaceFiles/UI，目录右键只复制绝对/相对路径；不增写入接口、不递归预扫、不挂 watcher、
-  不引第二套预览编辑器。
+  dsh 原生 workspaceFiles/UI，目录右键只复制绝对/相对路径，文件右键另提供只读「查看 Git 变更」面板
+  （对 HEAD 的清单与 diff，按原生改动面板样式在插件内复刻，不 import 上游组件）；不增写入接口、
+  不递归预扫、不挂 watcher、不引第二套预览编辑器。
 - 所有直接依赖固定版本，不使用范围、dist-tag 或隐式升级；`pnpm check:dependencies` 覆盖
   `packages/` 与 `plugins/`。
 

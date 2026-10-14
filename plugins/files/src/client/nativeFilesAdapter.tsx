@@ -51,6 +51,7 @@ export function installNativeFilesEnhancement(
   loadGit: (sessionId: SessionId, signal: AbortSignal) => Promise<FilesSnapshot>,
   translate: Translate,
   previewTabs: PreviewTabs,
+  openGitReview: (sessionId: SessionId, path: string) => void,
 ): () => void {
   // 右键菜单是独立 React 根（react-dom/client 属 shell 平台模块），不进入原生树。
   // 宿主必须零尺寸且脱离 body 流：菜单打开时锚点 span 会在流内生成行盒，把 body
@@ -73,6 +74,10 @@ export function installNativeFilesEnhancement(
         target={menuTarget}
         workspaceRoot={menuWorkspaceRoot}
         t={translate}
+        onGitReview={path => {
+          const sessionId = sidebar.mounted.getSnapshot()
+          if (sessionId !== undefined) openGitReview(sessionId, path)
+        }}
         onClose={() => {
           menuTarget = undefined
           renderMenu()
@@ -204,6 +209,7 @@ export function installNativeFilesEnhancement(
         menuWorkspaceRoot = workspaceRoot
         menuTarget = {
           path: relative,
+          kind: row.dataset.filesEntry === 'file' ? 'file' : 'directory',
           x: event.clientX,
           y: event.clientY,
           focus: row.querySelector<HTMLButtonElement>('button'),
@@ -226,6 +232,7 @@ export function installNativeFilesEnhancement(
       menuWorkspaceRoot = workspaceRoot
       menuTarget = {
         path: relative,
+        kind: row.dataset.filesEntry === 'file' ? 'file' : 'directory',
         x: rect.left + Math.min(rect.width, 16),
         y: rect.bottom,
         focus: row.querySelector('button'),

@@ -126,8 +126,9 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 
 ## 项目 files 增强层
 
-出处：`plugins/files/src/{index.ts,git.ts,shared.ts}`、
-`plugins/files/src/client/{nativeFilesAdapter.tsx,paneNavigation.ts,previewTabs.ts,previewTabTitle.tsx,imageZoomOverlay.tsx,tabContextActions.tsx,gitDecorations.ts,FileContextMenu.tsx,treePath.ts}`。
+出处：`plugins/files/src/{index.ts,git.ts,gitReview.ts,shared.ts}`、
+`plugins/files/src/client/{nativeFilesAdapter.tsx,paneNavigation.ts,previewTabs.ts,previewTabTitle.tsx,imageZoomOverlay.tsx,tabContextActions.tsx,gitDecorations.ts,FileContextMenu.tsx,gitReviewTab.tsx,treePath.ts}`；
+原生改动面板结构出处 `packages/client/ui-deliverables/src/client/{ReviewTab.tsx,FileDiff.tsx,review-definition.ts,review-store.ts,changes.ts}`。
 
 项目插件不再注册 `conversation.view`，不再提供目录/list/read 私有文件服务，也不再复制原生树或预览。
 它通过 `sidebar.right.pane.tab` 的 priority shadow 包装 dsh `ui-sidebar-files` 登记项，保留原生
@@ -151,7 +152,19 @@ component、store、inject、locale 和原生 `files` guide；文件正文由 `u
   `-c core.fsmonitor=false`、`--no-optional-locks`、`-C cwd`，并以 `rev-parse --show-prefix`
   把仓库根路径转换回 Session cwd。总预算为 3 秒、status stdout 1 MiB、最多投影 2000 项。
 - Git 失败、超时、非仓库或截断只降级 Git 展示，不影响原生树、原生预览或复制路径菜单；Git 状态不承诺实时。
-- 右键菜单只有复制绝对路径和复制工作区相对 slash 路径，不提供任何写入或 Git 修改动作。
+- 右键菜单：目录行只复制绝对路径和工作区相对 slash 路径；文件行额外提供「查看 Git 变更」，打开 Git 变更面板。
+  不提供任何写入或 Git 修改动作。
+- Git 变更面板（`gitReviewTab.tsx`）：文件行右键 → `dsh-resource://files-git-review/session/<sessionId>` 资源页签
+  （每会话一个，右键路径经 `params.path` 预选，复用原生按 (kind, contentId) 的去重与导航 revision）。面板按原生
+  changes-review 的结构与样式在插件内复刻——原生组件不可 import（`ui-deliverables` 发布物外层只有 `apply`/`inject`，
+  `files` 列表不含 `src`；0.2.0 起 shadow 包装 body 条目也会因 children/renderSlot 抛错）——复用的是官方公开面：
+  `sidebarRightTabs.register`（extension 优先级新 kind）、`sidebar.right.pane.tab` keyed 座位（key = definition id）、
+  `SidebarRightResourceParamsMap` 声明合并、primitives 的 Menu/Tooltip/PathLabel/`useCodeHighlighter` 与
+  `dsh-client-store`（页面冻结模块表成员，独占 store 按会话铸造），CSS 按原生 FileDiff/ReviewTab 模块规则以
+  `dsh-files-gr` 前缀复刻，diff token 用 `--dsw-alias-file-diff-*`。
+- 数据口径：`/files/review`（status 清单 + `git diff --numstat -z --no-renames HEAD` 计数，未跟踪/空仓库经有界单文件读
+  取计数，最多 200 个）与 `/files/diff`（`git diff --unified=3 --no-color --no-renames HEAD -- <path>`；未跟踪与无 HEAD
+  时按整文件新增合成；输出超 1 MiB 降级 oversized）。每次右键导航与 Sidebar 刷新命令重新采集；不挂 watcher。
 - 原生读取边界、文件工作区外授权、文本/字节预算、HTML iframe 隔离和非事务性行为跟随上游，
   不能继续宣称旧插件的逐段 symlink 拒绝、工作区 containment 或读取前后身份复核。
 

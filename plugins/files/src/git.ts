@@ -5,7 +5,8 @@ import {
   type GitSnapshot, type GitStatus, type GitStatusEntry,
 } from './shared.js'
 
-function statusFromXY(xy: string, recordKind: string): GitStatus {
+/** 把 porcelain-v2 记录的 XY 状态归类为树/面板使用的单值状态。 */
+export function statusFromXY(xy: string, recordKind: string): GitStatus {
   if (recordKind === 'u' || xy.includes('U') || xy === 'AA' || xy === 'DD') return 'conflict'
   if (recordKind === '?') return 'untracked'
   if (xy.includes('D')) return 'deleted'
@@ -15,7 +16,8 @@ function statusFromXY(xy: string, recordKind: string): GitStatus {
   return 'modified'
 }
 
-function relativeGitPath(path: string, prefix: string): string | undefined {
+/** 把仓库根相对路径投影回 Session cwd 相对 slash 路径；cwd 之外返回 undefined。 */
+export function relativeGitPath(path: string, prefix: string): string | undefined {
   const value = path.replaceAll('\\', '/')
   const base = prefix.replaceAll('\\', '/')
   if (base === '') return value
@@ -79,6 +81,8 @@ export interface GitProcessResult {
   readonly kind: 'ok' | 'unavailable' | 'timeout'
   readonly stdout: Buffer
   readonly limited: boolean
+  /** Child exit code; null when the process failed to spawn or timed out. */
+  readonly code: number | null
 }
 
 export interface GitPrefixResult {
@@ -86,16 +90,29 @@ export interface GitPrefixResult {
   readonly prefix: string
 }
 
-/** 不经过 shell 运行 Git status，并限制运行时间和捕获的 stdout。 */
-export function runGitStatus(
+export interface GitCaptureOptions {
+  /** 额外按成功接受的退出码（如 `rev-parse --verify -q` 的 1）。 */
+  readonly acceptCodes?: readonly number[]
+  readonly timeoutMs?: number
+  readonly maxOutputBytes?: number
+}
+
+/**
+ * 不经过 shell 运行一条只读 Git 命令，限制运行时间与捕获的 stdout；
+ * 达到字节上限会杀掉进程并保留已捕获部分（`limited`）。
+ */
+export function runGitCapture(
   cwd: string,
-  timeoutMs = GIT_TIMEOUT_MS,
-  maxOutputBytes = GIT_MAX_OUTPUT_BYTES,
+  args: readonly string[],
+  options: GitCaptureOptions = {},
 ): Promise<GitProcessResult> {
+  const timeoutMs = options.timeoutMs ?? GIT_TIMEOUT_MS
+  const maxOutputBytes = options.maxOutputBytes ?? GIT_MAX_OUTPUT_BYTES
   return new Promise((resolve) => {
-    const child = spawn('git', [
-      '-c', 'core.fsmonitor=false', '--no-optional-locks', '-C', cwd, 'status', '--porcelain=v2', '-z', '--untracked-files=all', '--', '.',
-    ], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] })
+    const child = spawn('git', ['-c', 'core.fsmonitor=false', '--no-optional-locks', '-C', cwd, ...args], {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
     const chunks: Buffer[] = []
     let size = 0
     let settled = false
@@ -108,9 +125,9 @@ export function runGitStatus(
     }
     const timer = setTimeout(() => {
       child.kill()
-      finish({ kind: 'timeout', stdout: Buffer.concat(chunks), limited })
+      finish({ kind: 'timeout', stdout: Buffer.concat(chunks), limited, code: null })
     }, timeoutMs)
-    child.once('error', () => { finish({ kind: 'unavailable', stdout: Buffer.alloc(0), limited: false }) })
+    child.once('error', () => { finish({ kind: 'unavailable', stdout: Buffer.alloc(0), limited: false, code: null }) })
     child.stdout.on('data', (chunk: Buffer) => {
       if (limited) return
       const remaining = maxOutputBytes - size
@@ -124,9 +141,26 @@ export function runGitStatus(
       size += chunk.length
     })
     child.once('close', (code) => {
-      finish({ kind: code === 0 || limited ? 'ok' : 'unavailable', stdout: Buffer.concat(chunks), limited })
+      const accepted = code === 0 || limited || code !== null && (options.acceptCodes ?? []).includes(code)
+      finish({
+        kind: accepted ? 'ok' : 'unavailable',
+        stdout: Buffer.concat(chunks),
+        limited,
+        code,
+      })
     })
   })
+}
+
+const STATUS_ARGS = ['status', '--porcelain=v2', '-z', '--untracked-files=all', '--', '.'] as const
+
+/** 不经过 shell 运行 Git status，并限制运行时间和捕获的 stdout。 */
+export function runGitStatus(
+  cwd: string,
+  timeoutMs = GIT_TIMEOUT_MS,
+  maxOutputBytes = GIT_MAX_OUTPUT_BYTES,
+): Promise<GitProcessResult> {
+  return runGitCapture(cwd, STATUS_ARGS, { timeoutMs, maxOutputBytes })
 }
 
 /** Read the repository-to-session prefix without a shell or unbounded output. */
@@ -169,16 +203,36 @@ export function completeGitOutput(output: Buffer, limited: boolean): Buffer {
 }
 
 /** 非 Git、缺少 Git、超时和命令失败都刻意降级为空投影。 */
-export async function gitSnapshot(
+export interface GitProjection {
+  readonly snapshot: GitSnapshot
+  /** 仓库根相对路径 → Session cwd 相对路径所需的前缀（`rev-parse --show-prefix`）。 */
+  readonly prefix: string
+}
+
+/** 采集状态快照并保留路径投影前缀，供 review 的 numstat 投影复用。 */
+export async function gitProjection(
   cwd: string,
   options: { readonly timeoutMs?: number; readonly maxEntries?: number; readonly maxOutputBytes?: number } = {},
-): Promise<GitSnapshot> {
+): Promise<GitProjection> {
   const [result, prefix] = await Promise.all([
     runGitStatus(cwd, options.timeoutMs, options.maxOutputBytes),
     runGitPrefix(cwd, options.timeoutMs),
   ])
-  if (result.kind !== 'ok' || prefix.kind !== 'ok') return { available: false, entries: [], truncated: false }
+  if (result.kind !== 'ok' || prefix.kind !== 'ok') {
+    return { snapshot: { available: false, entries: [], truncated: false }, prefix: '' }
+  }
   const complete = completeGitOutput(result.stdout, result.limited)
   const parsed = parseGitPorcelainV2(complete.toString('utf8'), options.maxEntries, prefix.prefix)
-  return { ...parsed, truncated: parsed.truncated || result.limited }
+  return {
+    snapshot: { ...parsed, truncated: parsed.truncated || result.limited },
+    prefix: prefix.prefix,
+  }
+}
+
+/** 非 Git、缺少 Git、超时和命令失败都刻意降级为空投影。 */
+export async function gitSnapshot(
+  cwd: string,
+  options: { readonly timeoutMs?: number; readonly maxEntries?: number; readonly maxOutputBytes?: number } = {},
+): Promise<GitSnapshot> {
+  return (await gitProjection(cwd, options)).snapshot
 }

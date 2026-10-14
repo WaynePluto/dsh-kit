@@ -121,6 +121,24 @@ description: 编写或调整 dsh 插件的主题样式，处理表单焦点、�
 - 等宽字体用 `var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)`；
   `--dsw-font-mono` 可能没有定义。
 - 已有 Dock 规则以仓库根 `docs/dsh/plugins.md` 为准，图标光学补偿须先量后改。
+- **0.1.x → 0.2.0 的 alias 层整体改名 `--dsh-alias-*` → `--dsw-alias-*`**（design-platform.css 已无任何
+  `--dsh-alias-*` 定义）：插件样式里残留旧前缀会静默失效，无 fallback 时回落继承值（2026-10-14 在
+  files 插件 styles.ts 实测九处残留）。但 `--dsh-content-font-size*`、`--dsh-scrollbar-*` 与
+  `--ds-font-family-code`（字体族，非 alias）仍是合法前缀；升级或排查主题问题时先 grep 插件样式里的
+  `--dsh-alias`。diff 行配色有专用 token：`--dsw-alias-file-diff-{added,deleted}-{bg,gutter,marker}`，
+  空侧行用 `color-mix(in srgb, var(--dsw-alias-interactive-bg-hover) 50%, transparent)`。
+
+### 复刻上游 CSS module 面板（组件不可 import 时）
+
+上游组件不在发布物导出里（client 入口只导出 `apply`/`inject`，`files` 列表不含 `src`）时，
+「复用原生面板」的正确形态是：按同版本上游 `*.module.css` 的规则逐条翻译成插件命名空间类
+（前缀 + kebab-case），组件结构照抄、公开 primitives（Menu/Tooltip/PathLabel/`useCodeHighlighter`、图标）
+照常 external 引用；不复制上游哈希类名、不深层 import 源码。data 属性换成插件自己的
+（如 `data-dsh-files-gr-*`），选择器里的 `data-review-*` 等原生钩子同步改名。翻译时逐条核对
+grid 列模板、`min-height` 行高、`white-space: pre` 与 wrap 分支选择器，这些是布局等价的关键。
+实例：files 的 Git 变更面板 `plugins/files/src/client/{gitReviewTab.tsx,styles.ts}`
+（对照 `ui-deliverables/src/client/{FileDiff,ReviewTab}.module.css`，0.2.0-rc.2）；
+真实页面并排 computed 对比与深浅主题验收仍需单独做。
 
 ### 设置导航与正文覆盖
 

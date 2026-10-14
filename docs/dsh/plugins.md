@@ -158,6 +158,11 @@ profile 根层的 service_* 和 interactive_terminal 仍可继承。
 
 客户端扫描会从 --patch 的入口向上寻找 package.json，读取 dsh.client 与 exports["./client"]。
 浏览器 bundle 使用 lazy CJS factory，由 window.__ModuleLoader__.load 注册，必须匹配页面模块表。
+页面冻结模块表（`packages/client/web/src/platform.ts` 的 `PLATFORM_MODULES`）成员是
+`react`、`react/jsx-runtime`、`react-dom`、`react-dom/client`、`@deepseek-ai/cordis`、
+`@deepseek-ai/dsh-client-store`、`@deepseek-ai/dsh-client-ui-slots`、`@deepseek-ai/dsh-client-ui-primitives`
+与 `@deepseek-ai/dsh-client-ui-dockkit`；插件要共享其中任何一项都应作为 external 声明进构建模块表
+（实例是 files 的 Git 变更面板：`dsh-client-store` 的 `defineStore` 必须取页面单例，独立打包会出现第二份引擎实例）。
 React、Cordis、store、slots、ui-primitives 等共享运行时保持 external，其他依赖按需内联。
 构建工厂 `packages/plugin-build` 的 `DEFAULT_CLIENT_MODULE_TABLE` 只含 `react`、
 `react/jsx-runtime` 与 `@deepseek-ai/dsh-client-ui-primitives`；使用 portal 把内容渲染进
@@ -278,6 +283,22 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
 - 页面类型通过 `ctx.sidebarRightTabs.register({ id, kind, priority, title, guide })` 注册；不声明 `patterns` 的类型是页面，入口由 guide box 的 `id/order/title/description/icon` 提供（0.1.6 起 `id` 必填，为 provider 内稳定标识）。
 - 页面正文必须以同一 `id` 注册 keyed slot `sidebar.right.pane.tab`；组件通过标准 props 的 `useTabInfo()` 读取当前 tab 与 `tab.actions`，并由 session scope 自动得到 `sessionId`。
 - `ctx.sidebarRight.openTab(kind)` 打开页面；条目内部应使用 `tab.actions.openTab/openResource`，不要自己拼 `sidebar://` 地址。files 增强只 shadow 原生 `files` body，不另注册用户可见 kind；其他外部插件仍使用独立 kind，只有明确接管 builtin kind 时才用 `priority: 'extension'` 同 kind 注册。
+- 外部插件注册**新资源类型**（不接管 builtin）的完整契约（files Git 变更面板实例）：definition 声明
+  `patterns`（含 `:` 的模式匹配整串地址）+ `canOpen` 否决 + `title(address)`，缺省 priority 即 `extension`；
+  正文以 definition 的 `id` 注册 keyed 座位；`openResource(address, { params })` 的参数类型经
+  `SidebarRightResourceParamsMap` 的声明合并（key 是 `dsh-resource://` 后的第一段）；资源按 `(kind, contentId)`
+  跨 pane 去重（`revealIfOpened` 默认开），重复 open 走同一页签并递增 `navigation.revision`、携带新 `params`；
+  正文可用 `tab.actions.bindCommands({ refresh })` 接上 Sidebar 刷新入口。`ctx.sidebarRightTabs` 来自
+  `ui-sidebar-right` 的 reflect provide，需加进插件 client `inject`。
+- 原生「已编辑 n 个文件」改动面板（`ui-deliverables` 的 changes-review）**不能被插件 import**：
+  已发布包外层导出只有 `apply`/`inject`，`files` 列表不含 `src`（`./src/*` 导出只是仓库内形态），
+  且两包不在页面冻结模块表；复用只能按其组件结构与 CSS 规则在插件内复刻（同版本源码对照），
+  公开 primitives（Menu/Tooltip/PathLabel/`useCodeHighlighter`）与 `dsh-client-store` 不受影响。
+- **inject hooks 的 observable 必须发布不可变快照**：渲染层把 hooks observable 绑定成
+  `useSyncExternalStoreWithSelector`（`packages/client/ui-renderer/src/client/bind.ts`），它先用
+  Object.is 比较快照引用，引用不变就不会重跑 selector——插件拿原地修改的 Map/对象当快照时，
+  通知照发但组件永远停在首次渲染（2026-10-14 files Git 变更面板实机定位：面板永远「正在读取改动…」；
+  回归测试 `plugins/files/src/client/gitReviewBinding.spec.tsx` 用同一 API 驱动真实 React 渲染守护）。
 - 页面包的 `package.json` 用 `dsh.client.inject` 声明对 `@deepseek-ai/dsh-client-ui-sidebar-right` 的模块关系；Cordis 运行时仍把 `sidebarRightTabs` 放进插件 `inject`，两者不是同一种依赖。
 
 ### 原生文件增强的复用边界

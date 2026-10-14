@@ -13,6 +13,10 @@ import { installNativeFilesEnhancement } from './nativeFilesAdapter.js'
 import { installPreviewTitleEnhancement } from './previewTabTitle.js'
 import { PreviewTabs } from './previewTabs.js'
 import { installTabContextActions } from './tabContextActions.js'
+import {
+  GIT_REVIEW_TAB_ID, GitReviewData, GitReviewTab, gitReviewAddress, gitReviewTabDefinition, createGitReviewStore,
+} from './gitReviewTab.js'
+import type { GitReviewInjected } from './gitReviewTab.js'
 import { installStyles } from './styles.js'
 
 export { en, zh, NS } from './locales.js'
@@ -26,7 +30,7 @@ class FilesChannelError extends Error {
   constructor(message: string) { super(message); this.name = 'FilesChannelError' }
 }
 
-export const inject = ['slots', 'locale', 'connection', 'sidebarRight']
+export const inject = ['slots', 'locale', 'connection', 'sidebarRight', 'sidebarRightTabs']
 
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'files: copy dictionaries')
@@ -43,8 +47,14 @@ export function apply(ctx: Context): void {
     await call<FilesSnapshot>('snapshot', { sessionId: String(sessionId) })
   const previewTabs = new PreviewTabs()
   const imageStates = new ImageZoomStore()
+  // Git review 面板：私有通道的 review/diff 端点 + 右键菜单到页签的导航。
+  const gitReviewData = new GitReviewData((endpoint, payload) => call(endpoint, payload))
+  ctx.on('connection/reset', () => { gitReviewData.reset() })
+  const openGitReview = (sessionId: SessionId, path: string): void => {
+    ctx.sidebarRight.openResource(gitReviewAddress(sessionId), { params: { path } })
+  }
   ctx.effect(() => {
-    const disposeFiles = installNativeFilesEnhancement(ctx, ctx.sidebarRight, loadGit, t, previewTabs)
+    const disposeFiles = installNativeFilesEnhancement(ctx, ctx.sidebarRight, loadGit, t, previewTabs, openGitReview)
     const disposeTitle = installPreviewTitleEnhancement(ctx, previewTabs, imageStates, t)
     const disposeMenu = installTabContextActions(ctx, ctx.sidebarRight, t)
     return () => {
@@ -55,4 +65,19 @@ export function apply(ctx: Context): void {
       previewTabs.dispose()
     }
   }, 'files: native files enhancement')
+  ctx.effect(() => ctx.sidebarRightTabs.register(gitReviewTabDefinition(t)), 'files: git review tab type')
+  ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
+    {
+      name: 'sidebar.right.pane.tab',
+      key: GIT_REVIEW_TAB_ID,
+      locale: NS,
+      store: createGitReviewStore(),
+      inject: (): GitReviewInjected => ({
+        hooks: { summary: gitReviewData.summarySource, diff: gitReviewData.diffSource },
+        reloadSummary: sessionId => gitReviewData.reloadSummary(sessionId),
+        loadDiff: (sessionId, path) => gitReviewData.loadDiff(sessionId, path),
+      }),
+    },
+    GitReviewTab,
+  )), 'files: git review tab body')
 }
