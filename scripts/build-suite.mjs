@@ -6,7 +6,8 @@
 // 官方组合包表达式；insert 子行的表达式还带可解析性守卫——dsh 的 runtime
 // resolution 表随进程冻结，运行中首次启用套件的 HMR 重组合只查 <profile>/node_modules
 // 一层，守卫探测不到组件包时整行禁用（延迟到重启装载），避免 failed to import 报错。
-// 模型屏障占位行以套件包子路径装载（fallback/ 内嵌于套件包，三种安装形态都可解析）。
+// 固定契约（D16）：套件层只有 insert 行、永不覆写官方行，宿主半 RPC 走
+// connection.fetch.register 的 /api 精确路由（packages/plugin-rpc）。
 // 运行：node scripts/build-suite.mjs（先 pnpm plugins:build 保证 dist 存在）。
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative as relativePath, resolve } from 'node:path'
@@ -216,33 +217,10 @@ const header = `# dsh-kit 全量套件 Bundle（本文件由 scripts/build-suite
 # 另带可解析性守卫——运行中首次启用套件时（HMR 重组合的解析表仍是安装前的快照）
 # 组件行整行禁用、延迟到重启装载，不产生 failed to import 报错弹窗。
 #
-# 模型 HMR 启动屏障：随进程固定契约，避免运行中停用模型组件时热重启 llm-pi-ai。
-- id: llm-pi-ai
-  name: '@deepseek-ai/dsh-llm-pi-ai'
-  inject:
-    - llm
-    - modelsCatalogBootstrap
-    - modelCapabilitiesBootstrap
-
-# connection 行覆写：宿主半 RPC 的通道归属 connection 行 fiber（cordis service.ctx
-# 经 shadow 解析到服务构造行，组件行自己的 inject 不参与），而官方行只注入
-# webRuntime；宿主半插件经 connection.rpc.handle 注册的通道需要 webServer。
-# config 是整行替换，必须复刻官方 dsh-web-app 行的 trustedHosts 表达式，
-# 只追加注入不改信任面。表达式加引号（!!js 是标量 tag）。
-- id: connection
-  name: '@deepseek-ai/dsh-client-connection'
-  inject: [webRuntime, webServer]
-  config:
-    trustedHosts: !!js 'ctx.webRuntime.trustedHosts'
-
-# 套件常驻行：模型组件未随进程启动时提供占位屏障。占位实现内嵌在套件包
-# fallback/ 目录，行名用套件包子路径（套件 package.json 的 exports 重映射到
-# fallback 入口与 locale）：该形态在冷启动（junction/hoisted）、git 安装与运行中
-# 首次启用（此时套件 junction 已在 <profile>/node_modules，子路径可解析）都成立，
-# 保证 llm-pi-ai 的屏障注入在首次启用当场就有服务可绑。
-- insert:
-    - id: dsh-kit-model-bootstrap-fallback
-      name: '@dsh-kit/dsh-plugin-suite/fallback'
+# 固定契约：本层只有 insert 行，永不覆写官方行（D16）。任何对官方行（id 命中
+# 官方 Bundle 行）的覆写都会让套件启停的重组合重启该行 fiber，级联重启注入其
+# 服务的官方行——dsh 0.2.0 的 session-controller 在此级联中命中 file-upload
+# Agent resolver 二次注册竞态，会话服务当场失败且重启前不恢复。
 `
 
 const output = `${header}\n${componentSection()}\n`
@@ -338,6 +316,18 @@ function materializeSuiteModules() {
     const source = join(PLUGINS, dir)
     const manifest = copySelfContainedPackage(source, join(SUITE_MODULES, '@dsh-kit', packageNameOf(source).split('/')[1]))
     for (const name of Object.keys(manifest.dependencies ?? {})) registrySeeds.add(name)
+  }
+  // 组件的 workspace 共享包（packages/ 下，如 @dsh-kit/plugin-rpc）不是插件目录，
+  // copyRegistryClosure 的 @dsh-kit/* 跳过规则不会覆盖它们；这里按组件声明逐包
+  // 自包含复制进套件（dist 产物已在各自组件 dist 里内联，物化的是包本体供运行时解析）。
+  for (const name of registrySeeds) {
+    if (!name.startsWith('@dsh-kit/')) continue
+    registrySeeds.delete(name)
+    const source = join(ROOT, 'packages', name.split('/')[1])
+    if (!existsSync(join(source, 'package.json'))) {
+      throw new Error(`组件依赖的共享包 ${name} 不在 packages/ 下，无法物化进套件`)
+    }
+    copySelfContainedPackage(source, join(SUITE_MODULES, name))
   }
   // @deepseek-ai/* 种子在此展开：组件声明的 @deepseek-ai 依赖里，只有 dsh 运行时
   // 确实提供的才跳过；pi-ai 等第三方 scope（@earendil-works）正常复制，

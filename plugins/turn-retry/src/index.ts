@@ -22,6 +22,7 @@ import {
   PROJECTION_KEY, UNKNOWN_ENDPOINT_CODE,
 } from './shared.js'
 import type { RetryResult, TurnRetryState, TurnRetryView } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 // dsh 0.1.7 起没有共享的 `plugin` kind：每种生产者在自己的模块里声明专属 kind，
 // 消费者对未知 kind 走 fall-through。本插件的 notice 以 `turn-retry` 为身份。
@@ -180,7 +181,8 @@ export function apply(ctx: Context): void {
     },
   })
 
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint, requestPayload) => await dispatch(ctx, endpoint, requestPayload),
   )

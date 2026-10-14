@@ -4,7 +4,6 @@ import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：激活本插件使用的 renderer、locale、session 和 slot Context merge。
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // 仅类型：引入 `useProjection` 与 sessionId 的 slot merge。
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -15,6 +14,7 @@ import { RetryBanner } from './RetryDock.js'
 import type { RetryDockInjected } from './RetryDock.js'
 import { en, zh } from './locales.js'
 import type { RetryKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { RetryBanner } from './RetryDock.js'
 export type { RetryDockInjected } from './RetryDock.js'
@@ -63,10 +63,7 @@ export function apply(ctx: Context): void {
 
   /** 调用 private retry endpoint。 */
   const retry = async (sessionId: string): Promise<RetryResult> => {
-    // 每次调用时读取并定型 connection；`inject` 保证该 service 已存在。
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new RetryChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, 'retry', { sessionId })
+    const result = await callKitChannel(CHANNEL, 'retry', { sessionId })
     if (!result.ok) throw new RetryChannelError(result.error.message)
     return result.value as RetryResult
   }

@@ -4,7 +4,6 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { FilesEndpoint, FilesSnapshot } from '../shared.js'
 import { en, NS, zh, type FilesKey } from './locales.js'
@@ -18,6 +17,7 @@ import {
 } from './gitReviewTab.js'
 import type { GitReviewInjected } from './gitReviewTab.js'
 import { installStyles } from './styles.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { en, zh, NS } from './locales.js'
 export type { FilesKey } from './locales.js'
@@ -37,9 +37,7 @@ export function apply(ctx: Context): void {
   ctx.effect(installStyles, 'files: view styles')
   const t = ctx.locale.bind(NS)
   const call = async <T,>(endpoint: FilesEndpoint, payload: object): Promise<T> => {
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new FilesChannelError('no active connection')
-    const result = await connection.rpc.call('/files', endpoint, payload)
+    const result = await callKitChannel('/files', endpoint, payload)
     if (!result.ok) throw new FilesChannelError(result.error.message)
     return result.value as T
   }

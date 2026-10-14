@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { apply, BOOTSTRAP_SERVICE, name } from '../src/index.js'
+import { apply, name } from '../src/index.js'
 
 /**
  * 组一个可变的 volatile Config、伪 settings 服务与事件表的挂载环境；
@@ -46,7 +46,6 @@ describe('model-capabilities host half', () => {
     expect(name).toBe('dsh-kit-model-capabilities')
     expect(apply(mounted.ctx, mounted.config as never)).toBeUndefined()
     expect(mounted.runtime.applyProtocolOverrides).toHaveBeenCalledWith({})
-    expect(mounted.root.provide).toHaveBeenCalledWith(BOOTSTRAP_SERVICE, true)
     expect(mounted.mutate).not.toHaveBeenCalled()
   })
 

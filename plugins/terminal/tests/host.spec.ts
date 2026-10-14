@@ -546,7 +546,7 @@ describe('interactive terminal tool wrapper', () => {
       inject: (_names: unknown, callback: (scope: { plugin: (plugin: unknown) => void }) => void) => {
         callback({ plugin: (plugin: unknown) => { plugins.push(plugin) } })
       },
-      connection: { rpc: { handle: () => () => {} } },
+      connection: { fetch: { register: () => () => {} } },
       effect: () => {},
       get: () => undefined,
     } as unknown as Context

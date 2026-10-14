@@ -8,13 +8,13 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { CHANNEL, ENTRY_ID, NAMESPACE, TEST_ENDPOINT } from '../shared.js'
 import type { NotifySettings, NotifyTestResult } from '../shared.js'
 import { NotifySection } from './NotifySection.js'
 import { installNavGlyph } from './nav-glyph.js'
 import { en, zh } from './locales.js'
 import type { NotifyKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -43,11 +43,8 @@ export function apply(ctx: Context): void {
 
   /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
   const test = async (): Promise<NotifyTestResult> => {
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new NotifyChannelError('no active connection')
-    // ⚠️ 端点是 URL 路径段：请求发往 `/notify/test`，
-    // 信封 method 必须匹配最后一段（docs/dsh/transport.md）。
-    const result = await connection.rpc.call(CHANNEL, TEST_ENDPOINT, {})
+    // 请求经官方 /api 共享桥发往 `/api/notify`（kit 信封，D16）。
+    const result = await callKitChannel(CHANNEL, TEST_ENDPOINT, {})
     if (!result.ok) throw new NotifyChannelError(result.error.message)
     return result.value as NotifyTestResult
   }

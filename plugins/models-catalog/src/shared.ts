@@ -7,7 +7,8 @@
 
 /**
  * 本插件拥有的逻辑 RPC channel。
- * 通过 `ctx.connection.rpc.handle()` 注册为顶层 route；请求到达本插件前先经过 dsh 的 Host/Origin fence 和 browser authentication，与 `/api` 相同。
+ * 通过 `connection.fetch.register` 挂到官方 `/api` 精确路由（D16，见 packages/plugin-rpc）；
+ * 请求到达本插件前先经过 dsh 的 Host/Origin fence 和 browser authentication。
  */
 export const CHANNEL = '/models-catalog'
 

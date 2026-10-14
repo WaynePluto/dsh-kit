@@ -10,8 +10,6 @@ import type { SupportedApi } from './shared.js'
 
 export const name = 'dsh-kit-model-capabilities'
 
-/** models-catalog overlay 在 llm-pi-ai 启动前等待的服务。 */
-export const BOOTSTRAP_SERVICE = 'modelCapabilitiesBootstrap'
 
 /** 模型目录契约：此处说明 provider、协议、目录覆盖和用户条目保留。 */
 interface ModelCatalogRuntime {
@@ -169,8 +167,6 @@ export function apply(ctx: Context, config: Config): void {
 
   let applied = overridesOf(config)
   runtime.applyProtocolOverrides(applied)
-  // 必须在 llm-pi-ai 条目的 settings validator 运行前完成。
-  if (ctx.root.get(BOOTSTRAP_SERVICE) === undefined) ctx.root.provide(BOOTSTRAP_SERVICE, true)
 
   ctx.on('loader/volatile-update', () => {
     const next = overridesOf(config)

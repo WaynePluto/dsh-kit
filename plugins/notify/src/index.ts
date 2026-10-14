@@ -22,6 +22,7 @@ import { WindowsToastNotifier } from './toast.js'
 import type { Notifier } from './toast.js'
 import { CHANNEL, DEFAULT_SETTINGS, isNotifyEndpoint } from './shared.js'
 import type { NotifySettings, NotifyTestResult } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { CHANNEL, DEFAULT_SETTINGS, ENTRY_ID, FIELDS, isNotifyEndpoint, NAMESPACE, TEST_ENDPOINT } from './shared.js'
 export type { NotifySettings, NotifyTestResult } from './shared.js'
@@ -310,7 +311,8 @@ export function apply(ctx: Context, config: Config, options: NotifyOptions = {})
     }
   }, { prepend: true })
 
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async endpoint => await dispatch(notifier, endpoint),
   )

@@ -1,6 +1,6 @@
 /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
 
-/** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。（涉及：`ctx.connection.rpc.handle()`、`/api`） */
+/** 传输契约：kit 通道走 `connection.fetch.register` 的 `/api` 精确路由（D16，见 packages/plugin-rpc）。 */
 export const CHANNEL = '/copilot-auth'
 
 /** pi-ai provider id，同时也是 llm-pi-ai 路由 key 和记录 id。 */

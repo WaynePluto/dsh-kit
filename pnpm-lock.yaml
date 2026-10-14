@@ -53,6 +53,12 @@ importers:
 
   .:
     devDependencies:
+      '@deepseek-ai/dsh-agent-instructions':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(db65c17a76a6040365a522863f221c25)
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-fs@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-sandbox@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))))(@deepseek-ai/dsh-home-paths@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-skill@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
       '@dsh-kit/dsh-plugin-agents-md':
         specifier: workspace:*
         version: link:plugins/agents-md
@@ -156,6 +162,15 @@ importers:
         specifier: 4.4.7
         version: 4.4.7(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1)
 
+  packages/plugin-rpc:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.4
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-client-connection':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))
+
   packages/plugin-ui:
     devDependencies:
       '@types/react':
@@ -170,6 +185,9 @@ importers:
       '@deepseek-ai/dsh-home-paths':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -267,6 +285,9 @@ importers:
 
   plugins/copilot-auth:
     dependencies:
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
       '@earendil-works/pi-ai':
         specifier: 0.87.1
         version: 0.87.1(ws@8.22.0)(zod@4.6.5)
@@ -445,6 +466,10 @@ importers:
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   plugins/files:
+    dependencies:
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -573,6 +598,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.4
         version: 3.18.4
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
       '@earendil-works/pi-ai':
         specifier: 0.87.1
         version: 0.87.1(ws@8.22.0)(zod@4.6.5)
@@ -622,6 +650,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.4
         version: 3.18.4
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -720,6 +751,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.4
         version: 3.18.4
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -793,6 +827,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.4
         version: 3.18.4
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -853,6 +890,10 @@ importers:
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   plugins/skills-inspector:
+    dependencies:
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -904,7 +945,7 @@ importers:
     dependencies:
       '@dsh-kit/dsh-plugin-agents-md':
         specifier: file:../agents-md
-        version: link:../agents-md
+        version: file:plugins/agents-md(@deepseek-ai/cordis@4.0.4)
       '@dsh-kit/dsh-plugin-chat-scroll':
         specifier: file:../chat-scroll
         version: link:../chat-scroll
@@ -922,7 +963,7 @@ importers:
         version: link:../favorite-models
       '@dsh-kit/dsh-plugin-files':
         specifier: file:../files
-        version: link:../files
+        version: file:plugins/files
       '@dsh-kit/dsh-plugin-model-capabilities':
         specifier: file:../model-capabilities
         version: link:../model-capabilities
@@ -931,7 +972,7 @@ importers:
         version: file:plugins/models-catalog
       '@dsh-kit/dsh-plugin-notify':
         specifier: file:../notify
-        version: link:../notify
+        version: file:plugins/notify
       '@dsh-kit/dsh-plugin-preset-concise':
         specifier: file:../preset-concise
         version: link:../preset-concise
@@ -940,25 +981,25 @@ importers:
         version: link:../prompt-filter
       '@dsh-kit/dsh-plugin-proxy':
         specifier: file:../proxy
-        version: link:../proxy
+        version: file:plugins/proxy(@deepseek-ai/cordis@4.0.4)
       '@dsh-kit/dsh-plugin-run-code':
         specifier: file:../run-code
         version: link:../run-code
       '@dsh-kit/dsh-plugin-services':
         specifier: file:../services
-        version: link:../services
+        version: file:plugins/services(52b5a8ab481be2b3d891c22a71641755)
       '@dsh-kit/dsh-plugin-skills-inspector':
         specifier: file:../skills-inspector
-        version: link:../skills-inspector
+        version: file:plugins/skills-inspector
       '@dsh-kit/dsh-plugin-terminal':
         specifier: file:../terminal
         version: file:plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)
       '@dsh-kit/dsh-plugin-tools-inspector':
         specifier: file:../tools-inspector
-        version: link:../tools-inspector
+        version: file:plugins/tools-inspector
       '@dsh-kit/dsh-plugin-turn-retry':
         specifier: file:../turn-retry
-        version: link:../turn-retry
+        version: file:plugins/turn-retry(@deepseek-ai/cordis@4.0.4)
       '@dsh-kit/dsh-plugin-user-message-fork':
         specifier: file:../user-message-fork
         version: link:../user-message-fork
@@ -987,6 +1028,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 3.18.4
         version: 3.18.4
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -1044,6 +1088,10 @@ importers:
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.1(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   plugins/tools-inspector:
+    dependencies:
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -1096,6 +1144,9 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@dsh-kit/plugin-rpc':
+        specifier: workspace:0.1.0
+        version: link:../../packages/plugin-rpc
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -1466,6 +1517,18 @@ packages:
       '@deepseek-ai/cordis': 4.0.4
       '@deepseek-ai/dsh-agent': 0.2.0-rc.2
       '@deepseek-ai/dsh-llm': 0.2.0-rc.2
+
+  '@deepseek-ai/dsh-agent-instructions@0.2.0-rc.2':
+    resolution: {integrity: sha512-jasnwitU5efx5WT8X0OBapbdfssUdo+YpK7aquN7tSItCgVodN5RmGjm83zNw9awvlXjVlt7QMYeRcFUfZrZ6Q==}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/dsh-agent': 0.2.0-rc.2
+      '@deepseek-ai/dsh-fs': 0.2.0-rc.2
+      '@deepseek-ai/dsh-home-paths': 0.2.0-rc.2
+      '@deepseek-ai/dsh-llm': 0.2.0-rc.2
+      '@deepseek-ai/dsh-session': 0.2.0-rc.2
+      '@deepseek-ai/dsh-session-projection': 0.2.0-rc.2
+      '@deepseek-ai/dsh-tools': 0.2.0-rc.2
 
   '@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2':
     resolution: {integrity: sha512-Awdhxsnm85ZrQASUc/fLpBHnggAnI2ar7RIJL++Lcy04Hx9q/INqJlFfCKVL68ugZGh14iJNy5/OM+ZfcmbjUw==}
@@ -2030,6 +2093,14 @@ packages:
       '@deepseek-ai/dsh-sandbox': 0.2.0-rc.2
       '@deepseek-ai/dsh-subprocess': 0.2.0-rc.2
 
+  '@deepseek-ai/dsh-skill-filesystem@0.2.0-rc.2':
+    resolution: {integrity: sha512-V/88b4uEFwhCAewQhI/VE7/IvgBkDQb//3/zQjK7xieZ+D9wVpOc5AY8GCcQThZu5aGBnI1gX5ITHPlUHjKUtQ==}
+    peerDependencies:
+      '@deepseek-ai/cordis': 4.0.4
+      '@deepseek-ai/dsh-fs': 0.2.0-rc.2
+      '@deepseek-ai/dsh-home-paths': 0.2.0-rc.2
+      '@deepseek-ai/dsh-skill': 0.2.0-rc.2
+
   '@deepseek-ai/dsh-skill@0.2.0-rc.2':
     resolution: {integrity: sha512-3QfzZ6qWfESq1TRoVjEfoBRCTONRLU9aLopKpA7hJg/LZ2GqCgMoSvOwJJL+q2Djbs3oiUyC9qJHRnnN6EacIA==}
     peerDependencies:
@@ -2252,14 +2323,38 @@ packages:
   '@deepseek-ai/schemastery@3.18.4':
     resolution: {integrity: sha512-SSXO6tYuyrIqKVbmOnIq0s+riUywYzouFMcnBluHF9n4KMo2G8HvEzhCYj6pj2617/glOjbJuVInJ9hfONsjkg==}
 
+  '@dsh-kit/dsh-plugin-agents-md@file:plugins/agents-md':
+    resolution: {directory: plugins/agents-md, type: directory}
+
   '@dsh-kit/dsh-plugin-copilot-auth@file:plugins/copilot-auth':
     resolution: {directory: plugins/copilot-auth, type: directory}
+
+  '@dsh-kit/dsh-plugin-files@file:plugins/files':
+    resolution: {directory: plugins/files, type: directory}
 
   '@dsh-kit/dsh-plugin-models-catalog@file:plugins/models-catalog':
     resolution: {directory: plugins/models-catalog, type: directory}
 
+  '@dsh-kit/dsh-plugin-notify@file:plugins/notify':
+    resolution: {directory: plugins/notify, type: directory}
+
+  '@dsh-kit/dsh-plugin-proxy@file:plugins/proxy':
+    resolution: {directory: plugins/proxy, type: directory}
+
+  '@dsh-kit/dsh-plugin-services@file:plugins/services':
+    resolution: {directory: plugins/services, type: directory}
+
+  '@dsh-kit/dsh-plugin-skills-inspector@file:plugins/skills-inspector':
+    resolution: {directory: plugins/skills-inspector, type: directory}
+
   '@dsh-kit/dsh-plugin-terminal@file:plugins/terminal':
     resolution: {directory: plugins/terminal, type: directory}
+
+  '@dsh-kit/dsh-plugin-tools-inspector@file:plugins/tools-inspector':
+    resolution: {directory: plugins/tools-inspector, type: directory}
+
+  '@dsh-kit/dsh-plugin-turn-retry@file:plugins/turn-retry':
+    resolution: {directory: plugins/turn-retry, type: directory}
 
   '@earendil-works/pi-ai@0.87.1':
     resolution: {integrity: sha512-X/3PfQBnnoeVdO9Cv8zHghUMglzlgNZYGNzoPnbRoGnHl3Rw3TlA2UKSUB7BRHUOxMryHXYa8dnjWZlbRheDZA==}
@@ -2904,6 +2999,10 @@ packages:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
 
+  chokidar@5.0.0:
+    resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
+    engines: {node: '>= 20.19.0'}
+
   compressible@2.0.18:
     resolution: {integrity: sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==}
     engines: {node: '>= 0.6'}
@@ -3422,6 +3521,10 @@ packages:
   readdirp@4.1.2:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
+
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
+    engines: {node: '>= 20.19.0'}
 
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
@@ -4085,6 +4188,19 @@ snapshots:
       - '@deepseek-ai/dsh-app-boot'
       - '@deepseek-ai/dsh-hmr'
 
+  '@deepseek-ai/dsh-agent-instructions@0.2.0-rc.2(db65c17a76a6040365a522863f221c25)':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-agent': 0.2.0-rc.2(fee0e653b72a3883e0f0da2d9a46bb50)
+      '@deepseek-ai/dsh-fs': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-sandbox@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))))
+      '@deepseek-ai/dsh-home-paths': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-llm': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-session': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))
+      '@deepseek-ai/dsh-session-projection': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
+      '@deepseek-ai/dsh-tools': 0.2.0-rc.2(52b5a8ab481be2b3d891c22a71641755)
+      '@deepseek-ai/dsh-util-values': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery': 3.18.4
+
   '@deepseek-ai/dsh-agent-preset-registry@0.2.0-rc.2(399ec41987db7050d82ab13a298b41d7)':
     dependencies:
       '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
@@ -4703,6 +4819,16 @@ snapshots:
       '@deepseek-ai/dsh-sandbox': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))
       '@deepseek-ai/dsh-subprocess': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-http-proxy@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
 
+  '@deepseek-ai/dsh-skill-filesystem@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-fs@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-sandbox@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))))(@deepseek-ai/dsh-home-paths@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-skill@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))))':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-fs': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-brand@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-sandbox@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-session@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))))
+      '@deepseek-ai/dsh-home-paths': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-skill': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))
+      '@deepseek-ai/schemastery': 3.18.4
+      chokidar: 5.0.0
+      yaml: 2.9.1
+
   '@deepseek-ai/dsh-skill@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)))':
     dependencies:
       '@deepseek-ai/cordis': 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
@@ -4918,8 +5044,16 @@ snapshots:
       '@deepseek-ai/cosmokit': 1.8.5
       '@standard-schema/spec': 1.1.0
 
+  '@dsh-kit/dsh-plugin-agents-md@file:plugins/agents-md(@deepseek-ai/cordis@4.0.4)':
+    dependencies:
+      '@deepseek-ai/dsh-home-paths': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+    transitivePeerDependencies:
+      - '@deepseek-ai/cordis'
+
   '@dsh-kit/dsh-plugin-copilot-auth@file:plugins/copilot-auth':
     dependencies:
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
       '@earendil-works/pi-ai': 0.87.1(ws@8.22.0)(zod@4.6.5)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
@@ -4930,9 +5064,14 @@ snapshots:
       - ws
       - zod
 
+  '@dsh-kit/dsh-plugin-files@file:plugins/files':
+    dependencies:
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+
   '@dsh-kit/dsh-plugin-models-catalog@file:plugins/models-catalog':
     dependencies:
       '@deepseek-ai/schemastery': 3.18.4
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
       '@earendil-works/pi-ai': 0.87.1(ws@8.22.0)(zod@4.6.5)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
@@ -4942,6 +5081,41 @@ snapshots:
       - utf-8-validate
       - ws
       - zod
+
+  '@dsh-kit/dsh-plugin-notify@file:plugins/notify':
+    dependencies:
+      '@deepseek-ai/schemastery': 3.18.4
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+
+  '@dsh-kit/dsh-plugin-proxy@file:plugins/proxy(@deepseek-ai/cordis@4.0.4)':
+    dependencies:
+      '@deepseek-ai/dsh-http-proxy': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery': 3.18.4
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+    transitivePeerDependencies:
+      - '@deepseek-ai/cordis'
+
+  '@dsh-kit/dsh-plugin-services@file:plugins/services(52b5a8ab481be2b3d891c22a71641755)':
+    dependencies:
+      '@deepseek-ai/dsh-tools': 0.2.0-rc.2(52b5a8ab481be2b3d891c22a71641755)
+      '@deepseek-ai/schemastery': 3.18.4
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+    transitivePeerDependencies:
+      - '@deepseek-ai/cordis'
+      - '@deepseek-ai/dsh-agent'
+      - '@deepseek-ai/dsh-invariants'
+      - '@deepseek-ai/dsh-llm'
+      - '@deepseek-ai/dsh-ptc-runtime'
+      - '@deepseek-ai/dsh-sandbox'
+      - '@deepseek-ai/dsh-sandbox-policy'
+      - '@deepseek-ai/dsh-scope'
+      - '@deepseek-ai/dsh-session'
+      - '@deepseek-ai/dsh-system-prompt'
+      - '@deepseek-ai/dsh-user-approval'
+
+  '@dsh-kit/dsh-plugin-skills-inspector@file:plugins/skills-inspector':
+    dependencies:
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
 
   '@dsh-kit/dsh-plugin-terminal@file:plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)':
     dependencies:
@@ -4949,6 +5123,7 @@ snapshots:
       '@deepseek-ai/dsh-terminal-bash': 0.2.0-rc.2(55caffe2f8b8e11a16534e49dcff31fa)
       '@deepseek-ai/dsh-tool-terminal': 0.2.0-rc.2(caa33b0a444b880c688ba775f2d63a43)
       '@deepseek-ai/schemastery': 3.18.4
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
     transitivePeerDependencies:
       - '@deepseek-ai/cordis'
       - '@deepseek-ai/dsh-agent'
@@ -4965,6 +5140,18 @@ snapshots:
       - '@deepseek-ai/dsh-system-prompt'
       - '@deepseek-ai/dsh-timeout'
       - '@deepseek-ai/dsh-tools'
+
+  '@dsh-kit/dsh-plugin-tools-inspector@file:plugins/tools-inspector':
+    dependencies:
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+
+  '@dsh-kit/dsh-plugin-turn-retry@file:plugins/turn-retry(@deepseek-ai/cordis@4.0.4)':
+    dependencies:
+      '@deepseek-ai/dsh-llm': 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@dsh-kit/plugin-rpc': link:packages/plugin-rpc
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - '@deepseek-ai/cordis'
 
   '@earendil-works/pi-ai@0.87.1(ws@8.22.0)(zod@4.6.5)':
     dependencies:
@@ -5418,6 +5605,10 @@ snapshots:
     dependencies:
       readdirp: 4.1.2
     optional: true
+
+  chokidar@5.0.0:
+    dependencies:
+      readdirp: 5.1.1
 
   compressible@2.0.18:
     dependencies:
@@ -5939,6 +6130,8 @@ snapshots:
 
   readdirp@4.1.2:
     optional: true
+
+  readdirp@5.1.1: {}
 
   require-from-string@2.0.2: {}
 

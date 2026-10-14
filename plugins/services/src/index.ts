@@ -24,6 +24,7 @@ import {
   UNKNOWN_ENDPOINT_CODE, isListRequest, isNamedRequest, isServicesEndpoint,
 } from './shared.js'
 import type { ServicesSnapshot } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 export * from './shared.js'
 export {
@@ -351,7 +352,8 @@ export async function dispatch(
 export function apply(ctx: Context, config: Config): void {
   registerTools(ctx, config)
 
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint, requestPayload) => await dispatch(ctx, endpoint, requestPayload, config),
   )

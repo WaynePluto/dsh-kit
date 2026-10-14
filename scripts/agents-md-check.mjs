@@ -155,10 +155,11 @@ async function main() {
         JSON.stringify(badRequest.body).slice(0, 200),
       )
 
-      const unauthenticated = await fetch(`${context.base}/${CHANNEL}/load`, {
+      // kit 通道在官方 /api 共享桥下：认证与围栏由桥统一应用（D16）。
+      const unauthenticated = await fetch(`${context.base}/api/${CHANNEL}/load`, {
         method: 'POST',
         headers: { host: context.authority, 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'client-request', rpcId: 'smoke', method: 'load', payload: {} }),
+        body: JSON.stringify({ endpoint: 'load', payload: {} }),
       })
       check(unauthenticated.status === 401, '没有 cookie 的调用被 dsh 挡在门外', `status ${unauthenticated.status}`)
     },

@@ -6,8 +6,9 @@
  * profile package.json → reconcileProfilePatches）。断言：
  * 1. 重组合后组件行被可解析性守卫整行禁用（延迟到重启装载），不产生
  *    failed to import / did not activate / Agent resolver 报错；
- * 2. 屏障占位行当场装载，llm-pi-ai 的注入契约当场有服务可绑；
- * 3. connection 行覆写热切换后探针 RPC 仍然可用（通道归属行重启不断服务）；
+ * 2. 官方行（llm-pi-ai、connection、session-controller）不随重组合重启且保持 ACTIVE
+ *    （套件层只有 insert 行，D16；此前的覆写行会级联触发 session-controller 竞态）；
+ * 3. 探针 /api 精确路由在整个过程中保持可用；
  * 4. 冷重启后全部组件行装载（守卫放行）。
  * 运行：node scripts/suite-first-enable-check.mjs [--port 3105]。
  */
@@ -55,12 +56,9 @@ function check(ok, what, detail) {
 
 function prepareProbe() {
   mkdirSync(PROBE_DIRECTORY, { recursive: true })
-  // connection 行覆写复刻套件 patch 的固定契约（宿主半 RPC 通道需要 webServer）。
+  // 探针通道走官方 connection.fetch.register 的 /api 精确路由（kit 信封，
+  // 见 packages/plugin-rpc）；不再覆写官方 connection 行（D16）。
   writeFileSync(PROBE_OVERLAY, [
-    '- id: connection',
-    '  inject: [webRuntime, webServer]',
-    '  config:',
-    "    trustedHosts: !!js 'ctx.webRuntime.trustedHosts'",
     '- insert:',
     '    - id: suite-first-enable-probe',
     "      name: './probe.mjs'",
@@ -72,11 +70,7 @@ let output = ''
 export const name = 'dsh-kit-suite-first-enable-probe'
 export const inject = ['loader', 'connection']
 
-export function apply(ctx) {
-  const dispose = ctx.connection.rpc.handle('/suite-first-enable', async (endpoint) => {
-    if (endpoint !== 'entries') {
-      return { ok: false, error: { code: 'probe/unknown-endpoint', message: 'unknown endpoint', details: {} } }
-    }
+async function entries(ctx) {
     const rows = []
     for (const entry of ctx.loader.entries()) {
       if (typeof entry.options.id !== 'string') continue
@@ -98,6 +92,28 @@ export function apply(ctx) {
       })
     }
     return { ok: true, value: { rows, output } }
+}
+
+export function apply(ctx) {
+  const dispose = ctx.connection.fetch.register({
+    path: '/api/suite-first-enable',
+    methods: ['POST'],
+    requestBody: 'buffered',
+    fetch: async (request) => {
+      let endpoint
+      try {
+        const body = await request.json()
+        endpoint = typeof body === 'object' && body !== null ? body.endpoint : undefined
+      } catch { endpoint = undefined }
+      if (endpoint !== 'entries') {
+        return Response.json({ ok: false, error: { code: 'probe/unknown-endpoint', message: 'unknown endpoint', details: {} } })
+      }
+      try {
+        return Response.json(await entries(ctx))
+      } catch (error) {
+        return Response.json({ ok: false, error: { code: 'probe/internal', message: String(error), details: {} } })
+      }
+    },
   })
   ctx.effect(() => () => { void dispose() }, 'suite first-enable probe')
 }
@@ -160,12 +176,20 @@ function makeContext() {
 }
 
 async function callEntries(context, cookie) {
-  const response = await context.rpcRequest({ path: '/suite-first-enable/entries', method: 'entries', payload: {}, cookie })
-  const result = response.body?.result
-  if (response.status !== 200 || result?.ok !== true) {
-    throw new Error(`entries RPC 失败：HTTP ${String(response.status)} ${JSON.stringify(response.body).slice(0, 200)}`)
+  const response = await fetch(`${context.base}/api/suite-first-enable`, {
+    method: 'POST',
+    headers: {
+      ...context.browserHeaders(cookie),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ endpoint: 'entries', payload: {} }),
+  })
+  let body
+  try { body = await response.json() } catch { body = undefined }
+  if (response.status !== 200 || body?.ok !== true) {
+    throw new Error(`entries RPC 失败：HTTP ${String(response.status)} ${JSON.stringify(body).slice(0, 200)}`)
   }
-  return result.value
+  return body.value
 }
 
 /** 轮询等待重组合生效（hmr watch 有写入稳定去抖；connection 行热切换瞬间通道可能短暂拒绝）。 */
@@ -203,8 +227,8 @@ async function checkFirstEnable() {
 
       writeManifest(join(HOME, 'profiles', DSH_PROFILE), true)
       await waitFor(context, cookie, value => rowOf(value.rows, 'proxy') !== undefined, 40_000)
-      // 重组合的行重启有先后（llm → 注入方），等官方核心行回稳（session-controller
-      // 命中上游竞态时停在 FAILED，也算终态）再断言。
+      // 套件层只有 insert 行，官方行（llm-pi-ai、connection、session-controller）不再
+      // 随重组合重启；等官方核心行回稳后断言全部保持 ACTIVE。
       const settled = await waitFor(context, cookie,
         value => (rowOf(value.rows, 'session-controller')?.fiberState ?? 0) !== 0
           && rowOf(value.rows, 'connection')?.fiberState === FIBER_ACTIVE
@@ -217,29 +241,12 @@ async function checkFirstEnable() {
       const importFailed = COMPONENT_ROWS.filter(id => rowOf(rows, id)?.hasFiber === true && rowOf(rows, id)?.fiberState !== FIBER_ACTIVE)
       check(importFailed.length === 0, '没有组件行进入 failed/pending 装载态', importFailed.join(', ') || '无')
 
-      const fallback = rowOf(rows, 'dsh-kit-model-bootstrap-fallback')
-      check(fallback?.name === `${SUITE_PACKAGE}/fallback` && fallback?.fiberState === FIBER_ACTIVE,
-        '屏障占位行当场装载（子路径可解析）', JSON.stringify(fallback))
-      check(rowOf(rows, 'llm-pi-ai')?.fiberState === FIBER_ACTIVE, 'llm-pi-ai 屏障注入当场绑定（ ACTIVE）')
-      {
-        // 上游已知竞态（dsh 0.2.0，见 docs/05-roadmap.md「上游竞态观察」）：重组合中
-        // llm-pi-ai 覆写行重启 llm，session-controller 作为 llm 依赖方随之重挂载，其内嵌
-        // file-upload 在旧注册未释放时二次注册。kit 侧无法规避（覆写行 disabled 会连官方
-        // 基础行一起禁用）；按精确签名豁免，出现任何其他失败形态仍然响亮失败。
-        // 上游修复后应改回断言 ACTIVE 并移除此豁免。
-        const UPSTREAM_RACE = 'file-upload: Agent resolver is already registered'
-        const sessionController = rowOf(rows, 'session-controller')
-        const inactive = rows.filter(row => row.hasFiber && row.fiberState !== FIBER_ACTIVE)
-          .map(row => `${row.id}(${String(row.fiberState)})`)
-        if (sessionController?.fiberState === FIBER_ACTIVE) {
-          check(true, 'session-controller 未受重组合影响（上游竞态已修复？请移除豁免断言）')
-        } else {
-          check(sessionController?.failure?.split('\n')[0] === `Error: ${UPSTREAM_RACE}`,
-            'session-controller 只剩已记录的上游重挂载竞态（其他失败形态不允许）',
-            `${inactive.join('、')} — ${String(sessionController?.failure?.split('\n')[0])}`)
-        }
-      }
-      check(rowOf(rows, 'connection')?.fiberState === FIBER_ACTIVE, 'connection 行覆写热切换后恢复 ACTIVE')
+      check(rowOf(rows, 'session-controller')?.fiberState === FIBER_ACTIVE,
+        'session-controller 不受重组合影响（套件层不再覆写官方行，D16）',
+        JSON.stringify(rowOf(rows, 'session-controller')?.failure))
+      check(rowOf(rows, 'llm-pi-ai')?.fiberState === FIBER_ACTIVE, 'llm-pi-ai 保持 ACTIVE')
+      check(rowOf(rows, 'connection')?.fiberState === FIBER_ACTIVE, 'connection 保持 ACTIVE（未覆写）')
+      check(rowOf(rows, 'dsh-kit-model-bootstrap-fallback') === undefined, '屏障占位行已随 D16 移除')
 
       const noise = ['did not activate', 'failed to import', 'Agent resolver is already registered']
         .filter(signature => settled.output.includes(signature))
@@ -259,8 +266,6 @@ async function checkColdRestart() {
       check(loaded.length === 0, '冷重启后全部组件行装载（守卫放行）', `未装载：${loaded.join(', ') || '无'}`)
       const yolo = rowOf(boot.rows, 'yolo-mode')
       check(yolo?.disabled === true, '冷重启后 yolo-mode 保持默认停用', JSON.stringify(yolo))
-      const fallback = rowOf(boot.rows, 'dsh-kit-model-bootstrap-fallback')
-      check(fallback?.fiberState === FIBER_ACTIVE, '冷重启后屏障占位行仍装载', JSON.stringify(fallback))
       check(rowOf(boot.rows, 'session-controller')?.fiberState === FIBER_ACTIVE, '冷重启后 session-controller 正常')
     },
   })

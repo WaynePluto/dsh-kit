@@ -174,7 +174,7 @@ async function main() {
   check(artifact.plugins.length === 1 && artifact.provided.includes('terminals'),
     '挂载了 dsh 的 PTY registry / backend / tools（registry 是 Service，backend 是一个 ctx.plugin，tools 由 wrapper 直接捕获）',
     `plugins=${artifact.plugins.length}；services=${artifact.provided.join('、')}`)
-  check(artifact.channels.includes('/terminal'), '宿主产物挂上了 /terminal 通道',
+  check(artifact.channels.includes('/api/terminal'), '宿主产物挂上了 /api/terminal 精确路由',
     artifact.channels.join('、'))
   check(artifact.disposers >= 1, '通道注册是可撤销的（挂在 ctx.effect 上）')
 
@@ -225,7 +225,7 @@ async function main() {
         check(bundle.ok, '插件 bundle 能取到', `status ${bundle.status}`)
         check(bundleBody.includes('__ModuleLoader__.load'), 'bundle 是加载器认识的工件格式')
         check(bundleBody.includes('conversation.input.dock'), 'bundle 里带着输入框上方的槽注册')
-        check(bundleBody.includes('/terminal'), 'bundle 里带着宿主那条私有通道的路径')
+        check(bundleBody.includes('/terminal'), 'bundle 里带着宿主那条私有通道的路径段')
         check(bundleBody.includes('visibilitychange'), 'bundle 里带着「页面不可见就停止轮询」的那半逻辑')
         check(bundleBody.includes('type: "password"') && bundleBody.includes('autoComplete: "off"')
           && bundleBody.includes('autoCorrect: "off"') && bundleBody.includes('autoCapitalize: "off"'),
@@ -262,10 +262,11 @@ async function main() {
       }
       check(ENDPOINTS.length === 4, '通道只有四个端点', ENDPOINTS.join('、'))
 
-      const unauthenticated = await fetch(`${context.base}/terminal/list`, {
+      // kit 通道在官方 /api 共享桥下：认证与围栏由桥统一应用（D16）。
+      const unauthenticated = await fetch(`${context.base}/api/terminal/list`, {
         method: 'POST',
         headers: { host: context.authority, 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'client-request', rpcId: 'smoke', method: 'list', payload: { sessionId: 'x' } }),
+        body: JSON.stringify({ endpoint: 'list', payload: { sessionId: 'x' } }),
       })
       check(unauthenticated.status === 401, '没有 cookie 的调用被 dsh 挡在门外', `status ${unauthenticated.status}`)
     },

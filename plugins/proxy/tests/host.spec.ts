@@ -164,7 +164,7 @@ describe('Cordis volatile lifecycle', () => {
       logger: { info: vi.fn(), error: vi.fn() },
       on: (name: string, callback: (...args: unknown[]) => unknown) => { callbacks.set(name, callback) },
       effect: (factory: () => () => Promise<void>) => { cleanup = factory() },
-      connection: { rpc: { handle: () => () => {} } },
+      connection: { fetch: { register: () => () => {} } },
     } as unknown as Context
     const refs = {
       mode: { get: () => config.mode }, enabled: { get: () => config.enabled },

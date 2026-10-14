@@ -55,7 +55,7 @@ interface Built {
   waterfall: (name: string, payload: unknown, next: () => Promise<unknown>) => Promise<unknown>
   /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
   prepended: Map<string, boolean>
-  handled: Map<string, (endpoint: string, payload: unknown) => Promise<unknown>>
+  handled: Map<string, (request: Request) => Promise<Response>>
   /** 设置写入契约：fake volatile 背后的可变设置存储。 */
   section: NotifySettings
   disposers: (() => void)[]
@@ -65,7 +65,7 @@ interface Built {
 function fakeCtx(options: CtxOptions = {}): Built {
   const listeners = new Map<string, ((...args: never[]) => unknown)[]>()
   const prepended = new Map<string, boolean>()
-  const handled = new Map<string, (endpoint: string, payload: unknown) => Promise<unknown>>()
+  const handled = new Map<string, (request: Request) => Promise<Response>>()
   const disposers: (() => void)[] = []
   const section: NotifySettings = { ...DEFAULT_SETTINGS, ...options.settings }
   // dsh 0.1.7 起挂载签名是 apply(ctx, config)；两个 volatile 引用都从 section 现读。
@@ -83,9 +83,9 @@ function fakeCtx(options: CtxOptions = {}): Built {
   const ctx = {
     agents: { roots: () => options.roots ?? [] },
     connection: {
-      rpc: {
-        handle: (channel: string, handler: (endpoint: string, payload: unknown) => Promise<unknown>) => {
-          handled.set(channel, handler)
+      fetch: {
+        register: (route: { path: string, fetch: (request: Request) => Promise<Response> }) => {
+          handled.set(route.path, route.fetch)
           return () => Promise.resolve()
         },
       },
@@ -485,7 +485,7 @@ describe('the test channel', () => {
   it('is served on the channel this plugin owns', () => {
     const built = fakeCtx()
     apply(built.ctx, built.config, { notifier: recorder() })
-    expect(built.handled.has(CHANNEL)).toBe(true)
+    expect(built.handled.has(`/api${CHANNEL}`)).toBe(true)
   })
 
   it('sends one notification and reports how it went', async () => {
@@ -512,7 +512,13 @@ describe('the test channel', () => {
     const notifier = recorder()
     apply(built.ctx, built.config, { notifier })
 
-    await built.handled.get(CHANNEL)?.(TEST_ENDPOINT, {})
+    const handler = built.handled.get(`/api${CHANNEL}`)
+    const response = await handler?.(new Request('http://host/api/notify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ endpoint: TEST_ENDPOINT, payload: {} }),
+    }))
+    expect(response).toBeInstanceOf(Response)
     expect(notifier.sent).toHaveLength(1)
   })
 

@@ -85,18 +85,20 @@ export async function rpcRequest({
 
 /**
  * 调用插件通道的指定端点。
- * URL 使用 `${channel}/${endpoint}`，并让信封 method 与 endpoint 保持一致。
+ * 通道走官方 `/api` 精确 Fetch 路由（kit 信封 `{ endpoint, payload }`，实现见
+ * packages/plugin-rpc）；为兼容既有断言，响应体包装回 `{ result }` 形状。
  */
-export function callChannel({ base, authority, channel, endpoint, payload, cookie, rpcId = 'smoke' }) {
-  return rpcRequest({
-    url: `${base}/${channel}/${endpoint}`,
-    authority,
-    base,
-    method: endpoint,
-    payload,
-    cookie,
-    rpcId,
+export async function callChannel({ base, authority, channel, endpoint, payload, cookie }) {
+  const path = channel.startsWith('/') ? channel : `/${channel}`
+  const response = await fetch(`${base}/api${path}`, {
+    method: 'POST',
+    headers: {
+      ...browserHeaders({ authority, base, cookie }),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ endpoint, payload: payload ?? {} }),
   })
+  return { status: response.status, body: { result: await responseBody(response) } }
 }
 
 /**

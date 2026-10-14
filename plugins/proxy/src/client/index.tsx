@@ -7,13 +7,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { CHANNEL, ENTRY_ID, NAMESPACE } from '../shared.js'
 import type { ProxySettings, ProxyTestResult } from '../shared.js'
 import { ProxySection } from './ProxySection.js'
 import { installNavGlyph } from './nav-glyph.js'
 import { en, zh } from './locales.js'
 import type { ProxyKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -42,9 +42,7 @@ export function apply(ctx: Context): void {
 
   /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
   const test = async (url: string): Promise<ProxyTestResult> => {
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new ProxyChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, 'test', { url })
+    const result = await callKitChannel(CHANNEL, 'test', { url })
     if (!result.ok) throw new ProxyChannelError(result.error.message)
     return result.value as ProxyTestResult
   }

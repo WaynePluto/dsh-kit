@@ -15,6 +15,7 @@ import {
   SAVE_ENDPOINT,
 } from './shared.js'
 import type { AgentsMdDocument, AgentsMdSaveResult } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { agentsMdPath, readDocument, USER_GLOBAL_FILE, writeDocument } from './file.js'
 export {
@@ -95,7 +96,8 @@ export async function dispatch(
 
 /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。（涉及：`/agents-md/load`、`/agents-md/save`、`/api`） */
 export function apply(ctx: Context): void {
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint: string, payload: unknown) => await dispatch(endpoint, payload),
   )

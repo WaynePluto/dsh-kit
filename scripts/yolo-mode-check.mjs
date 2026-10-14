@@ -39,16 +39,26 @@ function check(ok, what, detail) {
   console.log(`${ok ? '[ok]  ' : '[fail]'} ${what}${detail === undefined ? '' : ` — ${detail}`}`)
 }
 
+/** 调用探针的 /api 精确路由（kit 信封）；响应包装回 { result } 兼容既有断言。 */
+async function probeCall(context, endpoint, cookie) {
+  const response = await fetch(`${context.base}/api/yolo-mode-probe`, {
+    method: 'POST',
+    headers: {
+      ...context.browserHeaders(cookie),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ endpoint, payload: {} }),
+  })
+  let body
+  try { body = await response.json() } catch { body = undefined }
+  return { status: response.status, body: { result: body } }
+}
+
 function prepareProbe() {
   mkdirSync(PROBE_DIRECTORY, { recursive: true })
-  // connection 行覆写复刻套件 patch 的固定契约：dsh 0.2.0 起宿主半 RPC 通道归属
-  // connection 行 fiber，官方行只注入 webRuntime，探针注册通道需要 webServer。
-  // 冒烟 profile 以独立 Bundle 装载（无套件 patch），由本 overlay 补同一覆写。
+  // 探针通道走官方 connection.fetch.register 的 /api 精确路由（与组件一致的
+  // kit 信封，见 packages/plugin-rpc）；不再覆写官方 connection 行（D16）。
   writeFileSync(PROBE_OVERLAY, [
-    '- id: connection',
-    '  inject: [webRuntime, webServer]',
-    '  config:',
-    "    trustedHosts: !!js 'ctx.webRuntime.trustedHosts'",
     '- insert:',
     '    - id: yolo-mode-smoke-probe',
     "      name: './probe.mjs'",
@@ -68,12 +78,9 @@ function nextTurn(agent) {
   return latest + 1
 }
 
-export function apply(ctx) {
-  ctx.on('agent/created', ({ agent }) => { lastAgent = agent })
-  ctx.on('agent/disposed', ({ agent }) => { if (lastAgent === agent) lastAgent = undefined })
-  const dispose = ctx.connection.rpc.handle('/yolo-mode-probe', async (endpoint) => {
-    // health：默认停用路径的服务健康检查——不发起 approval（原生 ask 会挂起），
-    // 只证明 sandboxPolicy/approval 服务装载成功（探针行 inject 依赖它们）。
+// health：默认停用路径的服务健康检查——不发起 approval（原生 ask 会挂起），
+// 只证明 sandboxPolicy/approval 服务装载成功（探针行 inject 依赖它们）。
+async function endpointHandler(ctx, endpoint) {
     if (endpoint === 'health') {
       return { ok: true, value: { mode: ctx.sandboxPolicy.resolve({}).mode } }
     }
@@ -117,6 +124,30 @@ export function apply(ctx) {
         toolError: tool?.isError ?? true,
       },
     }
+}
+
+export function apply(ctx) {
+  ctx.on('agent/created', ({ agent }) => { lastAgent = agent })
+  ctx.on('agent/disposed', ({ agent }) => { if (lastAgent === agent) lastAgent = undefined })
+  const dispose = ctx.connection.fetch.register({
+    path: '/api/yolo-mode-probe',
+    methods: ['POST'],
+    requestBody: 'buffered',
+    fetch: async (request) => {
+      let endpoint
+      try {
+        const body = await request.json()
+        endpoint = typeof body === 'object' && body !== null ? body.endpoint : undefined
+      } catch { endpoint = undefined }
+      if (typeof endpoint !== 'string' || endpoint.length === 0) {
+        return Response.json({ ok: false, error: { code: 'probe/bad-request', message: 'body must be JSON { endpoint }', details: {} } })
+      }
+      try {
+        return Response.json(await endpointHandler(ctx, endpoint))
+      } catch (error) {
+        return Response.json({ ok: false, error: { code: 'probe/internal', message: String(error), details: {} } })
+      }
+    },
   })
   ctx.effect(() => () => { void dispose() }, 'yolo-mode smoke probe')
 }
@@ -200,75 +231,55 @@ function evaluateRowExpression(expression, { manifest, profilePatch, env }) {
 }
 
 /**
- * 检查默认停用契约（v2）。五行共用同一「active = Bundle 在 bundles 且 profile patch
- * 显式启用 yolo-mode 行」判定，识别块状与流式（writePluginEnabled 实际写入形态）两种行形态：
- * - sandbox-policy/approval 不用 disabled（整行 disabled 会连官方基础行一起禁用、杀掉服务），
- *   config 条件表达式在未激活时逐字回退 dsh 官方默认（DSH_PERMISSION_MODE 语义不变）；
- * - permission/ui-permission：disabled = active（active 时禁用原生权限服务与选择器）；
- * - yolo-mode 插件行：disabled = !active。
+ * 检查默认停用契约（v3）。patch 层只有一个 insert 行（yolo-mode 插件行），
+ * 完全不覆写官方行（D16：任何官方行覆写都会让套件启停的重组合级联重启
+ * sandbox-policy → fs-sandbox → fs → session-controller，触发 file-upload 竞态）。
+ * 生效面全部由插件代码承担；插件行自带「Bundle 在 bundles 且 profile patch
+ * 显式启用本行」判定，识别块状与流式（writePluginEnabled 实际写入形态）两种行形态。
  */
 function checkDefaultOffContract() {
   const overlay = readFileSync(BUNDLE_PATCH, 'utf8')
   const byRow = extractRowExpressions(overlay)
-  const exprs = {
-    mode: byRow.get('sandbox-policy:mode'),
-    policy: byRow.get('approval:policy'),
-    mirror: byRow.get('permission:disabled'),
-    mirrorUi: byRow.get('ui-permission:disabled'),
-    actor: byRow.get('yolo-mode:disabled'),
-  }
-  check(Object.values(exprs).every(value => value !== undefined), '五行（config 条件 ×2 + 镜像 ×2 + 插件行）都带判定表达式')
-  const core = exprs.mode?.slice(0, exprs.mode.indexOf('return'))
-  check(
-    [exprs.policy, exprs.mirror, exprs.mirrorUi, exprs.actor].every(value => value?.startsWith(core ?? '//')),
-    '五行判定表达式共用同一 active 计算（仅结尾取值不同）',
-  )
-  check(exprs.mode?.endsWith('return active ? "danger-full-access" : (process.env.DSH_PERMISSION_MODE ?? "workspace-write") })()') === true,
-    'sandbox-policy：active 时 full-access，未激活回退官方默认表达式')
-  check(exprs.policy?.endsWith('return active ? "ask" : ((process.env.DSH_PERMISSION_MODE ?? "workspace-write") === "danger-full-access" ? "never" : "ask") })()') === true,
-    'approval：active 时 ask，未激活回退官方默认表达式')
-  check(exprs.mirror !== undefined && exprs.mirror.endsWith('return active })()'), 'permission/ui-permission：active 时禁用原生权限行')
-  check(exprs.actor !== undefined && exprs.actor.endsWith('return !active })()'), 'yolo-mode 插件行：active 时生效')
-  const sandboxBlock = overlay.split('- id: sandbox-policy')[1]?.split('\n- ')[0] ?? ''
-  const approvalBlock = overlay.split('- id: approval')[1]?.split('\n- ')[0] ?? ''
-  check(!/^[ \t]*disabled:/mu.test(sandboxBlock) && !/^[ \t]*disabled:/mu.test(approvalBlock),
-    'sandbox-policy/approval 行没有 disabled（整行禁用会杀掉官方服务）')
-  if (Object.values(exprs).some(value => value === undefined)) return
+  const actor = byRow.get('yolo-mode:disabled')
+  check(actor !== undefined, 'yolo-mode 插件行带判定表达式')
+  const officialRows = [...byRow.keys()].filter(key => key !== 'yolo-mode:disabled')
+  check(officialRows.length === 0, 'patch 层没有官方行覆写（sandbox-policy/approval/permission/ui-permission 一律不出现）',
+    officialRows.join('、') || '无')
+  check(!overlay.includes('- id: sandbox-policy') && !overlay.includes('- id: approval')
+    && !overlay.includes('- id: permission') && !overlay.includes('- id: ui-permission'),
+    'patch 层没有四个官方行的任何覆写痕迹')
+  if (actor === undefined) return
 
   const manifest = { dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', YOLO_BUNDLE] } } }
   const bundleOff = { dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } } }
   const scenarios = [
-    // [说明, fixture, mode 期望, policy 期望, mirror 期望, actor 期望]
-    ['无 profile patch 时默认停用并回退官方默认', { manifest }, 'workspace-write', 'ask', false, true],
-    ['空 profile patch 时默认停用', { manifest, profilePatch: '[]\n' }, 'workspace-write', 'ask', false, true],
-    ['流式启用行（writePluginEnabled 实际形态）生效', { manifest, profilePatch: '[ { id: yolo-mode, disabled: false } ]\n' }, 'danger-full-access', 'ask', true, false],
-    ['CRLF 流式启用行生效', { manifest, profilePatch: '[ { id: yolo-mode, disabled: false } ]\r\n' }, 'danger-full-access', 'ask', true, false],
-    ['块状启用行生效', { manifest, profilePatch: '- id: yolo-mode\n  disabled: false\n' }, 'danger-full-access', 'ask', true, false],
-    ['CRLF 块状启用行生效', { manifest, profilePatch: '- id: yolo-mode\r\n  disabled: false\r\n' }, 'danger-full-access', 'ask', true, false],
-    ['流式停用行保持停用', { manifest, profilePatch: '[ { id: yolo-mode, disabled: true } ]\n' }, 'workspace-write', 'ask', false, true],
-    ['带包名的块状启用行生效', { manifest, profilePatch: `- id: yolo-mode\n  name: '${YOLO_BUNDLE}'\n  disabled: false\n` }, 'danger-full-access', 'ask', true, false],
-    ['name 不匹配的行不启用', { manifest, profilePatch: '[ { id: yolo-mode, name: other-pkg, disabled: false } ]\n' }, 'workspace-write', 'ask', false, true],
-    ['insert 块内嵌套行不算覆写', { manifest, profilePatch: '- insert:\n    - id: yolo-mode\n      disabled: false\n' }, 'workspace-write', 'ask', false, true],
-    ['块状关-流式开，最后生效', { manifest, profilePatch: '- id: yolo-mode\n  disabled: true\n- { id: yolo-mode, disabled: false }\n' }, 'danger-full-access', 'ask', true, false],
-    ['Bundle 离开 bundles 时回退官方默认', { manifest: bundleOff, profilePatch: '[ { id: yolo-mode, disabled: false } ]\n' }, 'workspace-write', 'ask', false, true],
-    ['未激活时 DSH_PERMISSION_MODE=danger-full-access 保持官方语义', { manifest, profilePatch: '[]\n', env: 'danger-full-access' }, 'danger-full-access', 'never', false, true],
+    // [说明, fixture, 期望 disabled]
+    ['无 profile patch 时默认停用', { manifest }, true],
+    ['空 profile patch 时默认停用', { manifest, profilePatch: '[]\n' }, true],
+    ['流式启用行（writePluginEnabled 实际形态）生效', { manifest, profilePatch: '[ { id: yolo-mode, disabled: false } ]\n' }, false],
+    ['CRLF 流式启用行生效', { manifest, profilePatch: '[ { id: yolo-mode, disabled: false } ]\r\n' }, false],
+    ['块状启用行生效', { manifest, profilePatch: '- id: yolo-mode\n  disabled: false\n' }, false],
+    ['CRLF 块状启用行生效', { manifest, profilePatch: '- id: yolo-mode\r\n  disabled: false\r\n' }, false],
+    ['流式停用行保持停用', { manifest, profilePatch: '[ { id: yolo-mode, disabled: true } ]\n' }, true],
+    ['带包名的块状启用行生效', { manifest, profilePatch: `- id: yolo-mode\n  name: '${YOLO_BUNDLE}'\n  disabled: false\n` }, false],
+    ['name 不匹配的行不启用', { manifest, profilePatch: '[ { id: yolo-mode, name: other-pkg, disabled: false } ]\n' }, true],
+    ['insert 块内嵌套行不算覆写', { manifest, profilePatch: '- insert:\n    - id: yolo-mode\n      disabled: false\n' }, true],
+    ['块状关-流式开，最后生效', { manifest, profilePatch: '- id: yolo-mode\n  disabled: true\n- { id: yolo-mode, disabled: false }\n' }, false],
+    ['Bundle 离开 bundles 时回退停用', { manifest: bundleOff, profilePatch: '[ { id: yolo-mode, disabled: false } ]\n' }, true],
   ]
-  for (const [what, fixture, mode, policy, mirror, actor] of scenarios) {
-    check(evaluateRowExpression(exprs.mode, fixture) === mode, `sandbox-policy 表达式：${what}`)
-    check(evaluateRowExpression(exprs.policy, fixture) === policy, `approval 表达式：${what}`)
-    check(evaluateRowExpression(exprs.mirror, fixture) === mirror, `permission 表达式：${what}`)
-    check(evaluateRowExpression(exprs.mirrorUi, fixture) === mirror, `ui-permission 表达式：${what}`)
-    check(evaluateRowExpression(exprs.actor, fixture) === actor, `yolo-mode 插件行表达式：${what}`)
+  for (const [what, fixture, expected] of scenarios) {
+    check(evaluateRowExpression(actor, fixture) === expected, `yolo-mode 插件行表达式：${what}`)
   }
 
   const suitePatch = readFileSync(join(ROOT, 'plugins', 'suite', 'cordis.patch.yml'), 'utf8')
   const suiteRows = extractRowExpressions(suitePatch)
-  const suiteYolo = [...suiteRows.entries()].filter(([, value]) => value.includes('yolo-mode') && value.includes('cordis.patch.yml'))
-  check(suiteYolo.length === 5, '套件 patch 的 yolo 五行都带判定表达式', `实际 ${String(suiteYolo.length)} 行`)
+  const suiteYolo = [...suiteRows.entries()].filter(([key]) => key.startsWith('yolo-mode:'))
+  check(suiteYolo.length === 1, '套件 patch 的 yolo 段只有插件行一个判定表达式', `实际 ${String(suiteYolo.length)} 行`)
   check(suiteYolo.every(([, value]) => value.includes('includes("@dsh-kit/dsh-plugin-suite")')),
     '套件 patch 的 yolo 表达式已把 bundles 常量改写为套件包名')
-  check(!/^- id: sandbox-policy\n[ \t]+disabled:/mu.test(suitePatch) && !/^- id: approval\n[ \t]+disabled:/mu.test(suitePatch),
-    '套件 patch 的 sandbox-policy/approval 行没有 disabled')
+  check(!suitePatch.includes('- id: sandbox-policy') && !suitePatch.includes('- id: approval')
+    && !suitePatch.includes('\n- id: permission') && !suitePatch.includes('- id: ui-permission'),
+    '套件 patch 没有 yolo 的官方行覆写')
 }
 
 async function checkHostArtifact() {
@@ -278,12 +289,8 @@ async function checkHostArtifact() {
   const manifest = JSON.parse(readFileSync(join(PACKAGE_DIRECTORY, 'package.json'), 'utf8'))
   check(manifest.dsh?.bundle?.patch === './cordis.patch.yml', 'package.json 声明 dsh.bundle.patch 指向 cordis.patch.yml')
   const overlay = readFileSync(BUNDLE_PATCH, 'utf8')
-  check(overlay.includes('"danger-full-access"') && overlay.includes('process.env.DSH_PERMISSION_MODE ?? "workspace-write"'),
-    'Bundle patch 的 sandbox 模式条件覆盖 YOLO 值并回退官方默认')
-  check(overlay.includes('"ask"') && overlay.includes("? \"never\" : \"ask\""),
-    'Bundle patch 的 approval 策略条件覆盖 YOLO 值并回退官方默认')
-  check(overlay.includes('- id: permission'), 'Bundle patch 覆写 permission Host service 行')
-  check(overlay.includes('- id: ui-permission'), 'Bundle patch 覆写 permission client UI 行')
+  check(overlay.includes('- insert:') && overlay.includes('- id: yolo-mode'),
+    'Bundle patch 只包含 yolo-mode 插件 insert 行（v3：无官方行覆写）')
   check(overlay.indexOf("name: './dist/index.js'") !== -1, 'Bundle patch 使用相对 Host bundle 路径')
   if (!existsSync(HOST_BUNDLE)) return
 
@@ -347,7 +354,7 @@ async function checkLiveDsh() {
         check(cookie !== '', 'dsh token 换到了浏览器 cookie', `status ${exchange.status}`)
       },
       bundleAssertions: ({ index }) => {
-        check(!index.includes('@deepseek-ai/dsh-client-ui-permission-presets'), '首页不再下发原生权限选择器 client bundle')
+        check(index.includes('@deepseek-ai/dsh-client-ui-permission-presets'), '首页保持下发原生权限选择器 client bundle（v3 不再隐藏）')
       },
       liveAssertions: async ({ cookie }) => {
         const call = context.rpcRequest
@@ -356,7 +363,7 @@ async function checkLiveDsh() {
         check(created.status === 200 && typeof sessionId === 'string', '真实 dsh 创建了测试 Agent session', JSON.stringify(created.body).slice(0, 240))
         if (typeof sessionId !== 'string') return
 
-        const inspected = await call({ path: '/yolo-mode-probe/inspect', method: 'inspect', payload: {}, cookie })
+        const inspected = await probeCall(context, 'inspect', cookie)
         const value = inspected.body?.result?.value
         check(inspected.status === 200 && inspected.body?.result?.ok === true, 'probe RPC 通过 dsh 认证与 Host/Origin fence')
         const targetSchemas = Array.isArray(value?.schemas) ? value.schemas : []
@@ -369,10 +376,11 @@ async function checkLiveDsh() {
           '四个目标工具 schema 均隐藏两个提权字段',
         )
         check(value?.approval === 'allowed-once', '显式 approval/request 自动得到 allowed-once')
-        check(
-          value?.policy?.at(-2)?.data?.mode === 'danger-full-access'
-          && value?.policy?.at(-1)?.data?.policy === 'ask',
-          'Agent 历史中的最后策略是 full-access + ask',
+        // 官方部署默认可能先落一条 workspace-write 事件；断言看最后一条 sandbox/mode 与最后一条 approval/policy。
+        const lastMode = [...(value?.policy ?? [])].reverse().find(event => event.type === 'sandbox/mode')
+        const lastApproval = [...(value?.policy ?? [])].reverse().find(event => event.type === 'approval/policy')
+        check(lastMode?.data?.mode === 'danger-full-access' && lastApproval?.data?.policy === 'ask',
+          'Agent 历史中最后的策略是 full-access + ask',
           JSON.stringify(value?.policy),
         )
         check(value?.toolError === false, '带冗余提权字段的真实 shell 工具调用成功')
@@ -407,7 +415,7 @@ async function checkLiveDefaultOff() {
       liveAssertions: async ({ cookie }) => {
         // health 探针行注入 sandboxPolicy/approval：RPC 有应答即两个服务都装载成功，
         // 不存在 v1 那种覆写行整行禁用导致的 pending 级联。
-        const inspected = await context.rpcRequest({ path: '/yolo-mode-probe/health', method: 'health', payload: {}, cookie })
+        const inspected = await probeCall(context, 'health', cookie)
         const value = inspected.body?.result?.value
         check(inspected.status === 200 && inspected.body?.result?.ok === true, '默认停用时 sandboxPolicy/approval 服务健康装载')
         check(value?.mode !== 'danger-full-access', '默认停用时部署 sandbox 模式不是 danger-full-access', JSON.stringify(value))
@@ -440,11 +448,9 @@ async function checkLiveSuiteForm() {
       })
       await runLiveDshCheck(context, {
         bundleAssertions: ({ index }) => {
-          check(
-            enableYolo ? !index.includes('@deepseek-ai/dsh-client-ui-permission-presets')
-              : index.includes('@deepseek-ai/dsh-client-ui-permission-presets'),
-            `套件形态${label}：首页${enableYolo ? '隐藏' : '恢复'}原生权限选择器 client bundle`,
-          )
+          // v3 不禁用原生权限选择器（生效面收敛到插件代码）；选择器始终下发。
+          check(index.includes('@deepseek-ai/dsh-client-ui-permission-presets'),
+            `套件形态${label}：原生权限选择器 client bundle 保持下发（v3 不再隐藏）`)
         },
         liveAssertions: async ({ cookie }) => {
           const endpoint = enableYolo ? 'inspect' : 'health'
@@ -453,14 +459,15 @@ async function checkLiveSuiteForm() {
             check(created.status === 200 && typeof created.body?.result?.value?.sessionId === 'string',
               '套件形态启用：真实 dsh 创建了测试 Agent session', JSON.stringify(created.body).slice(0, 200))
           }
-          const inspected = await context.rpcRequest({ path: `/yolo-mode-probe/${endpoint}`, method: endpoint, payload: {}, cookie })
+          const inspected = await probeCall(context, endpoint, cookie)
           const result = inspected.body?.result
           check(inspected.status === 200 && result?.ok === true, `套件形态${label}：probe RPC 正常（服务装载成功）`)
           if (result?.ok !== true) return
           if (enableYolo) {
-            check(result.value?.policy?.at(-2)?.data?.mode === 'danger-full-access'
-              && result.value?.policy?.at(-1)?.data?.policy === 'ask',
-              '套件形态启用：Agent 策略为 full-access + ask', JSON.stringify(result.value?.policy))
+            const suiteLastMode = [...(result.value?.policy ?? [])].reverse().find(event => event.type === 'sandbox/mode')
+            const suiteLastApproval = [...(result.value?.policy ?? [])].reverse().find(event => event.type === 'approval/policy')
+            check(suiteLastMode?.data?.mode === 'danger-full-access' && suiteLastApproval?.data?.policy === 'ask',
+              '套件形态启用：Agent 策略为 full-access + ask（最后的策略事件）', JSON.stringify(result.value?.policy))
             check(result.value?.approval === 'allowed-once', '套件形态启用：approval 自动 allowed-once')
           } else {
             check(result.value?.mode !== 'danger-full-access', '套件形态默认停用：部署模式不是 danger-full-access', JSON.stringify(result.value))

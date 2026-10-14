@@ -9,7 +9,6 @@ import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：引入本插件读取的 Context service merge。插件之间禁止 value import（页面冻结 module table 无法解析），service 是协作接缝。
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // 仅类型：引入声明本插件 slot 和 session standard kit（`sessionId`）的 SlotMap merge。
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -20,6 +19,7 @@ import { TerminalPanel } from './TerminalDock.js'
 import type { TerminalDockInjected } from './TerminalDock.js'
 import { en, zh } from './locales.js'
 import type { TerminalKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { LIST_POLL_MS, SCREEN_POLL_MS, TerminalPanel } from './TerminalDock.js'
 export type { TerminalDockInjected, TerminalPanelProps } from './TerminalDock.js'
@@ -74,17 +74,14 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'terminal: copy dictionaries')
 
   /**
- * 调用本插件 private channel 的一个 endpoint；endpoint 是 path segment，`rpc.call(CHANNEL, endpoint, …)` 会 POST `/terminal/<endpoint>`。
+ * 调用本插件 kit 通道的一个 endpoint；经官方 /api 共享桥 POST `/api/terminal`（kit 信封，D16）。
  * @param endpoint - channel-relative endpoint。
  * @param payload - endpoint payload。
  * @returns 解码后的值。
  * @throws 没有 connection 或 Host 失败时抛出 TerminalChannelError。
  */
   const call = async (endpoint: string, payload: object): Promise<unknown> => {
-    // 每次调用时读取并在读取处定型：connection package 提供该 service 但不在 Context 上声明，上面的 `inject` 保证它存在。
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new TerminalChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, endpoint, payload)
+    const result = await callKitChannel(CHANNEL, endpoint, payload)
     if (!result.ok) throw new TerminalChannelError(result.error.message)
     return result.value
   }

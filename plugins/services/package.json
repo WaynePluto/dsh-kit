@@ -32,7 +32,8 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
-    "@deepseek-ai/schemastery": "3.18.4"
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@dsh-kit/plugin-rpc": "workspace:0.1.0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",

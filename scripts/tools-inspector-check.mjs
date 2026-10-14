@@ -142,7 +142,7 @@ async function main() {
   prepareHome()
 
   const artifact = await inspectHostBundle()
-  check(artifact.channels.includes('/tools-inspector'), '宿主产物挂上了 /tools-inspector 通道',
+  check(artifact.channels.includes('/api/tools-inspector'), '宿主产物挂上了 /api/tools-inspector 精确路由',
     artifact.channels.join('、'))
   check(artifact.events.length === 0,
     '宿主产物不再监听任何事件（计数改为回放会话日志，重启后依然准确）',
@@ -240,10 +240,11 @@ async function main() {
         JSON.stringify(unknown.body),
       )
 
-      const unauthenticated = await fetch(`${context.base}/tools-inspector/snapshot`, {
+      // kit 通道在官方 /api 共享桥下：认证与围栏由桥统一应用（D16）。
+      const unauthenticated = await fetch(`${context.base}/api/tools-inspector/snapshot`, {
         method: 'POST',
         headers: { host: context.authority, 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'client-request', rpcId: 'smoke', method: 'snapshot', payload: { sessionId: 'x' } }),
+        body: JSON.stringify({ endpoint: 'snapshot', payload: { sessionId: 'x' } }),
       })
       check(unauthenticated.status === 401, '没有 cookie 的调用被 dsh 挡在门外', `status ${unauthenticated.status}`)
     },

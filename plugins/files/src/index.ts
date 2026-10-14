@@ -1,3 +1,4 @@
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 /** 只读会话工作区 files 插件的宿主半。 */
 import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：激活本插件使用的 session/connection Context merge。
@@ -106,9 +107,10 @@ export async function dispatch(
     return failure(IO_CODE, error instanceof Error ? error.message : String(error))
   }
 }
-/** 在 `/files/snapshot` 上挂载 Git 快照端点。 */
+/** 在官方 `/api/files` 精确路由上挂载只读工作区通道（D16）。 */
 export function apply(ctx: Context): void {
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint: string, payload: unknown) => await dispatch(ctx, endpoint, payload),
   )

@@ -124,8 +124,11 @@ async function main() {
   check(bundle.source.includes('data-dsh-plugin-favorite-models-list') && bundle.source.includes('data-dsh-plugin-favorite-models-actions'), 'Client bundle 带有独立模型列表和固定操作区')
   check(bundle.source.includes('360px') && bundle.source.includes('overflowY'), 'Client bundle 为模型列表保留最大高度滚动区')
   check(bundle.source.includes('data-dsh-plugin-favorite-models-selector'), 'Client bundle 带有带前缀的原生对齐选择器 stylesheet')
-  check(bundle.source.includes('--dsw-specific-menu') && bundle.source.includes('--dsw-elevation-prominent'), 'Client bundle 复用原生菜单主题 token')
-  check(!bundle.source.includes('--dsw-specific-tip') && !bundle.source.includes('rgba(128,128,128,0.12)'), 'Client bundle 不再包含旧的自定义菜单/选中背景')
+  // 0.2.0 菜单面契约：表面材质（半透明磨砂）由官方 MenuSurface 组件提供，插件的
+  // 几何类只保留抬升阴影 token；自绘 --dsw-specific-menu 背景会退回无模糊纯透明
+  // （2026-10-10 实机缺陷，不得回归）。
+  check(bundle.source.includes('MenuSurface') && bundle.source.includes('--dsw-elevation-prominent'), 'Client bundle 用官方 MenuSurface 提供菜单面材质并保留抬升阴影 token')
+  check(!bundle.source.includes('background: var(--dsw-specific-menu)') && !bundle.source.includes('--dsw-specific-tip') && !bundle.source.includes('rgba(128,128,128,0.12)'), 'Client bundle 不再自绘菜单面背景（磨砂材质必须来自 MenuSurface）')
 
   prepareHome()
   await runLiveDshCheck(context, {

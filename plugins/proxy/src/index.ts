@@ -11,6 +11,7 @@ import { assertServiceable, Config, readConfig } from './settings.js'
 import type { Config as ProxyConfig } from './settings.js'
 import { CHANNEL, isProxyEndpoint, isTestRequest } from './shared.js'
 import type { ProxySettings, ProxyTestResult } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { CHANNEL, DEFAULT_BYPASS, DEFAULT_TEST_URL, ENTRY_ID, NAMESPACE, proxyFault } from './shared.js'
 export { DEFAULT_SETTINGS } from './shared.js'
@@ -98,7 +99,8 @@ export function apply(ctx: Context, config: ProxyConfig): void {
     assertServiceable(readConfig(candidate))
     return raw
   })
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint, payload) => await dispatch(dispatcher, endpoint, payload),
   )

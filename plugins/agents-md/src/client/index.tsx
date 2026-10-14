@@ -7,13 +7,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import { CHANNEL, LOAD_ENDPOINT, NAMESPACE, SAVE_ENDPOINT } from '../shared.js'
 import type { AgentsMdDocument, AgentsMdSaveResult } from '../shared.js'
 import { AgentsMdSection } from './AgentsMdSection.js'
 import { installNavGlyph } from './nav-glyph.js'
 import { en, zh } from './locales.js'
 import type { AgentsMdKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -39,11 +39,9 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'agents-md: copy dictionaries')
   const t = ctx.locale.bind(NS)
 
-  /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。（涉及：`/agents-md/<endpoint>`） */
+  /** 传输契约：经官方 /api 共享桥 POST `/api/agents-md`（kit 信封，D16）。 */
   const call = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new AgentsMdChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, endpoint, payload)
+    const result = await callKitChannel(CHANNEL, endpoint, payload)
     if (!result.ok) throw new AgentsMdChannelError(result.error.message)
     return result.value as T
   }

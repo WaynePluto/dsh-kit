@@ -12,7 +12,7 @@
 export const SELF_NAMESPACE = 'dsh-plugin-services'
 
 /**
- * Host 注册、页面调用的绝对 RPC channel。endpoint 属于 URL path，浏览器必须 POST 到 `/services/<endpoint>`，envelope 的 `method` 也必须等于该 path segment；单独调用 `/services` 是 flat 404。
+ * Host 注册、页面调用的 kit 通道。浏览器经官方 `/api` 共享桥 POST `/api/services`（kit 信封 `{ endpoint, payload }`，D16，见 packages/plugin-rpc）。
  */
 export const CHANNEL = '/services'
 

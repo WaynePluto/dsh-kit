@@ -3,11 +3,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：引入声明本插件读取服务的 Context 合并；
 // 包括 `ctx.slots`、`ctx.locale` 以及浏览器半的
-// 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`ctx.connection`）
 // 无法从页面冻结模块表解析）；services 才是接缝。
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // 仅类型：引入声明本插件所占槽位的 SlotMap 合并。
 import type {} from '@deepseek-ai/dsh-client-ui-settings-models/client'
 import type {} from './slot-contract.js'
@@ -16,6 +14,7 @@ import { CHANNEL, PI_AI_NAMESPACE } from '../shared.js'
 import { CopilotProviderCard } from './CopilotCard.js'
 import { en, zh } from './locales.js'
 import type { CopilotKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -39,13 +38,10 @@ export function apply(ctx: Context): void {
 
   /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
   const call = async (endpoint: string): Promise<CopilotStatusView> => {
-    // 每次调用时读取并在读取处定型：connection 包的浏览器半
     // 提供该服务但不在 Context 上声明（dsh 自己的
     // API Gateway client 也这样做），上面的 `inject`
     // 保证该服务存在。
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new CopilotChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, endpoint, {})
+    const result = await callKitChannel(CHANNEL, endpoint, {})
     if (!result.ok) throw new CopilotChannelError(result.error.message)
     return result.value as CopilotStatusView
   }

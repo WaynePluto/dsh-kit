@@ -21,6 +21,7 @@ import { commitPlans, readProvenance, readRouteFacts, routeProvenance } from './
 import type { Provenance, RouteProvenance } from './section.js'
 import { CHANNEL, DEFAULT_SOURCE_URL, isCatalogEndpoint, isRouteSelection } from './shared.js'
 import type { CatalogStatusView, ReclaimedNotice } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { CHANNEL, DEFAULT_SOURCE_URL, ENTRY_ID, PI_AI_NAMESPACE, SELF_NAMESPACE } from './shared.js'
 export type { CatalogStatusView, RoutePreview } from './shared.js'
@@ -28,8 +29,6 @@ export type { CatalogStatusView, RoutePreview } from './shared.js'
 /** Cordis 插件名；它会出现在 dsh 插件树和诊断信息中。 */
 export const name = 'dsh-kit-models-catalog'
 
-/** overlay 等待 llm-pi-ai 启动前使用的 bootstrap service 名。 */
-export const BOOTSTRAP_SERVICE = 'modelsCatalogBootstrap'
 
 /** 提供给 sibling plugin 的 runtime catalog service 名。 */
 export const RUNTIME_SERVICE = 'modelsCatalogRuntime'
@@ -246,9 +245,9 @@ export function apply(ctx: Context, config: Config): void {
   // runtime service 先提供给 sibling plugin，再注册 RPC；provenance 由本插件行 config 携带。
   const runtime = createModelCatalogRuntime()
   ctx.provide(RUNTIME_SERVICE, runtime)
-  if (ctx.root.get(BOOTSTRAP_SERVICE) === undefined) ctx.root.provide(BOOTSTRAP_SERVICE, true)
   const service = new CatalogService(ctx, config)
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint, payload, signal) => await dispatch(service, endpoint, payload, signal),
   )

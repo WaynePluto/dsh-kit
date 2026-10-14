@@ -1,3 +1,4 @@
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 /**
  * skills-inspector 宿主半：按会话 scope 读取技能目录，回放历史加载事件，经
  * `/skills-inspector` RPC 向页面提供 `snapshot`/`locate`。
@@ -260,7 +261,8 @@ export async function dispatch(
  * @param ctx - 宿主插件上下文。
  */
 export function apply(ctx: Context): void {
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     (endpoint: string, requestPayload: unknown) => dispatch(ctx, endpoint, requestPayload),
   )

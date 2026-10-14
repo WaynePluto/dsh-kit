@@ -4,7 +4,6 @@ import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：引入声明本插件读取的 Context service merge。
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // 仅类型：引入声明本插件使用的 slot 与 sessionId merge。
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -15,6 +14,7 @@ import { ServicesPanel } from './ServicesDock.js'
 import type { ServicesDockInjected } from './ServicesDock.js'
 import { en, zh } from './locales.js'
 import type { ServicesKey } from './locales.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { POLL_MS, ServicesPanel } from './ServicesDock.js'
 export type { ServicesDockInjected, ServicesPanelProps } from './ServicesDock.js'
@@ -62,10 +62,7 @@ export function apply(ctx: Context): void {
 
   /** 调用 `/services/<endpoint>` RPC，并将失败转换为 ServicesChannelError。 */
   const call = async (endpoint: string, payload: object): Promise<unknown> => {
-    // 每次调用时读取并在读取处定型：connection 包提供该 service，但不在 Context 上声明；上面的 `inject` 保证它存在。
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new ServicesChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, endpoint, payload)
+    const result = await callKitChannel(CHANNEL, endpoint, payload)
     if (!result.ok) throw new ServicesChannelError(result.error.message)
     return result.value
   }

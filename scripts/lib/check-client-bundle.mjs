@@ -32,7 +32,7 @@ export function createHostInspectionContext({
   const context = {
     ...fields,
     ...stubs,
-    connection: { rpc: { handle: (channel) => { channels.push(channel); return inspectionNoop } } },
+    connection: { fetch: { register: (route) => { channels.push(route.path); return inspectionNoop } } },
     agents: { get: () => undefined },
     effect: (run) => {
       const dispose = run()

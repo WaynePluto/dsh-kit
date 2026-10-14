@@ -59,10 +59,10 @@ const hostShim = createHostInspectionContext({
   fields: { marker: true },
 })
 const hostDisposer = () => {}
-hostShim.connection.rpc.handle('/helper')
+hostShim.connection.fetch.register({ path: '/api/helper', methods: ['POST'], requestBody: 'buffered', fetch: () => {} })
 hostShim.on('helper/event')
 hostShim.effect(() => hostDisposer)
-assert.deepEqual(hostChannels, ['/helper'])
+assert.deepEqual(hostChannels, ['/api/helper'])
 assert.deepEqual(hostEvents, ['helper/event'])
 assert.deepEqual(hostDisposers, [hostDisposer])
 assert.deepEqual(hostCleanups, [hostDisposer])

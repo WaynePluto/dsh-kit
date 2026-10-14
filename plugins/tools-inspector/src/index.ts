@@ -1,3 +1,4 @@
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 /**
  * tools-inspector 宿主半：按当前 session Agent 的 scope 读取可见工具，回放持久化
  * `tool/call`/`tool/result` 历史，经 `/tools-inspector` RPC 返回快照。
@@ -116,7 +117,8 @@ export function dispatch(
  * @param ctx - 宿主插件上下文。
  */
 export function apply(ctx: Context): void {
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     (endpoint: string, requestPayload: unknown) =>
       Promise.resolve(dispatch(ctx, endpoint, requestPayload)),

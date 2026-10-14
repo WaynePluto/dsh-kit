@@ -12,9 +12,8 @@ export const SELF_NAMESPACE = 'dsh-plugin-skills-inspector'
 /**
  * 私有 RPC 通道名。
  *
- * ⚠️ 端点是**路径段**：浏览器 `rpc.call(CHANNEL, 'snapshot', …)` 实际 POST 到
- * `/skills-inspector/snapshot`，宿主的 handler 收到的是 `'snapshot'` 这个段。
- * 只打 `/skills-inspector` 一律 404（docs/dsh/transport.md）。
+ * 浏览器经官方 `/api` 共享桥 POST `/api/skills-inspector`（kit 信封 `{ endpoint, payload }`），
+ * 宿主 handler 收到 endpoint 字符串（D16，见 packages/plugin-rpc）。
  */
 export const CHANNEL = '/skills-inspector'
 

@@ -160,6 +160,10 @@ dsh 0.2.0 起菜单/下拉表面是半透明磨砂设计：`--dsw-specific-menu`
 `--dsw-alias-menu-group-header-fill` 94% 不透明，viewport 须无 padding 直接子级为 MenuGroup）。
 验证方式：与同页官方菜单（如账号菜单）对比材质层 computed 值应逐项一致。实例：
 `plugins/favorite-models/src/client/FavoriteModelSelect.tsx`。
+**静态断言必须随迁移同步**：`--dsw-specific-menu` token 本身仍有效（官方 TodoPanel/QueueDock 等
+在用），但迁移到 MenuSurface 的插件 bundle 里不该再出现自绘 `background: var(--dsw-specific-menu)`；
+断言应检查「用了 MenuSurface + 保留 `--dsw-elevation-prominent` 抬升阴影 + 无自绘菜单面背景」，
+而不是要求已删除的背景 token（2026-10-14 favorite-models-check 陈旧断言实机修正）。
 
 ### 独立 React 根的 body 宿主必须零尺寸
 

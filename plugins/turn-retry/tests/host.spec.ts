@@ -59,7 +59,7 @@ interface Built {
   ctx: Context
   listeners: Map<string, (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>>
   registered: RegisteredProjection[]
-  handled: Map<string, (endpoint: string, payload: unknown) => Promise<unknown>>
+  handled: Map<string, (request: Request) => Promise<Response>>
 }
 
 /** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
@@ -68,7 +68,7 @@ function fakeCtx(options: CtxOptions = {}): Built {
   const roots = options.roots ?? [agent]
   const listeners = new Map<string, (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>>()
   const registered: RegisteredProjection[] = []
-  const handled = new Map<string, (endpoint: string, payload: unknown) => Promise<unknown>>()
+  const handled = new Map<string, (request: Request) => Promise<Response>>()
 
   const services: Record<string, unknown> = {
     sessionController: options.sessionController === undefined
@@ -89,9 +89,9 @@ function fakeCtx(options: CtxOptions = {}): Built {
       stateOf: () => options.projection ?? null,
     },
     connection: {
-      rpc: {
-        handle: (channel: string, handler: (endpoint: string, payload: unknown) => Promise<unknown>) => {
-          handled.set(channel, handler)
+      fetch: {
+        register: (route: { path: string, fetch: (request: Request) => Promise<Response> }) => {
+          handled.set(route.path, route.fetch)
           return () => {}
         },
       },
@@ -123,7 +123,7 @@ describe('apply', () => {
   it('serves its channel', () => {
     const built = fakeCtx()
     apply(built.ctx)
-    expect([...built.handled.keys()]).toEqual(['/turn-retry'])
+    expect([...built.handled.keys()]).toEqual(['/api/turn-retry'])
   })
 
   it.each([[PENDING], [STOPPED], [null]])('publishes %j through its own schema', (state) => {

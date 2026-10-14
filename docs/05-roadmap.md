@@ -6,6 +6,22 @@
 
 ## 已实现
 
+- [x] 修复套件在线停用/启用的 session-controller 竞态（2026-10-14）：用户实机报错
+  「停用失败：2 entries did not activate … Agent resolver is already registered」+
+  重新启用后「历史加载失败：sessionController is unavailable」。隔离冒烟三度复现并定位：
+  套件层对官方行的任何覆写（llm-pi-ai 屏障、connection webServer 注入、yolo 四行）都会让
+  套件启停的重组合重启该行 fiber，沿注入链（sandbox-policy → fs-sandbox → fs →
+  session-controller；llm-pi-ai → llm → session-controller）级联，其内嵌 file-upload 在旧
+  注册未释放时二次注册，会话服务当场失败且重启前不恢复。修复（D16）：套件层与 yolo-mode
+  patch 层全部官方行覆写移除——宿主半私有 RPC 统一迁移到官方 `connection.fetch.register`
+  的 `/api` 精确路由（新共享包 `@dsh-kit/plugin-rpc`，11 个组件宿主半 + 浏览器半 + 8 个
+  check 脚本），模型晚注册生效无需启动屏障（删除 fallback 占位行与 BOOTSTRAP 服务），
+  yolo v3 生效面全部由插件代码承担（会话级策略修复 + answerer + 工具 shadow）。
+  新增 `scripts/suite-toggle-check.mjs`（在线停用/启用全程官方行 ACTIVE、零报错签名），
+  `suite-first-enable-check` / `yolo-mode-check` / 8 个组件 check 全绿。顺带修复
+  favorite-models-check 的陈旧菜单面断言（要求已删除的自绘 `--dsw-specific-menu` 背景；
+  0.2.0 起材质由官方 MenuSurface 提供，断言改为 MenuSurface + 抬升阴影 token，见已实现
+  2026-10-14 修复条目）。
 - [x] files Git 变更面板（2026-10-14）：文件右键「查看 Git 变更」打开 `dsh-resource://files-git-review/session/<sessionId>`
   资源页签，面板按原生 changes-review（`ui-deliverables`）的结构与样式在插件内复刻（原生组件不可 import，见
   [工作区](dsh/workspace.md)），内容为工作区对 HEAD 的变更清单 + 单文件 diff；私有通道新增只读
@@ -126,15 +142,6 @@
 
 - [ ] 组件停用/启用后的浏览器半回归：每个组件的行开关在真实宿主里生效，
   且不影响其他组件的槽位与服务。
-- [ ] 套件在线停用/启用的上游竞态观察：dsh 0.2.0 仍存在 session-controller 重挂载竞态
-  （file-upload Agent resolver 二次注册失败），套件整包启停时会经过这条路径；
-  命中时记录签名并在检查脚本里按精确签名豁免，等上游修复后移除豁免。
-  2026-10-12 定位触发链：重组合中套件的 `llm-pi-ai` 覆写行加 inject → `llm` provider 重启 →
-  注入 llm 的 session-controller 随之重挂载，其内嵌 file-upload 在旧注册未释放时二次注册
-  （覆写行的 disabled 会连官方基础行一起整行禁用，kit 侧无法规避）。
-  `scripts/suite-first-enable-check.mjs` 已按精确签名豁免这一条并会在上游修复后提示移除；
-  套件侧的 19 项 failed to import 已由可解析性守卫消除（见已实现），首次启用残留的这一条
-  报错与暂时的会话不可用需要重启 dsh 恢复。
 - [ ] 仓库公开后实测「添加插件」用 Git 地址安装（`file:` 相对依赖在 git 依赖语境的解析基准）。
 - [ ] 按 [dsh-upgrade skill](../.agents/skills/dsh-upgrade/SKILL.md) 跟进官方 dsh 新版本，
   完成后回写 [源码依据](02-dsh-facts.md) 的适配基线。

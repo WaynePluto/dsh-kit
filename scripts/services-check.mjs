@@ -121,7 +121,7 @@ async function main() {
   check(missing.length === 0, '宿主产物的 apply() 注册了全部五个 service_* 工具',
     missing.length === 0 ? `实际：${registered.join('、')}` : `缺 ${missing.join('、')}`)
   check(registered.length === TOOL_NAMES.length, '没有多注册别的工具', `共 ${registered.length} 个`)
-  check(artifact.channels.includes('/services'), '宿主产物挂上了 /services 通道',
+  check(artifact.channels.includes('/api/services'), '宿主产物挂上了 /api/services 精确路由',
     artifact.channels.join('、'))
   check(artifact.disposers >= 1, '通道注册是可撤销的（挂在 ctx.effect 上）')
   // schema 由 defineTool 在注册时转换；转坏了这里就不是一个合法的 JSON Schema 对象。
@@ -204,10 +204,11 @@ async function main() {
         JSON.stringify(start.body),
       )
 
-      const unauthenticated = await fetch(`${context.base}/services/list`, {
+      // kit 通道在官方 /api 共享桥下：认证与围栏由桥统一应用（D16）。
+      const unauthenticated = await fetch(`${context.base}/api/services/list`, {
         method: 'POST',
         headers: { host: context.authority, 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'client-request', rpcId: 'smoke', method: 'list', payload: { sessionId: 'x' } }),
+        body: JSON.stringify({ endpoint: 'list', payload: { sessionId: 'x' } }),
       })
       check(unauthenticated.status === 401, '没有 cookie 的调用被 dsh 挡在门外', `status ${unauthenticated.status}`)
     },

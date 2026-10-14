@@ -9,6 +9,7 @@ import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
 import { CopilotSignIn } from './sign-in.js'
 import { CHANNEL, isCopilotEndpoint } from './shared.js'
 import type { CopilotStatusView } from './shared.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { CHANNEL, CREDENTIAL_KEY, PROVIDER_ID } from './shared.js'
 export type { CopilotAttemptView, CopilotStatusView } from './shared.js'
@@ -69,7 +70,7 @@ export function apply(ctx: Context): void {
   // service 并将注册绑定到该 fiber，因此卸载插件
   // 会一并移除路由；尝试也会同时终止，因为 device
   // poll 不能超出负责保存结果的插件生命周期。
-  const dispose = ctx.connection.rpc.handle(CHANNEL, async (endpoint) => await dispatch(signIn, endpoint))
+  const dispose = registerKitChannel(ctx, CHANNEL, async (endpoint) => await dispatch(signIn, endpoint))
   ctx.effect(() => () => {
     signIn.dispose()
     void dispose()

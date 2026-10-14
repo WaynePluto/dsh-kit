@@ -29,12 +29,26 @@ patch 应用时对目标行按键整段替换——`!!js` 表达式会被布尔�
 ——需要「未激活时保留官方行为」的覆写必须用 config 条件回退而不是行 disabled
 （已修复，见 [运行时](runtime.md) 固定 YOLO 一节）。
 
-套件 patch 由 `scripts/build-suite.mjs` 生成，不是手写文件：文件头是固定契约（`llm-pi-ai` 屏障行、
-connection 行覆写与模型屏障占位行），其余为各组件 `cordis.patch.yml` 顶层条目的改写（入口换成裸包名，
-insert 子行补「套件成员 + 组件包可解析」双条件 `disabled` 表达式，顶层覆写行只补套件成员表达式）。
-生成后脚本把组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`；`@deepseek-ai/*` 由 dsh
-运行时树提供，不复制第二份单例。套件包移动目录后仍可工作（入口是包内相对路径，
-裸包名从套件自身安装目录解析）。
+套件 patch 由 `scripts/build-suite.mjs` 生成，不是手写文件：**本层只有 insert 行，永不覆写官方行
+（D16，2026-10-14）**——任何 id 命中官方 Bundle 行的覆写（历史上的 `llm-pi-ai` 屏障行、
+connection 行 webServer 注入覆写、yolo-mode 四行）都会让套件启停的重组合重启该行 fiber 并沿
+注入链级联到 session-controller，命中 file-upload Agent resolver 二次注册竞态。其余为各组件
+`cordis.patch.yml` 顶层条目的改写（入口换成裸包名，insert 子行补「套件成员 + 组件包可解析」
+双条件 `disabled` 表达式，顶层覆写行只补套件成员表达式）。生成后脚本把组件包、组件依赖的
+workspace 共享包（`packages/` 下，如 `@dsh-kit/plugin-rpc`）与 registry 依赖闭包物化进
+`plugins/suite/node_modules/`；`@deepseek-ai/*` 由 dsh 运行时树提供，不复制第二份单例。
+套件包移动目录后仍可工作（入口是包内相对路径，裸包名从套件自身安装目录解析）。
+
+宿主半私有 RPC 的官方通道（2026-10-14，D16）：`ctx.connection.rpc.handle(channel, handler)`
+把通道挂在 connection 行 fiber 上且注册路径要求该行注入 `webServer`，第三方层为满足它覆写
+官方 connection 行是不可行解。官方另有 `ctx.connection.fetch.register({ path, methods,
+requestBody, fetch })`：在 `/api` 之下的精确 Fetch 路由，由官方 connection 插件自挂的共享
+`/api` 桥统一应用 Host/Origin 围栏与浏览器认证（`packages/client/connection/src/rpc-host.ts`
+的 `registerFetchRoute`；`/api` 桥由官方 connection 插件 `ctx.inject(['webServer'],…)` 动态
+注入挂载），不要求 connection 行注入任何服务。kit 组件统一经共享包
+`@dsh-kit/plugin-rpc` 使用：宿主半 `registerKitChannel(ctx, channel, handler)`（路由
+`/api<channel>`，kit 信封 `{ endpoint, payload }` → `{ ok, value | error }`），浏览器半
+`callKitChannel(channel, endpoint, payload?, signal?)`。
 
 可解析性守卫的依据（2026-10-12 核对 `packages/boot/app-boot/src/profile-resolution/resolver.ts`、
 `packages/boot/plugin-manager/src/index.ts`）：dsh 只在进程启动时用
@@ -43,10 +57,9 @@ insert 子行补「套件成员 + 组件包可解析」双条件 `disabled` 表�
 `<profile>/node_modules/<name>` 一层。因此运行中首次启用套件（安装前启动的进程）时裸包名解析不到
 套件自带 `node_modules` 里的组件，loader 直接报 failed to import。守卫表达式与 loader 用同一
 baseUrl（profile 目录）`createRequire(...).resolve('<组件包>/package.json')` 探测，与真实导入同一判定，
-探测不到的行延迟到重启装载。模型屏障占位行不走裸包名而用套件包子路径
-`@dsh-kit/dsh-plugin-suite/fallback`（套件 package.json 的 exports 重映射到内嵌 `fallback/` 入口与
-locale；插件管理器的 `readPluginMeta` 经 exports 重映射读取子路径元数据），首次启用当场装载、
-`llm-pi-ai` 的屏障注入当场有服务可绑；子路径形式不适用于有浏览器半的组件行——
+探测不到的行延迟到重启装载。（历史）模型屏障占位行曾用套件包子路径
+`@dsh-kit/dsh-plugin-suite/fallback` 保证首次启用当场可解析，随 D16 移除屏障行一并删除；
+子路径行不适用于有浏览器半的组件行——
 `packages/client/modules/src/client/manifest.ts` 的 `exactPackageSpecifier` 只认精确 `@scope/name`，
 子路径行会被客户端模块扫描跳过（丢浏览器半）。
 
@@ -85,13 +98,15 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
   不占组件行计数。
 - 组合包是安装/卸载/升级单位，其 `cordis.patch.yml` 仍为组件保留独立稳定行。组件从 Bundle
   内嵌依赖的相对路径装载，并用 Bundle 选择状态跳过 HMR 卸载阶段的瞬时残留行。普通组件可以
-  单独 disabled；models-catalog 与 model-capabilities 共同构成 `llm-pi-ai` 启动屏障，不能只停一行。
-- 套件 patch 的 `llm-pi-ai` 覆写行、connection 行覆写与模型屏障占位行是项目常驻契约：模型组件启动时
-  把屏障挂到 root fiber，未启动时由占位行兜底，避免 Bundle 切换重启 `llm-pi-ai`。connection 覆写
-  把官方行的 `inject` 从 `[webRuntime]` 扩为 `[webRuntime, webServer]`：cordis 4 的 service.ctx 经
-  shadow 解析到服务构造行，`connection.rpc.handle` 的通道归属 connection 行 fiber，组件行自己的
-  inject 不参与解析；覆写同时整行替换 config，必须复刻官方 `trustedHosts` 表达式以免丢信任面
-  （出处：`packages/client/connection/src/rpc-host.ts` 的 `get rpc()` 与 `packages/boot/plugin-manager/src/build-approval.ts`）。
+  单独 disabled；models-catalog 与 model-capabilities 是一对运行时模型目录组件
+  （共享 `modelsCatalogRuntime` 服务），不能只停一行。
+- （2026-10-14 随 D16 移除）套件 patch 曾有三条常驻覆写：`llm-pi-ai` 屏障行、connection 行
+  `inject` 扩 `[webRuntime, webServer]` 覆写与模型屏障占位行。cordis 4 的 service.ctx 经
+  shadow 解析到服务构造行、`connection.rpc.handle` 的通道归属 connection 行 fiber 是仍然成立的
+  上游事实（出处：`packages/client/connection/src/rpc-host.ts` 的 `get rpc()`），但为满足它而
+  覆写官方行不可行——套件启停重组合会重启被覆写行并级联 session-controller（file-upload
+  二次注册竞态）。私有 RPC 改走 `connection.fetch.register`（见上文），模型晚注册生效不需要
+  启动屏障。第三方 patch 层覆写官方行前必须先验证「该行随本层启停回退」的级联后果。
 - profile 初始化的 `allowBuilds` 逐包显式决定（缺项会让 pnpm 硬失败 ERR_PNPM_IGNORED_BUILDS）：
   开发 profile 的清单对齐官方桌面 `apps/desktop/src/project-manager.ts` 的 `workspaceFile`，
   原生模块（subprocess-local/koffi/node-pty/fs-ext）置 true，纯 JS/预编译包置 false。

@@ -9,7 +9,7 @@
 export const SELF_NAMESPACE = 'dsh-plugin-terminal'
 
 /**
- * Host 注册、页面调用的绝对 RPC channel。endpoint 是 URL path segment：必须 POST `/terminal/<endpoint>`，单独调用 `/terminal` 是 flat 404（docs/dsh/transport.md）。
+ * Host 注册、页面调用的 kit 通道。浏览器经官方 `/api` 共享桥 POST `/api/terminal`（kit 信封 `{ endpoint, payload }`，D16，见 packages/plugin-rpc）。
  */
 export const CHANNEL = '/terminal'
 

@@ -9,6 +9,7 @@ import { interactiveTerminalContract } from './interactive-terminal-tools.js'
 import { mountTerminalBackend } from './terminal-backend.js'
 import { terminalRuntime } from './terminal-runtime.js'
 import { dispatch } from './terminal-rpc.js'
+import { registerKitChannel } from '@dsh-kit/plugin-rpc'
 
 /** Cordis 插件名，出现在 dsh 插件树和诊断信息中。 */
 export const name = 'dsh-kit-terminal'
@@ -71,7 +72,8 @@ export function apply(ctx: Context, config: Config): void {
     }
   }
 
-  const dispose = ctx.connection.rpc.handle(
+  const dispose = registerKitChannel(
+    ctx,
     CHANNEL,
     async (endpoint, requestPayload) => await dispatch(ctx, endpoint, requestPayload, config),
   )

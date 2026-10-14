@@ -13,13 +13,13 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 import { CHANNEL, SELF_NAMESPACE, type ToolsSnapshot } from '../shared.js'
 import { en, NS, zh } from './locales.js'
 import type { ToolsKey } from './locales.js'
 import { ToolsView, type ToolsViewInjected } from './ToolsView.js'
+import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
 export { POLL_MS, GROUPS, ToolsView } from './ToolsView.js'
 export type { ToolsViewInjected, ToolsViewProps } from './ToolsView.js'
@@ -71,11 +71,7 @@ export function apply(ctx: Context): void {
    * @returns 宿主合成的快照。
    */
   const snapshotOf = async (sessionId: SessionId): Promise<ToolsSnapshot> => {
-    // 每次现读并在读取处定型：连接包的浏览器半提供这个服务但没有声明在 Context 上，
-    // 上面的 `inject` 才是它一定存在的保证。
-    const connection = ctx.get('connection') as ConnectionHandle | undefined
-    if (connection === undefined) throw new ChannelError('no active connection')
-    const result = await connection.rpc.call(CHANNEL, 'snapshot', { sessionId: String(sessionId) })
+    const result = await callKitChannel(CHANNEL, 'snapshot', { sessionId: String(sessionId) })
     if (!result.ok) throw new ChannelError(result.error.message)
     return result.value as ToolsSnapshot
   }

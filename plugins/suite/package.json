@@ -12,15 +12,11 @@
   },
   "files": [
     "cordis.patch.yml",
-    "locale",
-    "fallback"
+    "locale"
   ],
   "exports": {
     "./package.json": "./package.json",
-    "./locale/*.json": "./locale/*.json",
-    "./fallback": "./fallback/index.js",
-    "./fallback/package.json": "./fallback/package.json",
-    "./fallback/locale/*.json": "./fallback/locale/*.json"
+    "./locale/*.json": "./locale/*.json"
   },
   "dependencies": {
     "@dsh-kit/dsh-plugin-agents-md": "file:../agents-md",

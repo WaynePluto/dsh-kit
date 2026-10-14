@@ -74,7 +74,7 @@ PiAiModelProfile 没有 api 字段，解析顺序是路由 api → 同 id 内置
 1. 按模型 id 查同一份外部 pi-ai 目录，目标路由优先。
 2. 无匹配则按 gpt-* → openai-responses、claude-* → anthropic-messages、其他 → openai-completions。
 3. 先扩展同一份 pi-ai 运行时 map，再写 dsh models；不是给单个模型增加 api 字段。套件内的 pi-ai 必须与 dsh-llm-pi-ai 实际解析的是同一个包目录（Node ESM 按真实路径缓存）；复制一份同版本包也会让 dsh 校验看不到新增模型。`build-suite.mjs` 物化时跳过 `@deepseek-ai/*`，就是为了不做第二份单例。
-4. 将推断与新增条目归属存入 dsh-plugin-models-catalog，启动时在 llm-pi-ai 校验前恢复。
+4. 将推断与新增条目归属存入 dsh-plugin-models-catalog，apply 时同步恢复（D16 后不再有启动屏障行；持久化的是自包含 `providers.*.models` 条目，llm-pi-ai 校验读的是恢复后的完整条目，启动顺序无关；pi-ai model map 为共享可变状态，晚注册同样生效）。
 5. dsh 自带该模型后只清理本插件拥有的条目，用户及其他插件配置原样保留。
 
 models.dev 提供 reasoning_options，但 effort/toggle/budget_tokens 形态不同，且档位名单不等于 wire 拼写。
