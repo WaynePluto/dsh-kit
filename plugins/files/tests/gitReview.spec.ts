@@ -111,7 +111,10 @@ function initRepo(): boolean {
 }
 
 describe('真实仓库集成', () => {
-  it('review 列出修改/新增/未跟踪并给出计数；diff 给出 hunk 与 before/after', async () => {
+  // 集成段要串行跑十多个 git 子进程，慢速 CI runner（windows-latest）上会超过默认 5 秒。
+  const GIT_INTEGRATION_TIMEOUT = 30_000
+
+  it('review 列出修改/新增/未跟踪并给出计数；diff 给出 hunk 与 before/after', { timeout: GIT_INTEGRATION_TIMEOUT }, async () => {
     if (!initRepo()) return
     await writeFile(join(root, 'a.txt'), 'one\ntwo\nthree\n', 'utf8')
     await writeFile(join(root, 'keep.txt'), 'keep\n', 'utf8')
@@ -148,7 +151,7 @@ describe('真实仓库集成', () => {
     expect(unchanged).toMatchObject({ kind: 'text', before: true, after: true, hunks: [] })
   })
 
-  it('cwd 在仓库子目录时投影为会话相对路径', async () => {
+  it('cwd 在仓库子目录时投影为会话相对路径', { timeout: GIT_INTEGRATION_TIMEOUT }, async () => {
     if (!initRepo()) return
     await mkdir(join(root, 'packages', 'app'), { recursive: true })
     await writeFile(join(root, 'packages', 'app', 'n.ts'), 'n\n', 'utf8')
@@ -162,7 +165,7 @@ describe('真实仓库集成', () => {
     expect(await gitFileDiff(nested, 'n.ts')).toMatchObject({ kind: 'text', before: true, after: true })
   })
 
-  it('空仓库（无 HEAD）把未跟踪文件按整文件新增呈现', async () => {
+  it('空仓库（无 HEAD）把未跟踪文件按整文件新增呈现', { timeout: GIT_INTEGRATION_TIMEOUT }, async () => {
     if (!initRepo()) return
     await writeFile(join(root, 'fresh.txt'), 'f1\nf2\nf3\n', 'utf8')
     const summary = await gitReview(root)
