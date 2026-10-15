@@ -71,6 +71,21 @@ apply 对无关事件必须返回同一个引用，框架以 Object.is 判断是
   运行中、停止/错误及含中途输入的轮次保持外层展开，不妨碍局部过程组折叠。
 - 结束组摘要显示活动类别。
 
+## 会话统计弹窗
+
+出处：`packages/client/ui-chat/src/client/chat/{StatsPills.tsx,stat-dialog.ts}`、`locale.ts`。
+
+输入框下方的时间 pill 打开「会话统计」弹窗（portal 到 document.body）：
+模型用时、工具调用用时与首 token 平均都走 `formatDuration`，只有两档——
+`duration.compactSeconds`（`3.8秒`）与 `duration.compactMinutes`（`62分5秒`/`62m5s`），
+超过一小时不会进位。弹窗明细 `dl` 带 `data-session-stats-details` 测试钩子
+（Token 用量弹窗是 `data-session-stats-usage`），这是插件改写显示的版本受控 seam。
+对照：消息行用时与运行指示的 `formatRunDuration`（`chat/message-chrome.ts`）
+本就三档全显（`1小时0分0秒`/`1h 0m 0s`，单位来自 `duration.hourUnit/minuteUnit/secondUnit`，
+英文小时与分钟单位带尾随空格）。stats-hours 插件按 body 级 MutationObserver
+跟随弹窗 DOM，把 ≥1 小时的两档文本整节点改写成 `formatRunDuration` 同款三档；
+识别整串匹配，改写结果不再命中模式，无循环。上游原生补上小时档后停用该组件即还原。
+
 ## 会话滚动导航
 
 出处：`packages/client/ui-chat/src/client/chat/{ChatNodeSeat.tsx,ChatView.tsx,ChatView.module.css}`。

@@ -35,6 +35,7 @@
     "@dsh-kit/dsh-plugin-run-code": "file:../run-code",
     "@dsh-kit/dsh-plugin-services": "file:../services",
     "@dsh-kit/dsh-plugin-skills-inspector": "file:../skills-inspector",
+    "@dsh-kit/dsh-plugin-stats-hours": "file:../stats-hours",
     "@dsh-kit/dsh-plugin-terminal": "file:../terminal",
     "@dsh-kit/dsh-plugin-tools-inspector": "file:../tools-inspector",
     "@dsh-kit/dsh-plugin-turn-retry": "file:../turn-retry",

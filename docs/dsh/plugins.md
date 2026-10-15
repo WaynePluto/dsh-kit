@@ -92,7 +92,7 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 
 ### dsh-kit 分发约束
 
-- 根 `plugin-catalog.json` 将 19 个功能组件映射为 3 个组合包与 6 个独立包；
+- 根 `plugin-catalog.json` 将 20 个功能组件映射为 3 个组合包与 6 个独立包；
   它们又收进 `plugins/suite` 一个套件包，用本地绝对目录走上述官方安装流程。目录里另有两个
   没有 profile 行的嵌套行组件（`run-code`、`prompt-filter`），只被简洁预设按裸包名引用，
   不占组件行计数。

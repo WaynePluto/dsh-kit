@@ -6,6 +6,14 @@
 
 ## 已实现
 
+- [x] 会话统计小时档（stats-hours，2026-10-14）：dsh 会话统计弹窗的 `formatDuration`
+  只有两档（`62分5秒`/`62m5s`），而 turn-tail 用时的 `formatRunDuration` 本就三档全显
+  （`duration.hourUnit`）。新组件经 body 级 MutationObserver 跟随弹窗 DOM
+  （`dl[data-session-stats-details]` 测试钩子，契约见 [会话](dsh/conversation.md)），
+  把 ≥1 小时的模型用时/工具调用用时/TTFT 文本整节点改写成与 `formatRunDuration`
+  同款三档（中文「1小时2分5秒」、英文「1h 2m 5s」）；整串识别保证改写结果不再命中、
+  无循环，上游原生补档后停用组件即还原。纯浏览器半、无 inject 服务；
+  随 conversation-enhancements 组合包分发（组件总数 20，浏览器行 17）。
 - [x] 修复套件在线停用/启用的 session-controller 竞态（2026-10-14）：用户实机报错
   「停用失败：2 entries did not activate … Agent resolver is already registered」+
   重新启用后「历史加载失败：sessionController is unavailable」。隔离冒烟三度复现并定位：
@@ -126,6 +134,7 @@
 | favorite-models | 输入框筛选、全部失效回退、当前模型不跳转，/model 目录完整 |
 | model-capabilities | 协议覆盖生效；图片支持后向实际端点发送图片 |
 | turn-retry | 失败重试、停止继续、错误详情；有排队消息时不发送或修改队列；详情弹窗全屏（含深色主题）待实机确认 |
+| stats-hours | 会话统计弹窗超过一小时的模型用时/工具调用用时显示「小时」档（中英文界面），不足一小时与 Token 用量弹窗保持原生；停用组件后恢复原生两档 |
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
 | files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；Git 变更面板（右键入口、清单与 diff、左右对比/换行、深浅主题与中英文）待实机确认 |

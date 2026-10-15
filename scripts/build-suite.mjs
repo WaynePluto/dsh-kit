@@ -262,6 +262,28 @@ function packageNameOf(source) {
   return JSON.parse(readFileSync(join(source, 'package.json'), 'utf8')).name
 }
 
+/**
+ * 套件 package.json 的 dependencies 是 loader 解析组件行的依赖闭包入口：
+ * 缺登组件时 patch 行仍在，但 runtime resolution 表解析不到裸包名，浏览器半
+ * 整行从 __DSH_BOOT__ 图消失（静默丢失）。在这里响亮失败而不是留给 dsh。
+ */
+function verifySuiteDependencies(componentDirs) {
+  const manifest = JSON.parse(readFileSync(join(SUITE_DIR, 'package.json'), 'utf8'))
+  const declared = new Set(Object.keys(manifest.dependencies ?? {}))
+  const missing = componentDirs
+    .map(dir => packageNameOf(join(PLUGINS, dir)))
+    .filter(name => !declared.has(name))
+  if (missing.length > 0) {
+    throw new Error(
+      `plugins/suite/package.json 的 dependencies 缺少以下组件（loader 闭包无法解析，浏览器行会静默消失）：\n` +
+      missing.map(name => `  ${name}`).join('\n') +
+      `\n修复：按其余组件的形态补登 "file:../<目录>"。`,
+    )
+  }
+}
+
+verifySuiteDependencies(componentDirectories())
+
 /** 按组件包 files 字段复制发布内容；workspace: 版本引用还原为裸版本。 */
 function copySelfContainedPackage(source, target) {
   const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))

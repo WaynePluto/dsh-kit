@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Session Stats Hours",
+    "description": "Show LLM and tool times over an hour with an hours unit in session statistics"
+  }
+}

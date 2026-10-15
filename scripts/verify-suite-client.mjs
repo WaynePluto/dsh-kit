@@ -24,8 +24,8 @@ if (token === undefined || token === '') {
 // concise-mode 是预设、yolo-mode 无浏览器行。
 const EXPECTED = [
   'agents-md', 'chat-scroll', 'copilot-auth', 'deepseek-official-switch', 'favorite-models', 'files',
-  'model-capabilities', 'models-catalog', 'notify', 'proxy', 'services', 'skills-inspector', 'terminal',
-  'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch',
+  'model-capabilities', 'models-catalog', 'notify', 'proxy', 'services', 'skills-inspector',
+  'stats-hours', 'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch',
 ].map(id => `@dsh-kit/dsh-plugin-${id}`)
 
 const exchange = await fetch(`${host}/?token=${encodeURIComponent(token)}`, { redirect: 'manual' })
