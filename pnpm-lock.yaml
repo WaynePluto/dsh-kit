@@ -1006,6 +1006,9 @@ importers:
       '@dsh-kit/dsh-plugin-skills-inspector':
         specifier: file:../skills-inspector
         version: file:plugins/skills-inspector
+      '@dsh-kit/dsh-plugin-stats-hours':
+        specifier: file:../stats-hours
+        version: link:../stats-hours
       '@dsh-kit/dsh-plugin-terminal':
         specifier: file:../terminal
         version: file:plugins/terminal(a60c6746f7a12bfa3ec8183d2aeb5e6b)
