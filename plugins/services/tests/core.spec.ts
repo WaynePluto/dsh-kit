@@ -7,7 +7,7 @@ import {
   reconcile, registryPath, reportedIdentity, shellDialectWarning, shellInvocation, writeRegistry,
 } from '../src/core.js'
 import type { Identity, ServiceRecord } from '../src/core.js'
-import { formatUptime, isValidName, tailText } from '../src/shared.js'
+import { formatUptime, isValidName, midEllipsis, tailText } from '../src/shared.js'
 
 const roots: string[] = []
 
@@ -257,5 +257,36 @@ describe('presentation helpers', () => {
   it('clamps a negative or non-finite duration instead of rendering nonsense', () => {
     expect(formatUptime(-1)).toBe('0s')
     expect(formatUptime(Number.NaN)).toBe('0s')
+  })
+})
+
+describe('midEllipsis', () => {
+  it('returns the text untouched while it still fits', () => {
+    expect(midEllipsis('sui-tang-20', 11)).toBe('sui-tang-20')
+    expect(midEllipsis('web', 40)).toBe('web')
+  })
+
+  it('keeps both anchors and spends the extra glyph on the head', () => {
+    // 15 个字形放不进 12：keep=11，head 取 6、tail 取 5，输出正好 12 个字形。
+    expect(midEllipsis('sui-tang-20-dev', 12)).toBe('sui-ta…0-dev')
+  })
+
+  it('handles the degenerate budgets without slicing nonsense', () => {
+    expect(midEllipsis('web', 1)).toBe('…')
+    expect(midEllipsis('web', 2)).toBe('w…')
+    expect(midEllipsis('web', 0)).toBe('')
+    expect(midEllipsis('web', -1)).toBe('')
+  })
+
+  it('never exceeds the budget and always keeps the head when truncating', () => {
+    for (const max of [2, 3, 4, 7, 12]) {
+      for (const name of ['cocos-preview-2f8a1c', 'sui-tang-20', 'api']) {
+        const out = midEllipsis(name, max)
+        expect(out.length).toBeLessThanOrEqual(max)
+        if (out.length === max) {
+          expect(out.startsWith('…') || name.startsWith(out.slice(0, 1))).toBe(true)
+        }
+      }
+    }
   })
 })

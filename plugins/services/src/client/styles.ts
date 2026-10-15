@@ -66,20 +66,37 @@ export const rowStyle: CSSProperties = {
   minWidth: 0,
 }
 
+/**
+ * 名称列：隐藏的全文 span 留在文档流里撑出列的 flex 基础尺寸（宽表名多占宽、窄表名少占宽），
+ * 截断后的可见文本绝对定位覆盖，宽度不反馈进布局，测量结果是纯函数、不会振荡。
+ */
 export const nameStyle: CSSProperties = {
+  position: 'relative',
   fontFamily: DOCK_MONO,
   fontWeight: 600,
+  flex: '0 1 auto',
   minWidth: 0,
   overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  maxWidth: '40%',
+}
+
+/** 名称列里撑宽度用的隐藏原文；`visibility:hidden` 保占位，sr 仍可读到完整名称。 */
+export const nameSizerStyle: CSSProperties = {
+  whiteSpace: 'pre',
+  visibility: 'hidden',
+}
+
+/** 名称列里实际显示的截断文本，覆盖在 sizer 上方。 */
+export const nameTextStyle: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  whiteSpace: 'pre',
+  overflow: 'hidden',
 }
 
 export const factsStyle: CSSProperties = {
   color: DOCK_SECONDARY,
   fontSize: '12px',
-  flex: '1 1 auto',
+  flex: '1 1 0%',
   minWidth: 0,
   overflow: 'hidden',
   textOverflow: 'ellipsis',

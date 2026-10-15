@@ -166,6 +166,23 @@ export function formatUptime(ms: number): string {
 }
 
 /**
+ * 把文本压缩到最多 `max` 个字形：去掉中间一段，换成省略号，保留首尾可辨认的锚点。
+ * 服务名被 {@link isValidName} 限制为 ASCII，名称列又是等宽字体，因此列宽可以按字形数量成比例估算。
+ * @param text - 原文。
+ * @param max - 允许展示的最大字形数（省略号计入）。
+ * @returns 未超长时原样返回；否则 `头…尾`，`max <= 0` 返回空串。头部多保一个字形：前缀是用户识别服务的主要锚点。
+ */
+export function midEllipsis(text: string, max: number): string {
+  if (max >= text.length) return text
+  if (max <= 0) return ''
+  if (max === 1) return '…'
+  const keep = max - 1
+  const head = Math.ceil(keep / 2)
+  const tail = Math.floor(keep / 2)
+  return `${text.slice(0, head)}…${text.slice(text.length - tail)}`
+}
+
+/**
  * 保留文本末尾的 `lines` 行。tools 与 panel 都显示日志 tail，因此共享纯函数避免两套“文件末尾是什么”的实现发生偏差。
  * @param text - 完整文件内容。
  * @param lines - 要保留的末尾行数。

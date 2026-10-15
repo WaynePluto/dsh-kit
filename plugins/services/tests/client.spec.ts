@@ -185,6 +185,33 @@ describe('move math', () => {
     expect(applyLogDialogMove(resized, 10, -10, bounds)).toMatchObject({ offsetX: 60, offsetY: 21 })
   })
 })
+describe('row name column', () => {
+  const rowSource = readFileSync(new URL('../src/client/ServiceRow.tsx', import.meta.url), 'utf8')
+  const stylesSource = readFileSync(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
+  it('truncates the middle of an oversize name instead of eating it from the tail', () => {
+    // 界面契约：服务名前缀与尾段都有辨识价值，省略号必须落在中间。
+    expect(rowSource).toContain('midEllipsis(service.name, capacity)')
+  })
+  it('sizes the column with a hidden full-text sizer, so the measurement never feeds back', () => {
+    // 界面契约：sizer 留在文档流撑出 flex 基础尺寸；可见文本绝对定位覆盖，宽度不随截断结果变化。
+    expect(stylesSource).toContain('visibility: \'hidden\'')
+    expect(stylesSource).toContain("position: 'absolute'")
+    expect(rowSource).toContain('nameSizerStyle')
+    expect(rowSource).toContain('ResizeObserver')
+  })
+  it('never collapses the name to an ellipsis-only sliver: facts flexes to 0% basis', () => {
+    // 界面契约：行宽不足时先压缩 facts（尾部省略），名称列只在自身超宽时才截断。
+    expect(stylesSource).toContain("flex: '1 1 0%'")
+    expect(stylesSource).toContain("flex: '0 1 auto'")
+  })
+  it('offers the full name on hover and to assistive tech even when visually truncated', () => {
+    expect(rowSource).toContain('title={service.name}')
+    expect(rowSource).toContain('aria-label={service.name}')
+  })
+  it('shows the raw name before the first measurement lands', () => {
+    expect(rowSource).toContain('capacity === null ? service.name : midEllipsis')
+  })
+})
 describe('move handle structure', () => {
   const dialogSource = readFileSync(new URL('../src/client/ServiceLogDialog.tsx', import.meta.url), 'utf8')
   const resizeSource = readFileSync(new URL('../src/client/dialog-resize.tsx', import.meta.url), 'utf8')

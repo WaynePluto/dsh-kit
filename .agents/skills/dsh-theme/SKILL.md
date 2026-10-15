@@ -276,6 +276,36 @@ dock 列表行要保证任何内容长度下都单行：行容器去掉 `flexWra
 `plugins/services/src/client/ServiceRow.tsx`、`styles.ts` 的 `rowActionsStyle`；
 真实页面实测长命令行 28px 单行、facts scrollWidth 1045 > clientWidth 641 出省略号。
 
+多格共享收缩轴时要给「次要格」定死收缩优先级，否则全部格子按 flex 基础尺寸比例收缩、
+主要格（如服务名）可能被压到只剩尾部省略号：次要长文本格用 `flex:1 1 0%`（基础 0、先被压），
+主要格 `flex:0 1 auto`（保住内容宽、只在自身超宽时收缩）。
+
+### 行内中间省略（CSS 做不到的 truncate middle）
+
+CSS `text-overflow` 只有 start/end；两端都有辨识价值的名称要中间截断时按官方
+`PathLabel`（`ui-primitives/src/PathLabel.tsx`）的思路自己测量：**隐藏的全文 span
+（`visibility:hidden; white-space:pre`）留在文档流撑出列的 flex 基础尺寸**，截断后的可见文本
+绝对定位覆盖（`position:absolute; inset:0; overflow:hidden`）——盒子宽度不随截断结果变化，
+测量是纯函数、不会反馈振荡。字形数按 `getBoundingClientRect().width`（不是整数舍入的
+`offsetWidth`/`clientWidth`）除以单字宽折算（本例名称被 `isValidName` 限为 ASCII + 等宽字体），
+加 0.5 容差防 subpixel 误截；`ResizeObserver` 监听盒子与 sizer，未测量（capacity=null）时显示原文避免首帧闪省略号。
+完整文本仍给 `title` + `aria-label`，隐藏 sizer 加 `aria-hidden`。实例：
+`plugins/services/src/client/ServiceRow.tsx`（`useNameGlyphCapacity`）与 `shared.ts` 的 `midEllipsis`。
+
+**验证闭环注意**：`ResizeObserver` 回调与渲染帧绑定——CDP `Emulation.setDeviceMetricsOverride`
+或窗口 resize 在标签页 `visibility:hidden`（自动化持有、无法前台化）时布局变了但回调挂起，
+「实现坏了」的假象。先确认 `document.visibilityState`；必须改截断结果时可以从 React fiber
+hook 队列直接 dispatch setState 强制重渲染（`memoizedState` 第 N 个 hook 的 `queue.dispatch`）。
+dsh 0.2.0 首启开发 home 的欢迎说明/API Key 向导会挡住面板交互，且欢迎确认写回在 profile patch
+无 Include 结构时被 `settings/rejected` 拒绝；绕过方式是给 dev profile `cordis.patch.yml` 手写
+`ui-settings-general`（welcomeNoticeVersion）、`ui-settings-account`（step: done）与
+`ui-settings-models`（credentialOnboarding: false）三行（实例见 dev-suite 的 profile）。
+
+services 面板只在活跃会话渲染（`conversation.input.dock` scope=session，欢迎页 hero 不出），
+面板又只在 `services.length > 0` 时出现；用 `service_start` 起测试服务、把 registry 放到会话
+workspace 目录即可让 Host 认领。**页面 `visibilityState=hidden` 时面板按契约停止轮询**，
+真实页面验收前先激活标签页。
+
 ## 验证闭环
 
 1. 运行目标插件 test/typecheck/build 和仓库 lint；读实际 diff，确认没有改业务写入逻辑。
