@@ -8,7 +8,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { ModelDirectoryResolver } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { ModelProviderLabel } from './ModelProviderLabel.js'
-import { providerDisplayName } from './label.js'
 import { en, zh } from './locales.js'
 import type { ModelProviderKey } from './locales.js'
 
