@@ -37,6 +37,7 @@
         { "name": "@dsh-kit/dsh-plugin-chat-scroll", "rowId": "chat-scroll" },
         { "name": "@dsh-kit/dsh-plugin-stats-hours", "rowId": "stats-hours" },
         { "name": "@dsh-kit/dsh-plugin-user-message-fork", "rowId": "user-message-fork" },
+        { "name": "@dsh-kit/dsh-plugin-session-rename", "rowId": "session-rename" },
         { "name": "@dsh-kit/dsh-plugin-notify", "rowId": "notify" }
       ]
     },

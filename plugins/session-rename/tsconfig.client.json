@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM"],
+    "types": []
+  },
+  "include": [
+    "src/client/**/*.ts",
+    "src/client/**/*.tsx",
+    "tests/header-target.client.spec.ts",
+    "tests/double-click.client.spec.ts",
+    "tests/dialog.client.spec.tsx"
+  ]
+}

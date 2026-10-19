@@ -6,6 +6,16 @@
 
 ## 已实现
 
+- [x] 会话重命名（session-rename，2026-10-19）：dsh 原生重命名入口只在侧栏（行双击/
+  右键/Cmd+Alt+G），顶栏会话标题是纯文本。本组件双击顶栏当前会话标题弹出
+  「重命名会话」弹窗：document 捕获态 dblclick + 结构识别（`header[data-window-drag]`
+  内 `crumbCurrent` 类后缀；面包屑无 data 钩子，类名后缀变更会静默失效，升级需复核）；
+  当前会话取 `ctx.uiSession.adapter.current`，空白会话不响应、种子草稿用持久 title
+  （不取回落目录名的 displayTitle），与原生行双击同口径。重命名走原生
+  `sessions.using(... binding.session.rename)`，成功后 title 投影立即结算；弹窗在
+  `shell.overlay` 条目内按原生 RenameSession 逐条复刻（Modal + 回车/IME 守卫 + 错误行），
+  原生弹窗状态是 ui-workspace 私有 store、无法直接触发。纯浏览器半、无宿主服务
+  （组件总数 22，浏览器行 20）；随 conversation-enhancements 组合包分发。
 - [x] 模型提供商标签（model-provider，2026-10-19）：聊天输入框的模型选择按钮左侧显示当前模型
   所属提供商的名称。dsh 原生触发器只显示模型名，供应商组名只在下拉菜单组头出现；本组件占用
   `conversation.input.right` list 槽（官方当前无占用者，渲染位置即模型座位左侧），从
@@ -143,6 +153,7 @@
 | model-capabilities | 协议覆盖生效；图片支持后向实际端点发送图片 |
 | turn-retry | 失败重试、停止继续、错误详情；有排队消息时不发送或修改队列；详情弹窗全屏（含深色主题）待实机确认 |
 | stats-hours | 会话统计弹窗超过一小时的模型用时/工具调用用时显示「小时」档（中英文界面），不足一小时与 Token 用量弹窗保持原生；停用组件后恢复原生两档 |
+| session-rename | 双击顶栏会话标题弹出重命名弹窗（回车提交、IME 不误提交、错误就地显示）；重命名后顶栏与侧栏同步、标题固定不再自动生成；空白会话与祖先 crumb 双击不响应；停用组件后顶栏双击无反应、侧栏原生入口不受影响；深浅主题与中英文界面 |
 | model-provider | 模型选择按钮左侧显示当前提供商名（切换模型实时跟随、目录未装载回退 provider id）；行宽不足紧凑模式下随模型文字一起隐藏；停用组件后恢复原生；深浅主题与中英文界面 |
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |

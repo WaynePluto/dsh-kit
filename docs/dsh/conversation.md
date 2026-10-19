@@ -125,6 +125,40 @@ dsh 只为已 retain 的会话物化 client scope：fork()/create() 只登记目
 input.for(scope) 也拒绝没有 retained binding 的 scope，所以回填草稿必须放在 openSession 之后。
 fork 子会话继承源会话的 agent preset（presetForObservation），sessions.create 的新会话按 Host 默认预设组合，与「新会话」按钮一致。
 
+## 会话重命名
+
+出处：`packages/session/session-title/src/{index,normalize}.ts`、
+`packages/api/session-controller/src/{commands,index}.ts`（`rename` Remote）、
+`packages/api/session-controller/src/client/sessions/session.ts`（client `rename`）、
+`packages/client/ui-workspace/src/client/{rows/Rows,shortcuts,session-actions/RenameSession}.tsx`、
+`packages/client/ui-conversation/src/client/skeleton/{ConversationHeader,ConversationSession}.tsx`、
+`packages/client/ui-session/src/client/index.ts`（`uiSession.adapter.current`）。
+
+- rename 是官方命令链：宿主 `session.rename` → `sessionTitle.rename` 规整后
+  append `session/title` 事件（source `user`）；用户显式重命名会 **pin** 标题，
+  在途自动生成被取代、后续用户消息不再调度。规整剥控制/方向控制符并压缩空白，
+  规整后为空抛 `SessionTitleInvalidError`（wire 错误 `session/title-invalid`），
+  并按 `maxTitleBytes` 截断。客户端 `binding.session.rename(title)` 成功后立即用
+  响应 `{title, seq}` 结算 `title` 投影（高 seq 胜），顶栏 crumb 与侧栏行同帧更新。
+- 原生入口只在侧栏：行双击（`onDoubleClick`，空白行不响应）、右键菜单与
+  `Cmd/Ctrl+Alt+G`；弹窗（`shell.overlay` 的 `workspace.session-rename`）由
+  ui-workspace 私有 shortcutControls store 驱动，第三方无法触发。
+  session-rename 组件以同一契约自建：`shell.overlay` 条目 + 请求 store +
+  `sessions.using(id, {source}, ref => ref.binding.session.rename(title))`。
+  弹窗结构：Modal + 输入框（44px、border-l4、无焦点描边——原生如此）+
+  右下角 outline 取消 / primary 重命名；回车提交（IME 组合中的回车不提交）、
+  提交中禁用、错误行 role=alert。空白会话不响应、种子草稿用持久 `title`
+  （不是回落目录名的 `displayTitle`），与原生行双击同口径。
+- 顶栏标题 DOM：`ConversationSessionHeader` 的当前会话 crumb 是纯文本 span
+  （刻意非 button：darwin 标题区是窗口拖拽区），带 CSS module 类
+  `<hash>_crumbCurrent`（哈希随构建、后缀随版本）；祖先 crumb 是 button
+  （只有 `_crumb`）。面包屑没有专用 data 钩子；稳定锚点是 header 的
+  `data-window-drag`。session-rename 的双击识别 = `header[data-window-drag]`
+  内 `[class*="crumbCurrent"]`；上游类名后缀变更时静默失效，升级需复核。
+  当前会话身份用 `ctx.uiSession.adapter.current.getSnapshot().key`
+  （SessionId；无选择时 undefined）。darwin 上双击拖拽区可能同时触发系统
+  窗口缩放，属平台行为。
+
 ## 任务通知
 
 出处：`packages/core/agent/src/runtime-types.ts`、`packages/core/agent-loop/src/agent.ts`、

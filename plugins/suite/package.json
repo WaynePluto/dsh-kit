@@ -35,6 +35,7 @@
     "@dsh-kit/dsh-plugin-proxy": "file:../proxy",
     "@dsh-kit/dsh-plugin-run-code": "file:../run-code",
     "@dsh-kit/dsh-plugin-services": "file:../services",
+    "@dsh-kit/dsh-plugin-session-rename": "file:../session-rename",
     "@dsh-kit/dsh-plugin-skills-inspector": "file:../skills-inspector",
     "@dsh-kit/dsh-plugin-stats-hours": "file:../stats-hours",
     "@dsh-kit/dsh-plugin-terminal": "file:../terminal",
