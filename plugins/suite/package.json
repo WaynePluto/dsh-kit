@@ -27,6 +27,7 @@
     "@dsh-kit/dsh-plugin-favorite-models": "file:../favorite-models",
     "@dsh-kit/dsh-plugin-files": "file:../files",
     "@dsh-kit/dsh-plugin-model-capabilities": "file:../model-capabilities",
+    "@dsh-kit/dsh-plugin-model-provider": "file:../model-provider",
     "@dsh-kit/dsh-plugin-models-catalog": "file:../models-catalog",
     "@dsh-kit/dsh-plugin-notify": "file:../notify",
     "@dsh-kit/dsh-plugin-preset-concise": "file:../preset-concise",

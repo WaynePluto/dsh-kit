@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Model Provider",
+    "description": "Show the current model's provider name to the left of the model selector in the chat composer"
+  }
+}

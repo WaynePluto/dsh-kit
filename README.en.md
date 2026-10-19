@@ -4,7 +4,7 @@
 
 Verified against official dsh: `0.2.0-rc.2` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
 
-A third-party **plugin suite** for the official DeepSeek Harness (dsh): 20 components
+A third-party **plugin suite** for the official DeepSeek Harness (dsh): 21 components
 that improve everyday model, conversation, workspace and runtime workflows. Install or
 upgrade everything by entering **one path** in the official dsh plugin manager
 ("+ Add plugin").
@@ -13,14 +13,14 @@ upgrade everything by entering **one path** in the official dsh plugin manager
   (Profile Bundle plus per-row disabling), and dsh upgrades are decoupled
 - No remote access: no relay/connector, no project-specific data directory, no
   injected environment variables
-- The model HMR bootstrap barrier ships with the suite, so toggling model components
-  never hot-restarts `llm-pi-ai`
+- The suite never overrides official rows: toggling it online never hot-restarts
+  upstream services (decision D16)
 
 ## Components
 
 Global prompt, egress proxy, Copilot login, model catalog, model capabilities,
-favorite models, DeepSeek API switch, turn retry, chat scroll navigation,
-session-stats hours, user-message fork, task notifications, tool status,
+favorite models, model provider label, DeepSeek API switch, turn retry, chat scroll
+navigation, session-stats hours, user-message fork, task notifications, tool status,
 skill status, file browsing, resident services, interactive terminal,
 concise mode, pinned YOLO, web-search switch.
 See the [plugin index](docs/plugins.md) and each package README (Chinese).

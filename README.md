@@ -5,11 +5,11 @@
 对应官方 dsh：`0.2.0-rc.2`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
-个人体验增强，共 20 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
+个人体验增强，共 21 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
 
 - 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
 - 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
-- 模型 HMR 启动屏障随套件提供，模型组件在线启停不会热重启 `llm-pi-ai`
+- 套件层不覆写任何官方行：在线启停不会热重启上游服务（决策 D16）
 
 ## 组件一览
 
@@ -21,6 +21,7 @@
 | [模型目录更新](plugins/models-catalog/README.md) | 设置 → 模型 | 从 models.dev 补充模型目录 |
 | [模型能力与协议](plugins/model-capabilities/README.md) | 设置 → 模型 → 展开模型行 | 声明图片支持、推理档位与单模型协议覆盖 |
 | [常用模型](plugins/favorite-models/README.md) | 设置 → 模型；聊天模型选择器 | 收藏并筛选常用模型 |
+| [模型提供商](plugins/model-provider/README.md) | 聊天输入框 → 模型选择器左侧 | 显示当前模型所属提供商的名称 |
 | [DeepSeek 官方 API 开关](plugins/deepseek-official-switch/README.md) | 设置 → 模型 | 移除或恢复内置 DeepSeek（API 密钥）供应商卡片，并提供恢复入口 |
 | [失败重试](plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
 | [会话滚动导航](plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |

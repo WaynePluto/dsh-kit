@@ -16,6 +16,7 @@
         { "name": "@dsh-kit/dsh-plugin-models-catalog", "rowId": "models-catalog", "toggleable": false },
         { "name": "@dsh-kit/dsh-plugin-model-capabilities", "rowId": "model-capabilities", "toggleable": false },
         { "name": "@dsh-kit/dsh-plugin-favorite-models", "rowId": "favorite-models" },
+        { "name": "@dsh-kit/dsh-plugin-model-provider", "rowId": "model-provider" },
         { "name": "@dsh-kit/dsh-plugin-deepseek-official-switch", "rowId": "deepseek-official-switch" }
       ]
     },

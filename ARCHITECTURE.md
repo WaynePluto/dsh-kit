@@ -51,8 +51,8 @@ graph TD
 - **装载路径只有一条**：官方「添加插件」→ `plugins/suite` → Bundle 选择写入
   `dsh.profile.bundles`；组件行的 `disabled` 表达式由 `scripts/build-suite.mjs` 生成，
   套件离开 bundles 时全部组件行一并禁用。
-- **套件 patch 是生成物**：文件头两段固定契约（`llm-pi-ai` 启动屏障、模型屏障占位行），
-  其余为各组件 patch 的顶层条目改写；不要在仓库里手改 `plugins/suite/cordis.patch.yml`。
+- **套件 patch 是生成物**：只有各组件 patch 的顶层条目改写（insert 行 + 可解析性守卫，
+  无任何官方行覆写，D16）；不要在仓库里手改 `plugins/suite/cordis.patch.yml`。
 - **依赖闭包物化**：本地目录安装是 pnpm `link:` 语义，套件自带 `node_modules/`；
   `@deepseek-ai/*` 由 dsh 运行时树提供，不复制第二份单例。
 - **无自有状态**：插件配置写 dsh profile 的 settings 与 profile patch；仓库不写

@@ -233,6 +233,25 @@ base 与 :hover 放同一局部 stylesheet 规则，不用 inline style。若卡
 真实页面实测两个弹窗按钮均与关闭按钮逐像素同高（28×28）、全屏 1872×815 对应 viewport−48、
 退出后精确恢复原尺寸与位移，深浅主题下图标色跟随 `--dsw-alias-label-secondary`。
 
+### Composer 模型座位旁的伴随控件（conversation.input.right）
+
+要在模型选择按钮左侧放伴随内容，用 `conversation.input.right` list 槽（session 作用域，
+官方 0.2.0-rc.2 无占用者）：它在 `ui-conversation` InputBar 的 `standardControls` 内、模型座位
+之前渲染，与模型按钮共享 12px gap 与 `align-items:center`；文字基线与触发器对齐只需同节奏
+13px/20px（`ModelSelect.module.css` 的 `.trigger`），实测标签中心 Y 与按钮中心 Y 完全一致，
+不需要固定高度。两个可复用事实（2026-10-19 model-provider 实机验证）：
+
+- **紧凑模式跟随**：composer 行宽不足时 `observeControlRow` 在 `.row`（CSS module 哈希类）
+  上挂 `data-model-compact`，发布 `--dsh-composer-model-text-display: none`；自定义变量会
+  级联进槽位占用者，伴随文本用 `display: var(--dsh-composer-model-text-display, inline-flex)`
+  即可与模型文字一起隐藏（实测 flex→none→flex）。验证时可手动在 `.row` 上挂/摘该属性，
+  不必真缩窗口。
+- **主题快速采样**：dsh 深色主题的施加点是 `body[data-ds-dark-theme]`（ui-theme
+  `design-platform.css`）。验证纯 token 控件的深色渲染时，在真实页面临时挂/摘该属性再读
+  `getComputedStyle` 即可（model-provider 标签浅色 rgb(129,133,140)→深色 rgb(173,178,184)，
+  背景 rgb(21,21,23)）；与原生控件的并排视觉验收仍按正常主题切换流程做。
+
+
 ### 原生设置卡操作区注入（模型页 provider-card 槽）
 
 给设置 → 模型的供应商卡片补操作按钮时，槽位 `settings.models.provider-card`（keyed，key =

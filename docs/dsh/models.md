@@ -119,6 +119,24 @@ favorite-models 在 settings.models.footer 保存 provider+model 收藏，只影
 当前模型不因不在收藏中而自动切换，收藏全部失效时需回退到可用目录。
 具体契约由项目 favorite-models 测试与 scripts/favorite-models-check.mjs 维护。
 
+## 模型提供商标签
+
+出处：`packages/client/ui-conversation/src/client/skeleton/InputBar.tsx`（composer 尾部
+`conversation.input.right` list 槽渲染在模型座位左侧，当前无官方占用者）、
+`packages/client/ui-model-selection/src/client/{service.ts,directory.ts,ModelSelect.tsx}`
+（`ctx.modelDirectories.directoryFor(sessionId)` 返回与模型座位、/model 弹窗共享的 per-session
+目录 store；原生触发器只显示模型名，菜单组头才显示供应商组名）。
+
+项目 model-provider 只占用 `conversation.input.right` 的一个 list 条目，在模型选择按钮左侧渲染
+当前选择的提供商显示名：目录组 `group.name`，`deepseek-account` 特判为账号显示名（对齐原生菜单
+组头），组缺失（目录未装载）时回退原始 provider id；无当前选择或寻址 subagent 会话
+（`ctx.sessions.subagentAddress(sessionId) !== undefined`，与原生座位同判）不渲染。纯浏览器半、
+无宿主服务、无设置项；不调用 `load()`（服务构造已自发装载，store 订阅覆盖目录刷新、凭据/设置
+变更与选择切换全部更新源）。样式跟原生触发器同节奏（13/20、label-tertiary、省略号在内层
+span）；composer 行宽不足进入紧凑模式时复用 `--dsh-composer-model-text-display` 显示变量
+（ui-conversation `control-row-layout.ts` 在 `.row[data-model-compact]` 上发布）随模型文字一起
+隐藏。组件与纯函数测试见 `plugins/model-provider/tests/`。
+
 ## 出网代理
 
 出处：`apps/cli/src/profile-boot.ts`、`packages/util/http-proxy/src/{policy,install}.ts`、

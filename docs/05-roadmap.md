@@ -6,6 +6,14 @@
 
 ## 已实现
 
+- [x] 模型提供商标签（model-provider，2026-10-19）：聊天输入框的模型选择按钮左侧显示当前模型
+  所属提供商的名称。dsh 原生触发器只显示模型名，供应商组名只在下拉菜单组头出现；本组件占用
+  `conversation.input.right` list 槽（官方当前无占用者，渲染位置即模型座位左侧），从
+  `ctx.modelDirectories.directoryFor(sessionId)` 的共享目录 store 订阅当前选择（与模型座位、
+  /model 弹窗同一状态，任一入口切换实时跟随），显示名与原生菜单组头一致（组 `name`，
+  `deepseek-account` 特判「DeepSeek 账号」），目录未装载回退原始 provider id；无选择或寻址
+  subagent 会话不渲染。纯浏览器半、无宿主服务（组件总数 21，浏览器行 19）；
+  随 model-enhancements 组合包分发。
 - [x] 会话统计小时档（stats-hours，2026-10-14）：dsh 会话统计弹窗的 `formatDuration`
   只有两档（`62分5秒`/`62m5s`），而 turn-tail 用时的 `formatRunDuration` 本就三档全显
   （`duration.hourUnit`）。新组件经 body 级 MutationObserver 跟随弹窗 DOM
@@ -135,6 +143,7 @@
 | model-capabilities | 协议覆盖生效；图片支持后向实际端点发送图片 |
 | turn-retry | 失败重试、停止继续、错误详情；有排队消息时不发送或修改队列；详情弹窗全屏（含深色主题）待实机确认 |
 | stats-hours | 会话统计弹窗超过一小时的模型用时/工具调用用时显示「小时」档（中英文界面），不足一小时与 Token 用量弹窗保持原生；停用组件后恢复原生两档 |
+| model-provider | 模型选择按钮左侧显示当前提供商名（切换模型实时跟随、目录未装载回退 provider id）；行宽不足紧凑模式下随模型文字一起隐藏；停用组件后恢复原生；深浅主题与中英文界面 |
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
 | files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；Git 变更面板（右键入口、清单与 diff、左右对比/换行、深浅主题与中英文）待实机确认 |

@@ -19,6 +19,7 @@
     "@dsh-kit/dsh-plugin-models-catalog": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-model-capabilities": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-favorite-models": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-model-provider": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-deepseek-official-switch": "workspace:0.1.0"
   },
   "exports": {

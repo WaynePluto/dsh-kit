@@ -13,6 +13,7 @@
 | [模型目录更新](../plugins/models-catalog/README.md) | 设置 → 模型 | 从 models.dev 补充模型目录 |
 | [模型能力与协议](../plugins/model-capabilities/README.md) | 设置 → 模型 → 展开模型行 | 声明图片支持、推理档位与单模型协议覆盖 |
 | [常用模型](../plugins/favorite-models/README.md) | 设置 → 模型；聊天模型选择器 | 收藏并筛选常用模型 |
+| [模型提供商](../plugins/model-provider/README.md) | 聊天输入框 → 模型选择器左侧 | 显示当前模型所属提供商的名称 |
 | [DeepSeek 官方 API 开关](../plugins/deepseek-official-switch/README.md) | 设置 → 模型；底部恢复入口 | 移除或恢复内置 DeepSeek（API 密钥）供应商卡片（官方页面不给整段供应商删除） |
 
 ## 会话与工作区
@@ -40,13 +41,13 @@
 
 ## 分发组合
 
-20 个功能组件以 9 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+21 个功能组件以 9 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
 | 分发包 | 类型 | 包含组件或功能 |
 |---|---|---|
-| model-enhancements | 组合包 | Copilot 登录、模型目录更新、模型能力与协议、常用模型、DeepSeek 官方 API 开关；模型目录和模型能力共同参与启动屏障，不可单独停用 |
+| model-enhancements | 组合包 | Copilot 登录、模型目录更新、模型能力与协议、常用模型、模型提供商、DeepSeek 官方 API 开关；模型目录和模型能力共享运行时目录服务，不可单独停用 |
 | conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、任务通知 |
 | development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
 | proxy | 独立包 | 出网代理 |

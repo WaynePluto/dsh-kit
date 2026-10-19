@@ -37,6 +37,7 @@
     "@dsh-kit/dsh-plugin-files": "workspace:*",
     "@dsh-kit/dsh-plugin-model-capabilities": "workspace:*",
     "@dsh-kit/dsh-plugin-model-enhancements": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-model-provider": "workspace:*",
     "@dsh-kit/dsh-plugin-models-catalog": "workspace:*",
     "@dsh-kit/dsh-plugin-notify": "workspace:*",
     "@dsh-kit/dsh-plugin-preset-concise": "workspace:*",
