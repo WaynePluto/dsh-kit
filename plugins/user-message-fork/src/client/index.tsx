@@ -20,7 +20,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 // oxlint-disable-next-line unicorn/require-module-specifiers -- 激活 workspaces Context 合并（新会话归组）
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type {
+  InjectFace, PropsLocale, PropsRenderFactories, PropsRuntime,
+} from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import { SELF_NAMESPACE } from '../shared.js'
 import {
@@ -69,9 +71,10 @@ export interface UserMessageForkInjected {
   forkMessage: (request: UserMessageForkRequest) => Promise<void>
 }
 
-/** shadow 普通 user message renderer 的 props。 */
+/** shadow 普通 user message renderer 的 props；与官方 ChatNodeViewProps 同构（含 renderFactorySlot）。 */
 export type UserMessageForkNodeProps =
   & PropsRuntime<'conversation.chat.node', 'user'>
+  & PropsRenderFactories
   & InjectFace<UserMessageForkInjected>
   & PropsLocale<typeof NS>
 

@@ -1,7 +1,7 @@
 # 02 · dsh 源码依据
 
-当前插件适配基线：`@deepseek-ai/dsh@0.2.0-rc.2`（git `639ed01539`），套件已在官方桌面版
-0.2.0-rc.2 实机验证（2026-10-10，浏览器行 16/16、渲染日志零崩溃）。本项目不内置 dsh 运行时；
+当前插件适配基线：`@deepseek-ai/dsh@0.2.1-rc.2`（git `687f282e86`），套件静态验证在该版本
+通过（2026-10-20；官方桌面实机验证与本版本检查表待跑）。本项目不内置 dsh 运行时；
 基线 = 类型与开发栈钉住的 `@deepseek-ai` 版本 + 实机验证过的官方宿主版本，机器侧三处
 （根 `pnpm.overrides`、`scripts/dev-suite.mjs` 的 `DSH_VERSION`、各插件 devDependencies）
 随基线同步。跟进新版本按 `.agents/skills/dsh-upgrade/SKILL.md` 执行，完成后回写本段。
@@ -26,7 +26,7 @@
 
 | 主题 | 检查入口 |
 |---|---|
-| 套件装载层 | node scripts/concise-mode-check.mjs（预设、注册表与套件 Bundle 在线启停）；node scripts/verify-suite-client.mjs --token `<宿主打印的 token>`（浏览器行图） |
+| 套件装载层 | node scripts/suite-toggle-check.mjs 与 node scripts/suite-first-enable-check.mjs（套件 Bundle 在线停用/启用与首次启用）；node scripts/verify-suite-client.mjs --token `<宿主打印的 token>`（浏览器行图） |
 | 模型 | node scripts/copilot-auth-check.mjs；node scripts/favorite-models-check.mjs；node scripts/model-provider-check.mjs；node scripts/deepseek-official-switch-check.mjs |
 | 代理 | node scripts/proxy-check.mjs |
 | 重试与消息 | node scripts/turn-retry-check.mjs；node scripts/user-message-fork-check.mjs；node scripts/chat-scroll-check.mjs；node scripts/stats-hours-check.mjs |

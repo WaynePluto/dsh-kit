@@ -179,6 +179,7 @@ Windows toast 使用 reminder 场景并有关闭 action；AUMID 不可用时 API
 与发送进程存活无关（出处：`apps/desktop/src/main.ts` 的 `setAsDefaultProtocolClient`、
 `open-url` 对 `dsh://open` 精确匹配 `focusPrimaryWindow`，Windows 协议激活经
 `second-instance` 走同一函数，见 [官方桌面应用](desktop-app.md)）。
+Windows 上主实例已运行时前台锁定使点击只闪任务栏，机制见 desktop-app.md「协议唤起」。
 未注册时不声明 launch，点击退化为关闭，避免系统的「如何打开此链接」错误。
 文案经环境变量传入固定 PowerShell 脚本，XML 用 CreateTextNode，不拼接可执行文本。
 这是目标机器的 Windows 桌面通知，不是手机 Web Push。

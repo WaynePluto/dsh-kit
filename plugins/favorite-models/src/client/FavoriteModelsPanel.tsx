@@ -47,7 +47,6 @@ const NO_FORM_SNAPSHOT: ConfigFormSnapshot<FavoriteModelsSettings> = {
   user: undefined,
   revision: undefined,
   writable: false,
-  mode: 'memory',
 }
 
 function textOf(t: ((key: FavoriteModelsKey) => string) | undefined, key: FavoriteModelsKey): string {

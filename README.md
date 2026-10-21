@@ -33,7 +33,6 @@
 | [文件浏览](plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览与目录右键菜单 |
 | [常驻服务](plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
-| [简洁模式](plugins/concise-mode/README.md) | 新建会话时选择预设 | 原生工具直呼与 run_code 程序并用，模型自主选择；提示词只保留 persona 那句 + 工具指引 + SDK |
 | [固定 YOLO](plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
 

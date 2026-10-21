@@ -22,7 +22,6 @@ flowchart LR
 | `plugins/<组件>/` | 单个功能插件：宿主半、浏览器半、Bundle 行、locale 文案、测试 |
 | `plugins/<组合包>/` | 组合分发：只含 `cordis.patch.yml`，把若干组件聚成一个安装/停用单位 |
 | `plugins/suite/` | 唯一对外分发包：生成的聚合 patch + 物化依赖闭包 + 内嵌屏障占位（`fallback/`）+ 中文元数据 |
-| `plugins/preset-concise/` | 显示壳微包：为裸包名行提供中文 locale meta |
 | `packages/plugin-build/` | `createPluginBuildConfig`：所有插件的 tsdown 配置工厂与产物约定 |
 | `packages/plugin-ui/` | 浏览器半共享 UI（对话框全屏、导航图标、几何断言） |
 | `plugin-catalog.json` | 组件 → 组合包/独立包的映射、顺序与停用粒度约定 |

@@ -4,7 +4,7 @@ import type { Api, Model } from '@earendil-works/pi-ai'
 import { AMAZON_BEDROCK_MODELS } from '@earendil-works/pi-ai/providers/amazon-bedrock.models'
 import { ANT_LING_MODELS } from '@earendil-works/pi-ai/providers/ant-ling.models'
 import { ANTHROPIC_MODELS } from '@earendil-works/pi-ai/providers/anthropic.models'
-import { AZURE_OPENAI_RESPONSES_MODELS } from '@earendil-works/pi-ai/providers/azure-openai-responses.models'
+import { AZURE_MODELS } from '@earendil-works/pi-ai/providers/azure.models'
 import { BASETEN_MODELS } from '@earendil-works/pi-ai/providers/baseten.models'
 import { CEREBRAS_MODELS } from '@earendil-works/pi-ai/providers/cerebras.models'
 import { CLOUDFLARE_AI_GATEWAY_MODELS } from '@earendil-works/pi-ai/providers/cloudflare-ai-gateway.models'
@@ -50,7 +50,7 @@ const MODEL_MAPS: Readonly<Record<string, ModelMap>> = {
   'amazon-bedrock': AMAZON_BEDROCK_MODELS as unknown as ModelMap,
   'ant-ling': ANT_LING_MODELS as unknown as ModelMap,
   anthropic: ANTHROPIC_MODELS as unknown as ModelMap,
-  'azure-openai-responses': AZURE_OPENAI_RESPONSES_MODELS as unknown as ModelMap,
+  azure: AZURE_MODELS as unknown as ModelMap,
   baseten: BASETEN_MODELS as unknown as ModelMap,
   cerebras: CEREBRAS_MODELS as unknown as ModelMap,
   'cloudflare-ai-gateway': CLOUDFLARE_AI_GATEWAY_MODELS as unknown as ModelMap,

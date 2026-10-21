@@ -14,7 +14,10 @@ D:\github\deepseek-harness
 ```
 
 - 若该路径不存在，**先问用户**新位置，不要在别处猜测或搜索。
-- 本仓库的结论文档（`docs/02-dsh-facts.md`）当前核实于 `git 639ed01539` / tag `dsh-v0.2.0-rc.2`；本地 checkout 可能已经更新（用 `git -C D:\github\deepseek-harness rev-parse --short HEAD` 确认）。**版本不一致时，以源码为准，并提示用户回写 `docs/02-dsh-facts.md`。**
+- **本地源码版本跟随本机安装的 dsh 桌面版**（对齐方法见下节）；查证结论必须对应实际运行的产品版本。
+- 本仓库的结论文档（`docs/02-dsh-facts.md`）维护适配基线。本地 checkout 版本与结论文档基线
+  不一致时，**以源码为准，并在结论中标注实际核对的 tag**，同时提示用户回写
+  `docs/02-dsh-facts.md`；整体推进适配基线属 dsh-upgrade 流程，不在单次查证里顺手推进。
 
 ```powershell
 # 确认版本
@@ -22,9 +25,24 @@ git -C D:\github\deepseek-harness rev-parse --short HEAD
 git -C D:\github\deepseek-harness branch --show-current
 ```
 
+## 与本机安装版本对齐（默认工作流）
+
+每次用本 skill 查证前：先读本机安装的 dsh 桌面版版本，把本地源码切到同一 tag，然后才开始读源码。
+本机版本从注册表卸载项读，`InstallLocation` 同时给出安装目录（供实机核对产物用）：
+
+```powershell
+Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+  'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue |
+  Where-Object { $_.DisplayName -match 'DeepSeek Harness' } |
+  Select-Object DisplayName, DisplayVersion, InstallLocation
+```
+
+- 源码已停在目标 tag（`git describe --tags` 或 `git rev-parse` 对照）则直接查证；否则按下一节切换。
+- 本机安装版本高于 `docs/02-dsh-facts.md` 适配基线时，本次查证仍以本机版本源码为准。
+
 ## 切换到指定版本
 
-需要把源码切到某个新 tag（如升级前核对）时，**优先**用精确拉取单个 tag 再分离切换：
+需要把源码对齐到某个 tag 时（默认是本机安装版本，也可能是升级前核对的指定版本），**优先**用精确拉取单个 tag 再分离切换：
 
 ```powershell
 git -C D:\github\deepseek-harness fetch origin tag <tag>   # 只拉该 tag，不动远端跟踪分支

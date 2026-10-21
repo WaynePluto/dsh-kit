@@ -1,14 +1,6 @@
 /** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
 export const USER_ROW_CLASS = 'dshx-user-message-fork-user-row'
 export const USER_STACK_CLASS = 'dshx-user-message-fork-user-stack'
-export const BUBBLE_CLASS = 'dshx-user-message-fork-bubble'
-export const REFERENCE_CLASS = 'dshx-user-message-fork-reference'
-export const ATTACHMENTS_CLASS = 'dshx-user-message-fork-attachments'
-export const FILE_CARD_CLASS = 'dshx-user-message-fork-file-card'
-export const FILE_ICON_CLASS = 'dshx-user-message-fork-file-icon'
-export const FILE_CONTENT_CLASS = 'dshx-user-message-fork-file-content'
-export const FILE_NAME_CLASS = 'dshx-user-message-fork-file-name'
-export const FILE_META_CLASS = 'dshx-user-message-fork-file-meta'
 export const ACTIONS_CLASS = 'dshx-user-message-fork-actions'
 export const ACTION_CLASS = 'dshx-user-message-fork-action'
 export const VISUALLY_HIDDEN_CLASS = 'dshx-user-message-fork-visually-hidden'
@@ -31,67 +23,6 @@ export function userMessageForkStyles(): string {
   gap: 8px;
   min-width: 0;
   max-width: min(calc(var(--dsh-chat-content-width, 748px) * 0.702), 82%);
-}
-
-.${BUBBLE_CLASS} {
-  max-width: 100%;
-  background: var(--dsw-specific-bubble, #edf2ff);
-  border-radius: 22px;
-  padding: 10px 16px;
-  font-size: var(--dsh-content-font-size, 14px);
-  line-height: calc(22px + var(--dsh-content-font-delta, 0px));
-  color: var(--dsw-alias-label-primary, #1f2329);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.${REFERENCE_CLASS} {
-  color: var(--dsw-alias-label-tertiary, #6b7280);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
-  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
-}
-
-.${ATTACHMENTS_CLASS} {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.${FILE_CARD_CLASS} {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  max-width: 100%;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: var(--dsw-specific-bubble, #edf2ff);
-  color: var(--dsw-alias-label-primary, #1f2329);
-}
-
-.${FILE_ICON_CLASS} {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  margin-right: 8px;
-}
-
-.${FILE_CONTENT_CLASS} {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.${FILE_NAME_CLASS} {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.${FILE_META_CLASS} {
-  color: var(--dsw-alias-label-tertiary, #6b7280);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
-  line-height: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
 }
 
 .${ACTIONS_CLASS} {

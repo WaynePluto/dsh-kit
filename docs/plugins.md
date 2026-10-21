@@ -36,13 +36,12 @@
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [简洁模式](../plugins/concise-mode/README.md) | 新建会话时选择预设 | 提供简洁预设：原生工具直呼与 run_code 程序并用，由模型自主选择；提示词只保留 persona 那句 + 工具指引 + SDK（部署级段落由嵌套 `prompt-filter` 行按名摘除）；子代理深度沿用 dsh 原生设置（默认 1） |
 | [固定 YOLO](../plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开行开关并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](../plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
 
 ## 分发组合
 
-22 个功能组件以 9 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+21 个功能组件以 8 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
@@ -52,7 +51,6 @@
 | conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、会话重命名、任务通知 |
 | development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
 | proxy | 独立包 | 出网代理 |
-| concise-mode | 独立包 | 简洁模式；预设内联两个嵌套行组件——run_code 程序工具（both 展示模式：默认直呼工具，一步内多次调用才写程序）与 prompt-filter（按名摘除部署级提示词段落） |
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
 | yolo-mode | 独立包 | 固定 YOLO |
@@ -63,11 +61,8 @@
 
 插件页与设置清单显示的标题、描述来自每个包 `locale/{en,zh}.json` 的 `meta` 字段
 （dsh 0.1.7 起支持本地化包元数据），文案与本页词表一致；未声明 `icon` 时使用 dsh 默认图。
-`run-code` 与 `prompt-filter` 是只被简洁预设的 `config.plugins` 按裸包名引用的嵌套行组件：
-它们没有 profile 行、不进入上表的功能组件计数，仅随套件物化。
-另有一个不承载功能的 display 壳微包：`preset-concise`（简洁预设行的中文元数据），它没有
-独立 Behavior，只是让裸包名行能解析到中文标题。模型屏障占位行不再走独立壳包：实现内嵌在
-套件包 `plugins/suite/fallback/`，行名是套件包子路径（中文元数据经套件 exports 重映射读取）。
+模型屏障占位行不走独立壳包：实现内嵌在套件包 `plugins/suite/fallback/`，
+行名是套件包子路径（中文元数据经套件 exports 重映射读取）。
 
 ## 安装、升级与停用
 

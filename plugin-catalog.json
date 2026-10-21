@@ -21,15 +21,6 @@
       ]
     },
     {
-      "name": "@dsh-kit/dsh-plugin-concise-mode",
-      "source": "plugins/concise-mode",
-      "components": [
-        { "name": "@dsh-kit/dsh-plugin-concise-mode", "rowId": "agent-presets" },
-        { "name": "@dsh-kit/dsh-plugin-run-code" },
-        { "name": "@dsh-kit/dsh-plugin-prompt-filter" }
-      ]
-    },
-    {
       "name": "@dsh-kit/dsh-plugin-conversation-enhancements",
       "source": "plugins/conversation-enhancements",
       "components": [

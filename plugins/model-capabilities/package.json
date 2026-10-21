@@ -38,14 +38,14 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/cordis-plugin-loader": "1.0.5",
-    "@deepseek-ai/dsh-client-locale": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings-models": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.6",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings-models": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
     "@testing-library/react": "16.3.3",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
@@ -55,6 +55,6 @@
     "vitest": "4.1.11"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "3.18.4"
+    "@deepseek-ai/schemastery": "3.18.5"
   }
 }

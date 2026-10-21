@@ -33,7 +33,6 @@ const unavailableProtocolSnapshot: ConfigFormSnapshot<ProtocolOverrideSettings> 
   user: undefined,
   revision: undefined,
   writable: false,
-  mode: 'memory',
 }
 
 const noopSubscribe = (): (() => void) => () => {}

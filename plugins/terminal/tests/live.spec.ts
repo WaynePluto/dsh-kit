@@ -44,10 +44,14 @@ beforeAll(async () => {
   ctx = new Context()
   owner = { id: session.id, ctx, session }
   // 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。
-  // 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`provide(name, value, builtin)`）
-  // 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。
-  ;(ctx as unknown as { provide: (name: string, value: unknown, builtin: boolean) => void })
-    .provide('agents', { get: (id: string) => id === owner.id ? owner : undefined }, true)
+  // 实现说明：cordis 4 的 `provide(name, value)` 只有两个参数；多余的实参会让服务
+  // 解析异常并拖垮整棵依赖树（terminal-bash fiber 永远 pending）。
+  ;(ctx as unknown as { provide: (name: string, value: unknown) => void })
+    .provide('agents', { get: (id: string) => id === owner.id ? owner : undefined })
+  // dsh 0.2.1 起 terminal-bash 经 workingDirectory.ensure 解析会话目录；
+  // 测试固定在进程 cwd，避免拉起整套 working-directory 依赖树。
+  ;(ctx as unknown as { provide: (name: string, value: unknown) => void })
+    .provide('workingDirectory', { ensure: async () => process.cwd() })
   ctx.plugin(sessionProjection)
   ctx.plugin(subprocessLocal)
   ctx.plugin(sandboxPolicy, { mode: 'danger-full-access', workspaceRoot: process.cwd() })

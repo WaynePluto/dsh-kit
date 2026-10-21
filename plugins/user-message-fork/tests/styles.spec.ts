@@ -5,8 +5,8 @@ describe('user-message-fork styles', () => {
   it('keeps the fork chrome namespaced and theme-aware', () => {
     const css = userMessageForkStyles()
     expect(css).toContain('.dshx-user-message-fork-action')
-    expect(css).toContain('.dshx-user-message-fork-bubble')
-    expect(css).toContain('--dsw-specific-bubble')
+    expect(css).toContain('.dshx-user-message-fork-user-stack')
+    expect(css).toContain('--dsh-chat-content-width')
     expect(css).toContain('align-items: center')
     expect(css).toContain('line-height: 0')
   })

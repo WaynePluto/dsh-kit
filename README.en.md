@@ -22,7 +22,7 @@ Global prompt, egress proxy, Copilot login, model catalog, model capabilities,
 favorite models, model provider label, DeepSeek API switch, turn retry, chat scroll
 navigation, session-stats hours, user-message fork, task notifications, tool status,
 skill status, file browsing, resident services, interactive terminal,
-concise mode, pinned YOLO, web-search switch.
+pinned YOLO, web-search switch.
 See the [plugin index](docs/plugins.md) and each package README (Chinese).
 
 ## Install

@@ -92,10 +92,8 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 
 ### dsh-kit 分发约束
 
-- 根 `plugin-catalog.json` 将 21 个功能组件映射为 3 个组合包与 6 个独立包；
-  它们又收进 `plugins/suite` 一个套件包，用本地绝对目录走上述官方安装流程。目录里另有两个
-  没有 profile 行的嵌套行组件（`run-code`、`prompt-filter`），只被简洁预设按裸包名引用，
-  不占组件行计数。
+- 根 `plugin-catalog.json` 将 21 个功能组件映射为 3 个组合包与 5 个独立包；
+  它们又收进 `plugins/suite` 一个套件包，用本地绝对目录走上述官方安装流程。
 - 组合包是安装/卸载/升级单位，其 `cordis.patch.yml` 仍为组件保留独立稳定行。组件从 Bundle
   内嵌依赖的相对路径装载，并用 Bundle 选择状态跳过 HMR 卸载阶段的瞬时残留行。普通组件可以
   单独 disabled；models-catalog 与 model-capabilities 是一对运行时模型目录组件
@@ -111,61 +109,6 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
   开发 profile 的清单对齐官方桌面 `apps/desktop/src/project-manager.ts` 的 `workspaceFile`，
   原生模块（subprocess-local/koffi/node-pty/fs-ext）置 true，纯 JS/预编译包置 false。
 - 插件不写项目专属数据目录、不注入环境变量；不存在 launcher、外部介质同步或第二套插件管理器。
-
-## 简洁模式预设 Bundle
-
-出处：`packages/bundle/web-app/cordis.patch.yml`、`packages/preset/agent-preset-registry/src/index.ts`、
-`packages/preset/agent-preset/src/index.ts`、`packages/preset/persona/src/index.ts`、
-`packages/core/agent-tool-presentation/src/index.ts`、`packages/core/tools/src/index.ts`（presentAs/wireSchemas/collapses）、
-`packages/core/system-prompt/src/index.ts`（section 组装与 `system-prompt/assemble` waterfall）、
-`packages/core/scope/src/index.ts`（`scopeTarget` 的作用域路由）；项目定义见
-`plugins/concise-mode/cordis.patch.yml`。
-
-dsh-web-app 提供 `agent-preset-registry` 与原生预设；concise-mode Bundle 排在其后，用 patch 直接
-插入一行 `preset-concise` 的 `@deepseek-ai/dsh-agent-preset` 声明，`config.plugins` 内联声明
-persona、工具与压缩插件，行尾嵌套 `run-code` 行（`@dsh-kit/dsh-plugin-run-code`）。
-这里没有 preset root、locator entry 或以文件系统目录加载预设的逻辑；套件所在 profile 里
-只增加这一个预设。preset 嵌套行以声明方 baseUrl 解析裸包名，因此两个嵌套行组件
-（run-code、prompt-filter）由 `build-suite.mjs` 物化进套件 `node_modules/`；它们没有自己的
-profile 行，也不出现在插件管理器里。
-
-0.1.7-rc.1 不再支持旧版「复制预设 → 写入用户预设目录」：预设现在是 profile/Bundle 中的
-`@deepseek-ai/dsh-agent-preset` 声明，原生设置页只提供「查看配置」（只读）及「让 Agent 帮我创建预设模式」。
-后者进入创造模式，生成并安装声明预设的 Bundle；开启「新任务可选择模式」后才能点击。
-上游提交 `d1e22a7e24`（`feat(preset): declare Agent compositions in profile YAML`，首次包含于 0.1.7-alpha.1）
-直接删除了旧 UI 的 `beginCopy` / `CopyDialog`、旧注册表的 `@Remote('copy')` 及
-`packages/preset/agent-presets/src/authoring.ts`；旧方案被归档于
-`.agents/notes/archived/simplification/2026-08-08-copy-only-preset-authoring.zh.md`。
-新版依据见 `packages/client/ui-agent-preset/src/client/AgentPresetSection.tsx`、
-`packages/preset/agent-preset-registry/src/index.ts`。
-
-预设保留文件、搜索、技能、前台 shell、前台一次性子代理、用户提问、待办和压缩。
-shell 与 subagent 的 enableRunInBackground 为 false，subagent 使用 one-shot。
-profile 根层的 service_* 和 interactive_terminal 仍可继承。
-
-- concise：persona `prefix` 取 dsh 原生「极简模式」那一句并在其后追加英文思考指引，完整文本为
-  `You are a helpful software engineer assistant. When you thought, thought in ENGLISH, start with "We need.."`，
-  由 `scripts/concise-mode-check.mjs` 断言；complete:false、includeRuntimeContext:false；
-  嵌套 run-code 行等待 `ptcRuntime` 后
-  `presentAs('both')`，并在 `tools:ptc-only`（PTC_ONLY=800）之后、工具指引与 `tools:sdk`（TOOLS_SDK=5000）
-  之前注册 `run-code:guidance` 频道选择规则：默认直呼工具，只有一步内需要多次调用（并发、链式依赖、
-  大结果过滤）才写程序，单个工具调用禁止包成程序。位置与 dsh 自己的 ptc 模式规则同槽位族，理由同样是
-  规则必须早于工具指引被读到（出处：`packages/core/tools/src/index.ts` 的 `collapseSection()` 注释）。
-- both 模式下 wireSchemas 返回全部可见工具 + `run_code`，collapses 谓词不收缩直呼；
-  模型自主选择直呼或写 run_code 程序（参考 pi codemode 的「mode on」）。旧的 concise-ptc
-  （纯 ptc、只暴露 run_code）已删除。
-- complete:true 会过滤 system-prompt section，连 tools:ptc-only 与 tools:sdk 一起过滤，
-  不能用于任何需要 SDK 声明的预设。
-- 提示词范围由嵌套行 `prompt-filter`（`@dsh-kit/dsh-plugin-prompt-filter`）在预设作用域内收口：
-  按 config 的 `dropSections` 摘除 dsh 部署层注册的 section（`harness:identity`、
-  `context:file-reference`、`ui:deliverable-file-references`、`harness:source`、`app:web-surface`），
-  只留 persona 那句 + 工具指引 + `tools:sdk`。机制是按作用域路由的 waterfall——注册在祖先作用域的
-  监听器经 scopeTarget 祖先准入收到每个后代 agent 的组装，返回值即最终 assembly（effective
-  complete section 之后会被还原）；只摘 section、不动能力（插件、服务与工具仍在）。section 名是
-  dsh 契约：升级时必须复核 `dropSections` 名单，`scripts/concise-mode-check.mjs` 断言段落集合精确，
-  且无作用域的部署组装仍保有这些 section（证明过滤只作用于本预设）。
-- PTC SDK、提示词、并发、worker、子调用日志均由 dsh 提供，不复制实现。
-- PTC 内部调用记录 tool/ptc-dispatch，项目统计只使用顶层 tool/call。
 
 ## 客户端产物
 

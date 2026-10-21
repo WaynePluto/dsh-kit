@@ -31,7 +31,7 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/cordis": "4.0.5",
     "vitest": "4.1.11"
   }
 }

@@ -28,7 +28,6 @@ const unavailableProtocolSnapshot: ConfigFormSnapshot<ProtocolOverrideSettings> 
   user: undefined,
   revision: undefined,
   writable: false,
-  mode: 'memory',
 }
 
 const unavailableSnapshot: ConfigFormSnapshot<PiAiSettings> = {
@@ -38,7 +37,6 @@ const unavailableSnapshot: ConfigFormSnapshot<PiAiSettings> = {
   user: undefined,
   revision: undefined,
   writable: false,
-  mode: 'memory',
 }
 
 function sameDraft(left: CapabilityDraft, right: CapabilityDraft): boolean {

@@ -40,7 +40,7 @@ const PROBE_OVERLAY = join(PROBE_DIRECTORY, 'dsh-overlay.yml')
 const PROBE_MODULE = join(PROBE_DIRECTORY, 'probe.mjs')
 const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
 const COMPONENT_ROWS = [
-  'proxy', 'agents-md', 'chat-scroll', 'preset-concise', 'copilot-auth', 'favorite-models',
+  'proxy', 'agents-md', 'chat-scroll', 'copilot-auth', 'favorite-models',
   'files', 'model-capabilities', 'models-catalog', 'notify', 'services', 'skills-inspector',
   'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch', 'yolo-mode',
 ]

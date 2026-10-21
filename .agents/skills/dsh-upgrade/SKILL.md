@@ -60,11 +60,7 @@ npm view @deepseek-ai/dsh versions --json
 - **RPC 通道**：`ctx.connection.rpc.handle/call` 契约（`/files`、`/services` 等私有通道）
 - **index 注入契约**：`IndexInjection` 的 kind/placement 取值与
   `__DSH_TRANSPORT__` 的壳语义（当前没有组件使用，仍需在升级时确认未破坏）
-- **预设与模型**：`@deepseek-ai/dsh-agent-preset` 行内联、run-code 双通道行、`llm-pi-ai` 启动屏障、
-  `settings.models.*` 子槽；`prompt-filter` 的 `dropSections` 名单依赖 dsh 的 section 名
-  （`harness:identity`、`context:file-reference`、`ui:deliverable-file-references`、`harness:source`、
-  `app:web-surface`）与 `system-prompt/assemble` 的作用域路由语义，改名或改路由即失效，
-  `concise-mode-check` 必须仍然全绿
+- **预设与模型**：`settings.models.*` 子槽、pi-ai model map 共享可变状态（晚注册生效，无需启动屏障）
 - **会话契约**：turn-retry 依赖的 `TurnEndReasonMap`、`sessionProjections.register` wire 契约、
   `Agent.inbox.nextTurn`、`followup()` 语义（升级后必跑排队消息回归）
 - **官方「添加插件」安装器**：patch 校验时机、bundle 列表语义、安装/升级两条路径
@@ -122,10 +118,10 @@ pnpm suite:build
 
 ### 7. 常设关注：套件在线启停的上游竞态
 
-dsh 0.2.0 仍存在 session-controller 重挂载竞态（停用 Bundle 触发 file-upload 的 Agent resolver
-二次注册失败）。套件整包停用/启用会经过这条路径；`scripts/concise-mode-check.mjs` 命中时
-只允许按精确签名豁免，其他失败照常响亮报错。上游修复后删除豁免并回写
-`docs/05-roadmap.md` 的后续任务。
+dsh 0.2.1 仍存在 session-controller 重挂载竞态（停用 Bundle 触发 file-upload 的 Agent resolver
+二次注册失败，`registerAgentResolver` 的重复注册断言未变）。套件整包停用/启用会经过这条路径；
+`scripts/suite-toggle-check.mjs` 命中时只允许按精确签名豁免，其他失败照常响亮报错。
+上游修复后删除豁免并回写 `docs/05-roadmap.md` 的后续任务。
 
 ### 8. 常设关注：原生能力替代插件
 

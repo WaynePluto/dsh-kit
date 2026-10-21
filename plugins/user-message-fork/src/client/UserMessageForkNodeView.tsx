@@ -1,10 +1,14 @@
-import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  FileTypeIcon, IconBranchOutlineMedium, IconCheckOutlineMedium, IconCopyOutlineMedium,
-  JsonBlock, Tooltip, fileSizeText, projectUserText, writeClipboard,
+  IconBranchOutlineMedium, IconCheckOutlineMedium, IconCopyOutlineMedium,
+  Tooltip, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { UserMessageNode } from '@deepseek-ai/dsh-client-ui-chat/client'
-import type { MessageImageSource, RenderMessageImages } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {
+  ChatNodeOwnerProps, UserContentAttachment, UserContentData, UserMessageNode,
+} from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
+import type { UserTextFacts } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import type { UserMessageForkNodeProps, UserMessageForkRequest } from './index.js'
 import {
   previousCompletedTurnEnd, userMessageContentFacts, userMessageForkAvailability,
@@ -12,57 +16,51 @@ import {
 } from '../shared.js'
 import { type UserMessageForkKey } from './locales.js'
 import {
-  ACTIONS_CLASS, ACTION_CLASS, ATTACHMENTS_CLASS, BUBBLE_CLASS, FILE_CARD_CLASS,
-  FILE_CONTENT_CLASS, FILE_ICON_CLASS, FILE_META_CLASS, FILE_NAME_CLASS, REFERENCE_CLASS,
-  USER_ROW_CLASS, USER_STACK_CLASS, VISUALLY_HIDDEN_CLASS,
+  USER_ROW_CLASS, USER_STACK_CLASS,
+  ACTIONS_CLASS, ACTION_CLASS, VISUALLY_HIDDEN_CLASS,
 } from './styles.js'
 
-interface UserImage {
-  readonly type: 'image'
-  readonly attachment: Extract<MessageImageSource, { readonly attachment: unknown }>['attachment']
-}
-
-interface UserFile {
-  readonly type: 'file'
-  readonly attachment: { readonly name: string; readonly bytes: number }
-}
-
-type PresentedAttachment =
-  | { readonly type: 'image'; readonly image: MessageImageSource }
-  | { readonly type: 'file'; readonly file: UserFile['attachment'] }
+type PropsRuntimeLoadImage = ChatNodeOwnerProps['loadImage']
 
 interface UserData extends UserMessageNode {
   readonly referenceLabels?: readonly string[]
   readonly skillNames?: readonly string[]
 }
 
-function extensionOf(name: string): string {
-  const dot = name.lastIndexOf('.')
-  if (dot <= 0 || dot === name.length - 1) return ''
-  return name.slice(dot + 1).toUpperCase().slice(0, 8)
-}
-
-function contentParts(content: readonly unknown[]): {
-  text: string
-  attachments: PresentedAttachment[]
-  rest: unknown[]
-} {
+/** 官方 MessageItem 同款切分：文本拼接、附件按显示序、其余块原样保留。 */
+function contentParts(content: readonly unknown[]): UserContentData {
   const texts: string[] = []
-  const attachments: PresentedAttachment[] = []
+  const attachments: UserContentAttachment[] = []
   const rest: unknown[] = []
   for (const block of content) {
-    const candidate = block as { type?: unknown; text?: unknown; attachment?: unknown }
+    const candidate = block as {
+      type?: unknown; text?: unknown
+      attachment?: ImageAttachmentRef | FileAttachmentRef
+    }
     if (candidate.type === 'text' && typeof candidate.text === 'string') {
       texts.push(candidate.text)
-    } else if (candidate.type === 'image' && candidate.attachment !== undefined) {
-      attachments.push({ type: 'image', image: { attachment: (block as UserImage).attachment } })
-    } else if (candidate.type === 'file' && candidate.attachment !== undefined) {
-      attachments.push({ type: 'file', file: (block as UserFile).attachment })
+    } else if (candidate.type === 'image' && isImageRef(candidate.attachment)) {
+      attachments.push({ type: 'image', image: { attachment: candidate.attachment } })
+    } else if (candidate.type === 'file' && isFileRef(candidate.attachment)) {
+      attachments.push({ type: 'file', file: candidate.attachment })
     } else {
       rest.push(block)
     }
   }
-  return { text: texts.join(''), attachments, rest }
+  return { text: texts.join(''), attachments, extraBlocks: rest }
+}
+
+function isImageRef(value: unknown): value is ImageAttachmentRef {
+  return typeof value === 'object' && value !== null
+    && typeof (value as ImageAttachmentRef).attachmentId === 'string'
+    && typeof (value as ImageAttachmentRef).mediaType === 'string'
+}
+
+function isFileRef(value: unknown): value is FileAttachmentRef {
+  return typeof value === 'object' && value !== null
+    && typeof (value as FileAttachmentRef).attachmentId === 'string'
+    && typeof (value as FileAttachmentRef).name === 'string'
+    && typeof (value as FileAttachmentRef).bytes === 'number'
 }
 
 function pad2(value: number): string {
@@ -186,20 +184,20 @@ function UserMessageActions({
 }
 
 function UserStyleBubble({
-  data, currentTurn, turnStartSeq, previousEndSeq, hasMore, renderMessageImages, forkMessage, t,
+  data, currentTurn, turnStartSeq, previousEndSeq, hasMore, loadImage, renderFactorySlot, forkMessage, t,
 }: {
   data: UserData
   currentTurn: number | undefined
   turnStartSeq: number | undefined
   previousEndSeq: number | undefined
   hasMore: boolean
-  renderMessageImages: RenderMessageImages
+  loadImage: PropsRuntimeLoadImage
+  renderFactorySlot: PropsRenderFactories['renderFactorySlot']
   forkMessage: UserMessageForkNodeProps['forkMessage']
   t: UserMessageForkNodeProps['t']
 }): ReactNode {
   const parts = useMemo(() => contentParts(data.content), [data.content])
   const facts = useMemo(() => userMessageContentFacts(data.content), [data.content])
-  const compactImages = parts.attachments.length > 1
   const availability = useMemo(() => {
     // 没有 turn 归属的 user message（会话级节点）解析不出更早边界：按“没有可继承前缀”走新会话。
     if (currentTurn === undefined) return userMessageForkAvailability(undefined, facts)
@@ -213,45 +211,18 @@ function UserStyleBubble({
         && turnStartSeq > 0,
     )
   }, [currentTurn, facts, hasMore, previousEndSeq, turnStartSeq])
-  const truncated = (total: number): string => t('extraBlock', { total })
-  const showBubble = parts.text !== '' || parts.rest.length > 0
+  // 会话引用与技能名进 facts，交给官方 conversation.user.text 规则渲染；
+  // 与官方 MessageItem.UserStyleBubble 的 facts 组装同构。
+  const textFacts = useMemo<Partial<UserTextFacts>>(() => ({
+    ...(data.referenceLabels === undefined ? {} : { sessionLabels: data.referenceLabels }),
+    ...(data.skillNames === undefined ? {} : { skillNames: data.skillNames }),
+  }), [data.referenceLabels, data.skillNames])
   return (
     <div className={USER_ROW_CLASS} data-dshx-user-message-fork-row>
       <div className={USER_STACK_CLASS}>
-        {parts.attachments.length > 0 && (
-          <div className={ATTACHMENTS_CLASS} data-message-attachments>
-            {parts.attachments.map((attachment, index) => attachment.type === 'image'
-              ? (
-                <Fragment key={`image:${index}`}>
-                  {renderMessageImages({ images: [attachment.image], align: 'end', compact: compactImages })}
-                </Fragment>
-              )
-              : (
-                <span key={`file:${index}`} className={FILE_CARD_CLASS} title={attachment.file.name}>
-                  <FileTypeIcon path={attachment.file.name} size={18} className={FILE_ICON_CLASS} />
-                  <span className={FILE_CONTENT_CLASS}>
-                    <span className={FILE_NAME_CLASS}>{attachment.file.name}</span>
-                    <span className={FILE_META_CLASS}>
-                      {[extensionOf(attachment.file.name), fileSizeText(attachment.file.bytes)].filter(Boolean).join(' ')}
-                    </span>
-                  </span>
-                </span>
-              ))}
-          </div>
-        )}
-        {showBubble && (
-          <div className={BUBBLE_CLASS}>
-            {projectUserText(parts.text, data.referenceLabels ?? [], data.skillNames ?? [])}
-            {parts.rest.map((block, index) => (
-              <JsonBlock key={index} label={t('extraBlock')} payload={block} truncatedLabel={truncated} />
-            ))}
-          </div>
-        )}
-        {(data.referenceLabels?.length ?? 0) > 0 && (
-          <div className={REFERENCE_CLASS}>
-            {t('referenceSummary', { labels: data.referenceLabels!.join(t('referenceSeparator')) })}
-          </div>
-        )}
+        {renderFactorySlot('conversation.chat.user.content', {
+          content: parts, loadImage, facts: textFacts,
+        })}
       </div>
       <UserMessageActions
         text={parts.text}
@@ -268,7 +239,7 @@ function UserStyleBubble({
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export function UserMessageForkNodeView({
-  node, renderMessageImages, forkMessage, useChat, useSession, t,
+  node, loadImage, renderFactorySlot, forkMessage, useChat, useSession, t,
 }: UserMessageForkNodeProps) {
   const turnLocation = node.location.kind === 'turn' || node.location.kind === 'step'
     ? node.location.turn
@@ -286,7 +257,8 @@ export function UserMessageForkNodeView({
       turnStartSeq={turnStartSeq}
       previousEndSeq={previousEndSeq}
       hasMore={hasMore}
-      renderMessageImages={renderMessageImages}
+      loadImage={loadImage}
+      renderFactorySlot={renderFactorySlot}
       forkMessage={forkMessage}
       t={t}
     />

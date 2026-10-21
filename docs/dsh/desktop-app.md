@@ -52,6 +52,15 @@
   同一个 `focusPrimaryWindow()`——不检查 URL，restore + show + focus；窗口不存在则重建。
 - 因此外部唤起统一用 `dsh://open`：notify 插件点击 toast 时经
   `activationType="protocol"` 由 Shell 执行该 URL（见 [会话与消息](conversation.md)）。
+- Windows 前台锁定（用户实测 + `focusPrimaryWindow` 源码核对）：主实例已在运行时，
+  点击通知后只闪任务栏按钮、不前置窗口。`focus()` 底层是 `SetForegroundWindow`，
+  主实例此刻不是前台进程也不持有激活权——用户点击授予的激活权属于被 Shell 启动的
+  第二实例，随其退出丢失，不随 single-instance IPC 传递。冷启动（主实例未运行）
+  时新进程自带激活权，正常前置。官方 `focusPrimaryWindow` 未使用瞬时置顶或
+  `AttachThreadInput` 等规避技巧；该缺陷影响所有 Windows 热启动唤起场景，
+  修复需官方调整（dsh-kit 不改 dsh 源码）。
+  本节复核于 `dsh-v0.2.1-rc.2`（git `687f282e86`，行号 1219/1235/1236/1343），
+  与 0.2.0-rc.2 相比聚焦链路逐字未变，main.ts 差异都在 settings/update 相关文件。
 
 ## 对插件开发的结论
 

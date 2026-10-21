@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Concise mode",
-    "description": "File, search, skill, subagent, ask-user and task-progress tools; call them directly or compose them in run_code programs."
-  }
-}

@@ -21,7 +21,6 @@
   "dependencies": {
     "@dsh-kit/dsh-plugin-agents-md": "file:../agents-md",
     "@dsh-kit/dsh-plugin-chat-scroll": "file:../chat-scroll",
-    "@dsh-kit/dsh-plugin-concise-mode": "file:../concise-mode",
     "@dsh-kit/dsh-plugin-copilot-auth": "file:../copilot-auth",
     "@dsh-kit/dsh-plugin-deepseek-official-switch": "file:../deepseek-official-switch",
     "@dsh-kit/dsh-plugin-favorite-models": "file:../favorite-models",
@@ -30,10 +29,7 @@
     "@dsh-kit/dsh-plugin-model-provider": "file:../model-provider",
     "@dsh-kit/dsh-plugin-models-catalog": "file:../models-catalog",
     "@dsh-kit/dsh-plugin-notify": "file:../notify",
-    "@dsh-kit/dsh-plugin-preset-concise": "file:../preset-concise",
-    "@dsh-kit/dsh-plugin-prompt-filter": "file:../prompt-filter",
     "@dsh-kit/dsh-plugin-proxy": "file:../proxy",
-    "@dsh-kit/dsh-plugin-run-code": "file:../run-code",
     "@dsh-kit/dsh-plugin-services": "file:../services",
     "@dsh-kit/dsh-plugin-session-rename": "file:../session-rename",
     "@dsh-kit/dsh-plugin-skills-inspector": "file:../skills-inspector",

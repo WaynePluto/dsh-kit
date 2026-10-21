@@ -26,10 +26,8 @@ const COMBO_PACKAGES = new Set([
 const FIRST = ['proxy']
 const LAST = ['yolo-mode']
 
-// 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。preset-concise
-// 是显示壳微包（行名改写目标）；run-code 与 prompt-filter 由 concise 预设的嵌套行
-// 按裸包名引用（嵌套行以声明方 baseUrl 解析，即套件包根）。
-const DISPLAY_PACKAGE_DIRS = ['preset-concise', 'run-code', 'prompt-filter']
+// 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。
+const DISPLAY_PACKAGE_DIRS = []
 
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
@@ -67,11 +65,8 @@ function topLevelEntries(text) {
   }).filter(block => block.length > 0)
 }
 
-// 非 './dist/*' 形态行的显示改写：preset 行换成本套件生成的显示壳微包
-// （相对路径行拿不到插件管理器元数据）。
-const ROW_NAME_OVERRIDES = new Map([
-  ['preset-concise', '@dsh-kit/dsh-plugin-preset-concise'],
-])
+// 非 './dist/*' 形态行的显示改写：预留（当前无此类行）。
+const ROW_NAME_OVERRIDES = new Map([])
 
 // 不注入套件 disabled 表达式的顶层覆写行（yolo-mode 段）：这两行的 config 自带
 // active 条件回退，行本身必须始终装载——行 disabled 会连官方基础行一起整行禁用，
@@ -104,7 +99,7 @@ function wrapDisabledWithGuard(packageName, expr) {
 }
 
 /**
- * 逐行改写一个顶层条目块；同一 insert 块可含多行（如 concise-mode 的两个 preset），各自独立处理。
+ * 逐行改写一个顶层条目块；同一 insert 块可含多行，各自独立处理。
  * 按行段（一条 `- id:` 到下一条）收集：先改写段内 name/includes/disabled，再依据改写后的
  * 行名决定在 id 行后插入哪种 disabled 表达式——裸包名 insert 子行用守卫表达式，
  * 顶层覆写行与相对路径行（锚定到 patch 所在目录、天然可解析）只用套件成员表达式；

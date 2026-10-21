@@ -33,7 +33,6 @@ export const DEFAULT_PROFILE_BUNDLES = [
   '@dsh-kit/dsh-plugin-models-catalog',
   '@dsh-kit/dsh-plugin-model-capabilities',
   '@dsh-kit/dsh-plugin-favorite-models',
-  '@dsh-kit/dsh-plugin-concise-mode',
   '@dsh-kit/dsh-plugin-turn-retry',
   '@dsh-kit/dsh-plugin-chat-scroll',
   '@dsh-kit/dsh-plugin-user-message-fork',

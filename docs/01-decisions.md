@@ -20,11 +20,9 @@
 | D8 | 开发栈与冒烟使用隔离环境：`~/.dsh-dev`、profile `dsh-kit-dev`、端口 3180 | 与日常实例互不影响；冒烟脚本从该 profile 复制隔离副本后启动真实 dsh |
 | D9 | 所有直接依赖固定版本，不使用范围、dist-tag 或隐式升级 | `pnpm check:dependencies` 覆盖 `packages/` 与 `plugins/`；dsh 家族版本由根 `pnpm.overrides` 统一钉住 |
 | D10 | 固定 YOLO：danger-full-access + ask，合法 approval 自动 allowed-once，用户提问不自动回答 | 取消模型执行前的交互式权限边界是明确选择，风险与替代防线见 [yolo-mode README](../plugins/yolo-mode/README.md) |
-| D11 | 展示壳微包（model-bootstrap、preset-concise）承载裸包名行的中文元数据 | 插件管理器只为裸包名行解析 locale meta；相对路径行会退化成完整文件 URL，官方包只有英文 |
-| D12 | 远程访问能力已整体删除（2026-10-10）：relay/connector/protocol、remote-* 组件与相关脚本文档全部移除 | 远程能力实际使用频率低，项目收敛为纯插件套件；最后一次可用状态存档在 git tag `dsh-remote-final`，将来需要时重新评估而不是直接恢复旧代码 |
-| D14 | 简洁预设的频道选择默认直呼工具：`run-code:guidance` 前置于工具指引与 `tools:sdk`，单个工具调用禁止包成程序 | both 展示模式下「可以写程序」会被模型读成「应该写程序」：真实会话 100 次顶层调用里 96 次 run_code，其中 20% 的程序只调一个工具、没有任何收益。位置对齐 dsh 自己的 `tools:ptc-only`（规则必须早于工具指引），措辞由同一提示词与同一模型的真机 A/B 确定（单工具任务 3/3 直呼、三个独立 shell 检查 3/3 写程序） |
+| D11 | 展示壳微包（model-bootstrap）承载裸包名行的中文元数据；模型屏障占位行已内嵌到套件包 `fallback/` 子路径 | 插件管理器只为裸包名行解析 locale meta；相对路径行会退化成完整文件 URL，官方包只有英文 |
+| D12 | 远程访问能力已整体删除（2026-10-10）：relay/connector/protocol、remote-* 组件与相关脚本文档全部移除；简洁模式预设（concise-mode、preset-concise、run-code、prompt-filter）连同 run_code 程序工具已整体删除（2026-10-20，用户决策） | 远程能力实际使用频率低，项目收敛为纯插件套件；最后一次可用状态存档在 git tag `dsh-remote-final`，将来需要时重新评估而不是直接恢复旧代码。dsh 0.2.1 从工具注册表移除 both 混合呈现并拒绝该配置，run-code 失去上游依据，简洁模式随之下线 |
 | D15 | 移除内置 DeepSeek（API 密钥）卡片 = 经官方 pluginManager 停用 base bundle 的 `llm-deepseek` 行；恢复入口放模型页底部 footer 槽 | `deepseek-official` 是整段供应商（settingsPath 为空），dsh 原生删除只覆盖用户层配置条目，卡片无法经设置消失；停用行是让路由与卡片消失的唯一官方途径（web-search-switch 同款机制，2026-10-13 用户确认）。恢复入口必须独立于被移除的卡片，footer 槽（models-catalog 先例）在行停用后仍渲染。不动 `DEEPSEEK_API_KEY` 凭据与 `llm-deepseek-account` 行：账号卡与官方网页搜索（独立注册搜索 provider）不受影响；目录采纳的第三方 `deepseek`（`llm-pi-ai` 行注册）与本开关无关 |
-| D13 | 简洁模式的提示词范围由预设作用域内的嵌套行 `prompt-filter` 按名摘除 dsh 部署级 section 决定，不用 persona 的 `complete: true` | 用户预期是「极简模式那一句 + 常用工具」；`complete: false` 只替换 persona 槽位、部署级段落一条也过滤不掉，`complete: true` 会把 `tools:sdk` 与工具指引一起滤掉（run_code 失去 `tools.*` 声明）。dsh 的 `system-prompt/assemble` 按作用域路由（`scopeTarget` 祖先准入），预设作用域的监听器只能影响本预设的 agent |
 | D16 | 套件层（以及一切第三方 patch 层）永不覆写官方行；宿主半私有 RPC 统一走 `connection.fetch.register` 的 `/api` 精确路由（共享包 `@dsh-kit/plugin-rpc`）；yolo-mode v3 只剩插件 insert 行，生效面全部由插件代码承担 | 官方行覆写（旧 llm-pi-ai 屏障、connection webServer 注入、yolo 四行）在套件启停的 HMR 重组合中让该行 fiber 回退/重启，沿注入链级联（sandbox-policy → fs-sandbox → fs → session-controller；llm-pi-ai → llm → session-controller），命中 dsh 0.2.0 session-controller 的 file-upload Agent resolver 二次注册竞态：会话服务当场失败（`停用失败: 2 entries did not activate … Agent resolver is already registered`）、重新启用后 `session/follow` 报 `sessionController is unavailable`，重启 dsh 前不恢复（2026-10-14 用户实机复现，隔离冒烟三度复现并定位）。替代事实：`/api` 桥由官方 connection 插件经 `ctx.inject(['webServer'],…)` 自挂，fetch 路由注册不要求 connection 行注入 webServer（`packages/client/connection/src/rpc-host.ts` 的 `registerFetchRoute`）；pi-ai model map 是共享可变状态（`getBuiltinModels` 每次读取）、持久化模型是自包含 `providers.*.models` 条目，晚注册生效，启动屏障不必要；sandbox/approval 修复走会话级持久事件（`setSandboxMode`/`setApprovalPolicy` = `session.append`），agent/created 同步执行先于首个模型请求。代价：YOLO 激活期间原生权限选择器不再隐藏（选择只改部署级默认，会话 override 仍拉回 YOLO 值）。守护：`suite-patch.spec.mjs` 空覆写白名单 + `suite-toggle-check.mjs` 在线启停实机回归 |
 
 ## 3. 术语
@@ -35,7 +33,6 @@
 | 组合分发单位 | 组合包（模型增强、会话增强、开发工具） |
 | 组合包内的单行插件 | 组件 |
 | 关闭某个组件行 | 停用组件 |
-| 预设 `config.plugins` 内联的子插件行（如 run-code、prompt-filter） | 嵌套行组件（没有自己的 profile 行） |
 | 取消某个组合包 | 停用/卸载 Bundle |
 | dsh 的 Profile Bundle 机制 | 官方插件机制 |
 

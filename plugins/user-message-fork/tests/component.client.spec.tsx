@@ -10,7 +10,6 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   JsonBlock: () => null,
   Tooltip: ({ children }: { children: unknown }) => children,
   fileSizeText: () => '',
-  projectUserText: (text: string) => text,
   writeClipboard: vi.fn(async () => true),
 }))
 
@@ -67,7 +66,11 @@ function props(options: {
     sessionId: 'session-2',
     useChat: (select: (snapshot: typeof chatSnapshot) => unknown) => select(chatSnapshot),
     useSession: (select: (snapshot: { hasMore: boolean }) => unknown) => select({ hasMore: options.hasMore ?? false }),
-    renderMessageImages: () => null,
+    loadImage: Object.assign(async () => '', { peek: () => undefined }),
+    renderFactorySlot: (name: string, factoryProps: { content?: { text?: string } }) => {
+      void name
+      return factoryProps?.content?.text ?? null
+    },
     forkMessage: vi.fn(async () => {}),
     t: (key: UserMessageForkKey, params?: Record<string, unknown>) => {
       const values: Record<string, string> = {
