@@ -16,7 +16,7 @@ import {
 } from '../shared.js'
 import { type UserMessageForkKey } from './locales.js'
 import {
-  USER_ROW_CLASS, USER_STACK_CLASS,
+  USER_ROW_CLASS,
   ACTIONS_CLASS, ACTION_CLASS, VISUALLY_HIDDEN_CLASS,
 } from './styles.js'
 
@@ -219,11 +219,11 @@ function UserStyleBubble({
   }), [data.referenceLabels, data.skillNames])
   return (
     <div className={USER_ROW_CLASS} data-dshx-user-message-fork-row>
-      <div className={USER_STACK_CLASS}>
-        {renderFactorySlot('conversation.chat.user.content', {
-          content: parts, loadImage, facts: textFacts,
-        })}
-      </div>
+      {/* 官方 UserContent 根节点已是 .userStack（自带整行宽下的右对齐上限）；再包一层同上限
+          wrapper 会让内层 82% 改对已收缩到内容宽的父级解析，短消息被钳成 0.82 × 自然单行宽而折行。 */}
+      {renderFactorySlot('conversation.chat.user.content', {
+        content: parts, loadImage, facts: textFacts,
+      })}
       <UserMessageActions
         text={parts.text}
         time={data.time}

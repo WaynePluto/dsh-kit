@@ -98,6 +98,8 @@ describe('UserMessageForkNodeView', () => {
     expect(markup).toContain('原始问题')
     expect(markup).toContain('从此消息重新开始')
     expect(markup).not.toContain('data-unavailable="true"')
+    // 官方 UserContent 根节点已是 .userStack；DOM 里不得再出现插件自己的宽度上限层。
+    expect(markup).not.toContain('dshx-user-message-fork-user-stack')
   })
 
   it('offers a fresh conversation on the first user message', () => {

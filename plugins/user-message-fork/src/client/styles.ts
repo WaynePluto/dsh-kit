@@ -1,6 +1,5 @@
 /** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
 export const USER_ROW_CLASS = 'dshx-user-message-fork-user-row'
-export const USER_STACK_CLASS = 'dshx-user-message-fork-user-stack'
 export const ACTIONS_CLASS = 'dshx-user-message-fork-actions'
 export const ACTION_CLASS = 'dshx-user-message-fork-action'
 export const VISUALLY_HIDDEN_CLASS = 'dshx-user-message-fork-visually-hidden'
@@ -16,14 +15,9 @@ export function userMessageForkStyles(): string {
   gap: 6px;
 }
 
-.${USER_STACK_CLASS} {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  min-width: 0;
-  max-width: min(calc(var(--dsh-chat-content-width, 748px) * 0.702), 82%);
-}
+/* 行自身不设宽度上限：官方 UserContent 根节点 .userStack 已带
+   max-width: min(calc(var(--dsh-chat-content-width) * 0.702), 82%)，百分比须对整行宽父级解析；
+   在此重复同一条会把内层钳成 0.82 × 内容自然单行宽，短消息反而折行。 */
 
 .${ACTIONS_CLASS} {
   display: flex;

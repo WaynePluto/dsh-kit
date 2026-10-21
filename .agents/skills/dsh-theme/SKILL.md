@@ -140,6 +140,16 @@ grid 列模板、`min-height` 行高、`white-space: pre` 与 wrap 分支选择�
 （对照 `ui-deliverables/src/client/{FileDiff,ReviewTab}.module.css`，0.2.0-rc.2）；
 真实页面并排 computed 对比与深浅主题验收仍需单独做。
 
+### Shadow 渲染器外包 wrapper 时不要复制官方的百分比宽度上限
+
+官方 user 消息链路是「整行宽 `.userRow` → 收缩适配 `.userStack`（`max-width: min(calc(var(--dsh-chat-content-width) * 0.702), 82%)`）」。
+插件 shadow renderer 曾在这层之外再包一个同上限 wrapper：每层都 `align-items: flex-end`（宽度收缩到内容），
+内层官方 `.userStack` 的 82% 百分比改对「已收缩到内容自然单行宽」的 wrapper 解析，气泡被钳成 0.82 × 自然单行宽——
+短消息反而必然折行（文件引用 chip 是 `display: inline` + `overflow-wrap: anywhere`，会在文件名中间断开）。
+规则：官方 factory 输出根节点已自带布局上限时，插件行容器只做对齐与 gap，不重复任何 `max-width`，
+让百分比上限对整行宽父级解析。依据 `packages/client/ui-chat/src/client/chat/{MessageItem.module.css,UserContent.tsx}`；
+本仓库实例 `plugins/user-message-fork/src/client/styles.ts`（2026-10-21 源码定位，styles/component 单测锁定回归）。
+
 ### 设置导航与正文覆盖
 
 当前 `settings.section` 的 priority shadow 只影响正文 renderer；`ui-settings-general/src/client/index.ts`
