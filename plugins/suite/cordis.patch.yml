@@ -130,6 +130,12 @@
       disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-web-search-switch/package.json") } catch { return true } return false } return true })()'
       name: '@dsh-kit/dsh-plugin-web-search-switch'
 
+# ── @dsh-kit/dsh-plugin-workspace-path ──
+- insert:
+    - id: workspace-path
+      disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-workspace-path/package.json") } catch { return true } return false } return true })()'
+      name: '@dsh-kit/dsh-plugin-workspace-path'
+
 # ── @dsh-kit/dsh-plugin-yolo-mode ──
 - insert:
     - id: yolo-mode

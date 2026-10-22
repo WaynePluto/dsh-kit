@@ -49,6 +49,7 @@
     "@dsh-kit/dsh-plugin-turn-retry": "workspace:*",
     "@dsh-kit/dsh-plugin-user-message-fork": "workspace:*",
     "@dsh-kit/dsh-plugin-web-search-switch": "workspace:*",
+    "@dsh-kit/dsh-plugin-workspace-path": "workspace:*",
     "@dsh-kit/dsh-plugin-yolo-mode": "workspace:*",
     "@types/node": "22.20.4",
     "husky": "9.1.7",

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Copy Workspace Path",
+    "description": "Adds a Copy path row to the workspace list's ··· menu"
+  }
+}

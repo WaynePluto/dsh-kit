@@ -39,6 +39,7 @@
     "@dsh-kit/dsh-plugin-turn-retry": "file:../turn-retry",
     "@dsh-kit/dsh-plugin-user-message-fork": "file:../user-message-fork",
     "@dsh-kit/dsh-plugin-web-search-switch": "file:../web-search-switch",
+    "@dsh-kit/dsh-plugin-workspace-path": "file:../workspace-path",
     "@dsh-kit/dsh-plugin-yolo-mode": "file:../yolo-mode"
   },
   "devDependencies": {

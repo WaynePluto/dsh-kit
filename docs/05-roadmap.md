@@ -6,6 +6,14 @@
 
 ## 已实现
 
+- [x] 复制工作区路径（workspace-path，2026-10-22）：侧栏工作区标题行 hover 出现的 `···`
+  菜单（原生只有重命名/删除，无插件槽位——会话行菜单才有 `sidebar.workspaces.session.menu.item`）
+  注入「复制路径」项：捕获工作区行 `[data-row-key="workspace:<id>"]` 点击归因 → Menu portal
+  （`[role=menu]`，body 直挂）出现后在其 viewport 挂 `MenuItemButton`（external 复用页面样式，
+  自动加入 Menu 的 DOM 键盘走查），插在删除（危险项收尾）之前，悬停可见完整路径；
+  路径取官方 `workspaces` 服务 `WorkspaceView.path`（与原生 hover 卡片复制同源），复制走
+  `writeClipboard`，关闭用合成 Escape（注入项拿不到 owner 的 onSelect 关闭路径）。
+  纯浏览器半、无宿主服务（组件总数 22）；随 conversation-enhancements 组合包分发。
 - [x] 常驻服务跨工作区可见（2026-10-21，D17）：注册表从项目内 `.agents/services.json` 迁到
   `$DSH_HOME/dsh-kit/services.json`（v2：记录带 root、文档带 roots 索引），同一 home 所有工作区共享；
   日志同住 home（`$DSH_HOME/dsh-kit/logs/<name>.log`，2026-10-22「方案一」：公共基础服务的日志
@@ -146,6 +154,7 @@
 | stats-hours | 会话统计弹窗超过一小时的模型用时/工具调用用时显示「小时」档（中英文界面），不足一小时与 Token 用量弹窗保持原生；停用组件后恢复原生两档 |
 | session-rename | 双击顶栏会话标题弹出重命名弹窗（回车提交、IME 不误提交、错误就地显示）；重命名后顶栏与侧栏同步、标题固定不再自动生成；空白会话与祖先 crumb 双击不响应；停用组件后顶栏双击无反应、侧栏原生入口不受影响；深浅主题与中英文界面 |
 | model-provider | 模型选择按钮左侧显示当前提供商名（切换模型实时跟随、目录未装载回退 provider id）；行宽不足紧凑模式下随模型文字一起隐藏；停用组件后恢复原生；深浅主题与中英文界面 |
+| workspace-path | 工作区 `···` 菜单出现「复制路径」，点击后剪贴板为该工作区完整路径；悬停显示路径；方向键可到达并回车触发；停用组件后菜单恢复原生两项；深浅主题与中英文界面 |
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；跨工作区：另一工作区面板可见并可停止/读日志（带来源徽标、当前工作区排前），`service_list scope:"all"` 与全局重名拒绝；日志在 DSH_HOME/dsh-kit/logs（项目目录零落盘），旧项目注册表与旧日志首次触达时自动认领/回捞；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
 | files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；Git 变更面板（右键入口、清单与 diff、左右对比/换行、深浅主题与中英文）待实机确认 |

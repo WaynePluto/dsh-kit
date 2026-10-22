@@ -157,6 +157,36 @@ grid 列模板、`min-height` 行高、`white-space: pre` 与 wrap 分支选择�
 “同 id 只出现一个菜单”，测试必须连同导航登记检查；不需要页面定制时不要添加登记项。
 此导航例外核对于 0.1.6-alpha.2 产物，0.1.7-rc.1 待复测；不代表所有 list 槽的 owner 都有同样行为。
 
+### 注入原生 portaled 菜单（无槽位表面）
+
+给没有插件槽位的原生菜单（如工作区行 `···` 菜单，只有会话行菜单有
+`sidebar.workspaces.session.menu.item`）加条目时，只能 DOM 注入，四条源码核实的契约
+（`packages/client/ui-primitives/src/Menu.tsx`、`ui-workspace/src/client/rows/Rows.tsx`）：
+
+- portal 菜单直接挂 `document.body`，形态 `MenuSurface[role=menu] > div[role=presentation]`（viewport）
+  `> rows`；注入点选 viewport，行用 external `MenuItemButton` 渲染（micro `createRoot`，react-dom
+  须进构建模块表；18.3.1 主出口含 `createRoot`，bundle 的 `require("react-dom")` shim 可用，
+  files 的 menuHost 同款）。危险项收尾的原生次序用 `insertBefore` 最后一行保留。
+- 方向键走查读 DOM（`querySelectorAll('button:not(:disabled)')`），注入的 `button[role=menuitem"]`
+  自动加入导航；Escape 在 document 捕获层关闭并归还锚点焦点——注入项拿不到 owner 的
+  onSelect，点击后用 `document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))` 代偿关闭。
+- **`closeOnPointerLeave` 菜单必须补偿 enter/leave（两拍 + 离开）**：宿主 wrapper 的
+  `onPointerLeave` 会 armClose（200ms 宽限，`pointer-grace.ts`），唯一取消路径是 wrapper 的
+  `onPointerEnter`（React 从 pointerover 推导）。注入行在独立 React 根里，跨根 over/out 过渡
+  没有共同祖先，React 把**离开侧整条祖先链**都派发 leave——它在两个事件上各发生一次：
+  `pointerout`（离开原生行）和紧随其后的 `pointerover`（进入注入行本身，会**再次** armClose）。
+  因此同步补偿不够（任何同一事件内的同步代码都先于 React 在 body 上的监听运行），必须：
+  容器 `pointerenter` 立即向 viewport 合成派发 `pointerover`（bubbles、relatedTarget null）
+  取消第一拍；`pointerover` 里 `setTimeout(0)` 再派发一次，覆盖 React 处理完该事件后挂上的
+  第二拍（实机两度复现，第二拍是首版修复失败的原因）。移回原生行时宿主自己的 enter 会取消，
+  无需处理；从注入行直接移出菜单时宿主收不到任何 leave（不关闭），需在 `pointerout`
+  （relatedTarget 不在 viewport 内时）补一次 viewport 上的合成 `pointerout` 让宿主正常 armClose。
+- 归因用宿主行的稳定 `data-*` 属性（工作区行 `data-row-key="workspace:<id>"`）：捕获点击开
+  一次性短窗口（约 600ms），MutationObserver 认领窗口内出现的 `[role=menu]`；非行菜单
+  （无 `button[role=menuitem]`）不消费归因。上游类名/结构变化会静默失效，升级需复核。
+- 实例：`plugins/workspace-path/src/client/menuPath.ts`（工作区菜单「复制路径」）；
+  契约细节记录在仓库根 `docs/dsh/workspace.md` 的「工作区列表与 ··· 菜单」。
+
 ### 0.2.0 菜单面是 MenuSurface 半透明磨砂，不要自绘背景
 
 dsh 0.2.0 起菜单/下拉表面是半透明磨砂设计：`--dsw-specific-menu`（= `--dsw-menu-surface-fill`，

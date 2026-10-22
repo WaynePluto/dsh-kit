@@ -1,7 +1,7 @@
 {
   "name": "@dsh-kit/dsh-plugin-conversation-enhancements",
   "version": "0.1.0",
-  "description": "整合失败重试、聊天滚动、统计时长、消息分叉、会话重命名与通知的会话增强 Bundle。",
+  "description": "整合失败重试、聊天滚动、统计时长、消息分叉、会话重命名、复制工作区路径与通知的会话增强 Bundle。",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -20,6 +20,7 @@
     "@dsh-kit/dsh-plugin-stats-hours": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-user-message-fork": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-session-rename": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-workspace-path": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-notify": "workspace:0.1.0"
   },
   "exports": {

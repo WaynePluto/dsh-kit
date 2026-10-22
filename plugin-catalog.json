@@ -5,69 +5,138 @@
       "name": "@dsh-kit/dsh-plugin-proxy",
       "source": "plugins/proxy",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-proxy", "rowId": "proxy" }
+        {
+          "name": "@dsh-kit/dsh-plugin-proxy",
+          "rowId": "proxy"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-model-enhancements",
       "source": "plugins/model-enhancements",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-copilot-auth", "rowId": "copilot-auth" },
-        { "name": "@dsh-kit/dsh-plugin-models-catalog", "rowId": "models-catalog", "toggleable": false },
-        { "name": "@dsh-kit/dsh-plugin-model-capabilities", "rowId": "model-capabilities", "toggleable": false },
-        { "name": "@dsh-kit/dsh-plugin-favorite-models", "rowId": "favorite-models" },
-        { "name": "@dsh-kit/dsh-plugin-model-provider", "rowId": "model-provider" },
-        { "name": "@dsh-kit/dsh-plugin-deepseek-official-switch", "rowId": "deepseek-official-switch" }
+        {
+          "name": "@dsh-kit/dsh-plugin-copilot-auth",
+          "rowId": "copilot-auth"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-models-catalog",
+          "rowId": "models-catalog",
+          "toggleable": false
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-model-capabilities",
+          "rowId": "model-capabilities",
+          "toggleable": false
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-favorite-models",
+          "rowId": "favorite-models"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-model-provider",
+          "rowId": "model-provider"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-deepseek-official-switch",
+          "rowId": "deepseek-official-switch"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-conversation-enhancements",
       "source": "plugins/conversation-enhancements",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-turn-retry", "rowId": "turn-retry" },
-        { "name": "@dsh-kit/dsh-plugin-chat-scroll", "rowId": "chat-scroll" },
-        { "name": "@dsh-kit/dsh-plugin-stats-hours", "rowId": "stats-hours" },
-        { "name": "@dsh-kit/dsh-plugin-user-message-fork", "rowId": "user-message-fork" },
-        { "name": "@dsh-kit/dsh-plugin-session-rename", "rowId": "session-rename" },
-        { "name": "@dsh-kit/dsh-plugin-notify", "rowId": "notify" }
+        {
+          "name": "@dsh-kit/dsh-plugin-turn-retry",
+          "rowId": "turn-retry"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-chat-scroll",
+          "rowId": "chat-scroll"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-stats-hours",
+          "rowId": "stats-hours"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-user-message-fork",
+          "rowId": "user-message-fork"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-session-rename",
+          "rowId": "session-rename"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-workspace-path",
+          "rowId": "workspace-path"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-notify",
+          "rowId": "notify"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-agents-md",
       "source": "plugins/agents-md",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-agents-md", "rowId": "agents-md" }
+        {
+          "name": "@dsh-kit/dsh-plugin-agents-md",
+          "rowId": "agents-md"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-development-tools",
       "source": "plugins/development-tools",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-services", "rowId": "services" },
-        { "name": "@dsh-kit/dsh-plugin-terminal", "rowId": "terminal" },
-        { "name": "@dsh-kit/dsh-plugin-tools-inspector", "rowId": "tools-inspector" },
-        { "name": "@dsh-kit/dsh-plugin-skills-inspector", "rowId": "skills-inspector" }
+        {
+          "name": "@dsh-kit/dsh-plugin-services",
+          "rowId": "services"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-terminal",
+          "rowId": "terminal"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-tools-inspector",
+          "rowId": "tools-inspector"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-skills-inspector",
+          "rowId": "skills-inspector"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-files",
       "source": "plugins/files",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-files", "rowId": "files" }
+        {
+          "name": "@dsh-kit/dsh-plugin-files",
+          "rowId": "files"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-yolo-mode",
       "source": "plugins/yolo-mode",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-yolo-mode", "rowId": "yolo-mode" }
+        {
+          "name": "@dsh-kit/dsh-plugin-yolo-mode",
+          "rowId": "yolo-mode"
+        }
       ]
     },
     {
       "name": "@dsh-kit/dsh-plugin-web-search-switch",
       "source": "plugins/web-search-switch",
       "components": [
-        { "name": "@dsh-kit/dsh-plugin-web-search-switch", "rowId": "web-search-switch" }
+        {
+          "name": "@dsh-kit/dsh-plugin-web-search-switch",
+          "rowId": "web-search-switch"
+        }
       ]
     }
   ]

@@ -124,6 +124,36 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 - 该定位是版本受控局部契约；深浅主题、不同尺寸图片、resize/卸载及原生缩放交互仍需矩阵验收。
   如果上游改变这些 data 属性，应让检查失败而不是深层 import 或复制 ImageBody。
 
+## 工作区列表与 ··· 菜单
+
+出处：`packages/client/ui-workspace/src/client/rows/Rows.tsx`、`contract/slots.ts`、
+`packages/client/ui-primitives/src/Menu.tsx`、`packages/api/workspace-controller/src/types.ts`。
+
+- 工作区行 `data-row-key="workspace:<workspaceId>"`（会话行 `session:<id>`、溢出行 `overflow:`、
+  未分组桶无 `···` 菜单）；行 hover 卡片原生带 cwd 复制按钮（`copyText`，约 800ms 延迟）。
+- 工作区行 `···` 菜单是 ui-workspace 私有的 rename/delete 两行，**没有插件槽位**；只有会话行
+  菜单有 `sidebar.workspaces.session.menu.item`（pin 100/rename 200/fork 300/archive 400/
+  session-id 450，order 插入，`useMenuOpenState` 关菜单）。
+- Menu portal 直接挂 `document.body`（`MenuSurface[role=menu] > div[role=presentation]`）；
+  方向键走查读 DOM（`querySelectorAll('button:not(:disabled)')`），DOM 注入的
+  `button[role=menuitem]` 自动加入导航；Escape 在 document 捕获层关闭并归还锚点焦点，
+  注入项拿不到 owner onSelect，可用合成 Escape keydown 代偿关闭。
+  工作区行菜单传 `closeOnPointerLeave`：wrapper `onPointerLeave` armClose（200ms 宽限，
+  `packages/client/ui-primitives/src/pointer-grace.ts`），取消只靠 wrapper `onPointerEnter`
+  （React 从 pointerover 推导）——独立 React 根的注入行必须自建补偿：跨根 over/out 过渡
+  无共同祖先，React 把离开侧整条祖先链派发 leave，且 `pointerout`（离开原生行）与
+  `pointerover`（进入注入行）**各 arm 一次**；容器 `pointerenter` 立即合成 viewport 上的
+  `pointerover`（bubbles、relatedTarget null）取消第一拍，`pointerover` 里 `setTimeout(0)`
+  再补一次覆盖第二拍（首版只补 pointerenter 被第二拍覆盖，实机两度复现）；
+  `pointerout`（relatedTarget 不在 viewport 内，即直接移出菜单）再补一次 viewport 上的
+  `pointerout` 让宿主正常延迟关闭（2026-10-22 实机复现并修复）。
+- 工作区路径：浏览器半 `workspaces` 服务（`@deepseek-ai/dsh-api-workspace-controller/client`
+  声明合并，`ctx.workspaces.list.getSnapshot().items`）给出 `WorkspaceView.path`
+  （canonical host 目录）；页面冻结模块表不含 workspace API，只能经 Context service 读。
+- workspace-path 组件按 deepseek-official-switch 卡片操作区同款结构化注入：捕获工作区行点击
+  归因（600ms 窗口、一次性、非行菜单不消费）→ 认领随后出现的菜单 viewport →
+  `MenuItemButton` 插在危险项（删除）之前；`data-row-key` 前缀或 Menu 结构变化会静默失效。
+
 ## 项目 files 增强层
 
 出处：`plugins/files/src/{index.ts,git.ts,gitReview.ts,shared.ts}`、
