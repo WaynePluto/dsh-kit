@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Collapse All Workspaces",
+    "description": "Adds a collapse button to the Workspaces section header that folds every workspace group"
+  }
+}

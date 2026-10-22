@@ -154,6 +154,30 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   归因（600ms 窗口、一次性、非行菜单不消费）→ 认领随后出现的菜单 viewport →
   `MenuItemButton` 插在危险项（删除）之前；`data-row-key` 前缀或 Menu 结构变化会静默失效。
 
+### 工作区标题栏与分组折叠
+
+出处：`packages/client/ui-workspace/src/client/rows/{WorkspaceBrowser.tsx,Rows.tsx}`、
+`stores.ts`（view store persist `dsh.workspace.view.v5`）。
+
+- section header（标题 + 搜索 + 视图选项 + 新增工作区）**没有插件槽位**；展开状态存在
+  ui-workspace apply 内私有铸造的 view store 实例，插件拿不到写入句柄。
+- 分组头行是真实 DOM：`div[data-row-key^="workspace:"]`（未分组桶 key 为空串即
+  `workspace:`）、`aria-expanded` 反映展开态、**整行 onClick 即折叠开关**（onToggle 里
+  `setGroupExpanded(key, !expanded)` 写回 store 并持久化）；折叠当前会话所在分组后不会被
+  自动展开——自动展开只在 `groupExpansion` 无该 key 条目时触发，显式写入的 `false` 保留。
+- 树形模式下祖先行在前、后代行在后；折叠祖先会卸载后代行 DOM。对该行合成 click 走
+  React 委托监听，与用户点击完全同路径。
+- workspace-collapse 组件的注入契约：从任一工作区行向上找第一个带 sectionHeader 直接
+  子节点的祖先（浏览器根），按钮容器插在 `searchSlot` 之前。头部动作簇 `headerActions`
+  是 max-width 60px 的定宽簇（装不下第三个按钮），不能内插；**searchSlot 自带
+  `margin-left:auto`**，flex:1 被 max-width 钳住后由 auto margin 吸收剩余空间（优先级高于
+  justify-content），会把注入项顶到标题旁——容器需同样 `margin-left:auto` 接住剩余空间，
+  并以 `~ [class*="searchSlot"]` 兄弟选择器把该 auto margin 归零（组件移除后覆写随之失效）。
+  按钮显隐由「是否存在工作区行」驱动（flat 列表、搜索结果、空状态、rail 收起态都无工作区
+  行）；搜索展开时原生给动作簇挂 `headerActionsHidden` 类，注入按钮经 CSS `:has(~ …)` 随其
+  同节奏退场。构建产物 CSS module 类名是 `<hash>_<原名>`，定位用后缀匹配，哈希前缀变化会
+  静默失效，升级需复核。
+
 ## 项目 files 增强层
 
 出处：`plugins/files/src/{index.ts,git.ts,gitReview.ts,shared.ts}`、

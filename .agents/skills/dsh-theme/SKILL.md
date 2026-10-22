@@ -317,6 +317,39 @@ rowActions 自带 `display:inline-flex; gap:4px; margin-left:auto`，portal 追�
 `:not(:disabled)` 覆写 `border-color/color` 为 state-error-primary（同 `.deleteConfirm` 的最低
 覆写强度，不加 `!important`）。
 
+### 原生侧栏 section header 的伴随控件注入
+
+给没有插件槽位的原生头部（如侧栏「工作区」标题栏，`ui-workspace` 的 sectionHeader）加控件时，
+按源码核实的结构化注入规则（0.2.1-rc.2）：
+
+- **定宽动作簇不能内插**：headerActions 是 `max-width:60px` 的两枚 28px 按钮簇，插第三枚会被
+  `overflow:hidden` 裁剪。作为 sectionHeader 的独立 flex 项插在 searchSlot 之前，容器给
+  `flex:none` 不参与收缩。
+- **注意原生 auto margin 会顶走注入项**：searchSlot 自带 `margin-left:auto`，当其 `flex:1`
+  被 `max-width` 钳住后剩余空间由 auto margin 吸收（优先级高于 `justify-content`），把插在
+  它之前的注入项顶到标题旁（实机截图复现）。正确姿势：注入容器同样写 `margin-left:auto`
+  接住剩余空间，并用兄弟选择器 `~ [class*="searchSlot"] { margin-left: 0 }` 归零原生 auto
+  margin——覆写以注入节点的兄弟关系为前提，组件移除后自动失效，原生布局不受影响；容器
+  `margin-left:auto` 只在搜索收起态起作用（展开态 searchSlot flex:1 吃满空间，auto margin
+  自然归零），两个状态都不需要 JS 介入。
+- **定位双信号**：类名后缀 `[class*="sectionHeader"]` 必须配合结构收窄——从带稳定 data 属性的
+  行（工作区行 `[data-row-key^="workspace:"]`）向上找第一个拥有该直接子节点的祖先，避免跨包
+  同名哈希类误命中；CSS module 产物类名是 `<hash>_<原名>`，前缀变化静默失效，升级需复核。
+- **显隐跟随原生状态用纯 CSS `:has(~ …)`**：原生把退场类（如搜索展开时的
+  `headerActionsHidden`）挂在与注入节点同辈、但排在其后的元素上，注入容器写
+  `.dsh-xxx:has(~ [class*="…Hidden"])` 即可认领；镜像同一组 max-width/opacity/transform/
+  visibility 过渡（含 `transition-delay` 末拍与负 margin 吃掉 gap），不需要监听 class
+  attribute mutation，动画节奏与原生逐项一致。
+- **Tooltip 气泡不被 overflow:hidden 祖先裁剪**：`ui-primitives` Tooltip 气泡是 fixed 定位
+  （无 transform 祖先时没有 containing block），原生头部按钮的 Tooltip 都不加 portal，
+  注入按钮照抄同参数（`side="bottom" delayMs={500}`）即可。
+- **静态检查断言 bundle 字符串要容忍引号转义**：插件产物里字符串字面量的引号可能被 bundler
+  转义成 `\"sectionHeader\"`，`source.includes('"…"')` 会假阴性；用 `/sectionHeader\\?"/`
+  这类可选反斜杠正则。
+- 实例：`plugins/workspace-collapse/src/client/collapse.ts`（对照
+  `ui-workspace/src/client/rows/WorkspaceBrowser.module.css`）；契约细节在仓库根
+  `docs/dsh/workspace.md` 的「工作区标题栏与分组折叠」。
+
 ### portal 插件的 react-dom 必须进构建模块表
 
 portal 把内容渲染进页面 React 管理的原生 DOM，react 与 react-dom 必须是页面同一次实例；

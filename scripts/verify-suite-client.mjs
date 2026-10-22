@@ -26,7 +26,7 @@ const EXPECTED = [
   'agents-md', 'chat-scroll', 'copilot-auth', 'deepseek-official-switch', 'favorite-models', 'files',
   'model-capabilities', 'model-provider', 'models-catalog', 'notify', 'proxy', 'services', 'session-rename',
   'skills-inspector', 'stats-hours', 'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork',
-  'web-search-switch',
+  'web-search-switch', 'workspace-collapse', 'workspace-path',
 ].map(id => `@dsh-kit/dsh-plugin-${id}`)
 
 const exchange = await fetch(`${host}/?token=${encodeURIComponent(token)}`, { redirect: 'manual' })

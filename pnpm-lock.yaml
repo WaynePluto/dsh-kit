@@ -127,6 +127,9 @@ importers:
       '@dsh-kit/dsh-plugin-web-search-switch':
         specifier: workspace:*
         version: link:plugins/web-search-switch
+      '@dsh-kit/dsh-plugin-workspace-collapse':
+        specifier: workspace:*
+        version: link:plugins/workspace-collapse
       '@dsh-kit/dsh-plugin-workspace-path':
         specifier: workspace:*
         version: link:plugins/workspace-path
@@ -281,6 +284,9 @@ importers:
       '@dsh-kit/dsh-plugin-user-message-fork':
         specifier: workspace:0.1.0
         version: link:../user-message-fork
+      '@dsh-kit/dsh-plugin-workspace-collapse':
+        specifier: workspace:0.1.0
+        version: link:../workspace-collapse
       '@dsh-kit/dsh-plugin-workspace-path':
         specifier: workspace:0.1.0
         version: link:../workspace-path
@@ -1067,6 +1073,9 @@ importers:
       '@dsh-kit/dsh-plugin-web-search-switch':
         specifier: file:../web-search-switch
         version: link:../web-search-switch
+      '@dsh-kit/dsh-plugin-workspace-collapse':
+        specifier: file:../workspace-collapse
+        version: link:../workspace-collapse
       '@dsh-kit/dsh-plugin-workspace-path':
         specifier: file:../workspace-path
         version: link:../workspace-path
@@ -1356,6 +1365,36 @@ importers:
       jsdom:
         specifier: 26.1.0
         version: 26.1.0
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@22.20.4)(jsdom@26.1.0)(vite@8.3.4(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  plugins/workspace-collapse:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5(@deepseek-ai/cordis-plugin-include@1.0.10)(@deepseek-ai/cordis-plugin-loader@1.0.6)
+      '@deepseek-ai/dsh-client-locale':
+        specifier: 0.2.1-rc.2
+        version: 0.2.1-rc.2(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: 0.2.1-rc.2
+        version: 0.2.1-rc.2(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: 0.2.1-rc.2
+        version: 0.2.1-rc.2(@deepseek-ai/cordis@4.0.5)
+      '@types/react':
+        specifier: 18.3.31
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: 18.3.7
+        version: 18.3.7(@types/react@18.3.31)
       react:
         specifier: 18.3.1
         version: 18.3.1

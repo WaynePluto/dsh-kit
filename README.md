@@ -5,7 +5,7 @@
 对应官方 dsh：`0.2.0-rc.2`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
-个人体验增强，共 22 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
+个人体验增强，共 23 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
 
 - 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
 - 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
@@ -29,6 +29,7 @@
 | [用户消息分叉](plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填 |
 | [会话重命名](plugins/session-rename/README.md) | 顶栏 → 双击会话标题 | 双击当前会话标题弹窗重命名（原生入口只在侧栏） |
 | [复制工作区路径](plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制工作区完整目录路径 |
+| [收起全部工作区](plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 一键收起下方所有工作区分组 |
 | [任务通知](plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
 | [工具状态](plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
 | [技能状态](plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |

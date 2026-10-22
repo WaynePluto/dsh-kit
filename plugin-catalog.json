@@ -72,6 +72,10 @@
           "rowId": "workspace-path"
         },
         {
+          "name": "@dsh-kit/dsh-plugin-workspace-collapse",
+          "rowId": "workspace-collapse"
+        },
+        {
           "name": "@dsh-kit/dsh-plugin-notify",
           "rowId": "notify"
         }
