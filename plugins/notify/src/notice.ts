@@ -28,6 +28,15 @@ export function outcomeOf(reason: TurnEndReason | undefined): Outcome {
   }
 }
 
+/**
+ * 判断上一轮是否由用户手动停止。dsh 的停止入口统一走 `agent.cancel({ kind: 'user' })`
+ * （`packages/api/session-controller/src/commands.ts`），turn/end 记录
+ * `{ kind: 'aborted', reason: { kind: 'user' } }`；停止这个动作本身就是用户的回应，不再提醒。
+ */
+export function isUserStopped(reason: TurnEndReason | undefined): boolean {
+  return reason?.kind === 'aborted' && reason.reason.kind === 'user'
+}
+
 /** 构造完成通知所需的事实。 */
 export interface SettledFacts {
   /** session 的绝对 working directory。 */

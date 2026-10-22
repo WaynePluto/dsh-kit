@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session'
-import { noticeTitle, outcomeOf, projectName, settledNotice, waitingNotice } from '../src/notice.js'
+import { isUserStopped, noticeTitle, outcomeOf, projectName, settledNotice, waitingNotice } from '../src/notice.js'
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 function reason(value: unknown): TurnEndReason {
@@ -31,6 +31,21 @@ describe('classifying how a turn ended', () => {
     // 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。
     // 模型目录契约：此处说明 provider、协议、目录覆盖和用户条目保留。（涉及：`agent.ts:280-286`）
     expect(outcomeOf(undefined)).toBe('unknown')
+  })
+})
+
+describe('deciding when a stop stays silent', () => {
+  it('recognizes the stop the person pressed themselves', () => {
+    expect(isUserStopped(reason({ kind: 'aborted', reason: { kind: 'user' } }))).toBe(true)
+  })
+
+  it('still speaks for cuts that came from somewhere else', () => {
+    for (const cause of ['disposed', 'legacy', 'hook', 'parent'] as const) {
+      expect(isUserStopped(reason({ kind: 'aborted', reason: { kind: cause } }))).toBe(false)
+    }
+    expect(isUserStopped(reason({ kind: 'interrupted' }))).toBe(false)
+    expect(isUserStopped(reason({ kind: 'completed' }))).toBe(false)
+    expect(isUserStopped(undefined)).toBe(false)
   })
 })
 

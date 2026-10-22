@@ -17,7 +17,7 @@ import type { Session, TurnEndReason } from '@deepseek-ai/dsh-session'
 import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
 // 类型合并：让插件 Context 可解析 webServer（RPC 通道归属当前 fiber，见 inject 声明）。
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { outcomeOf, settledNotice, waitingNotice } from './notice.js'
+import { isUserStopped, outcomeOf, settledNotice, waitingNotice } from './notice.js'
 import { WindowsToastNotifier } from './toast.js'
 import type { Notifier } from './toast.js'
 import { CHANNEL, DEFAULT_SETTINGS, isNotifyEndpoint } from './shared.js'
@@ -28,7 +28,7 @@ export { CHANNEL, DEFAULT_SETTINGS, ENTRY_ID, FIELDS, isNotifyEndpoint, NAMESPAC
 export type { NotifySettings, NotifyTestResult } from './shared.js'
 export type { Config as NotifyConfig }
 export {
-  noticeTitle, outcomeOf, projectName, settledNotice, waitingNotice,
+  isUserStopped, noticeTitle, outcomeOf, projectName, settledNotice, waitingNotice,
 } from './notice.js'
 export type { Outcome, SettledFacts, WaitingFacts } from './notice.js'
 export {
@@ -251,6 +251,8 @@ export function apply(ctx: Context, config: Config, options: NotifyOptions = {})
       // 实现说明：此处记录相关接口、边界和生命周期约束。
       if (agent.status !== 'idle') return
       const reason = lastEnd.get(agent.session)
+      // 只有用户手动停止静默；hook 中断、生命周期回收、崩溃恢复等其他截断仍照常提醒。
+      if (isUserStopped(reason)) return
       const outcome = outcomeOf(reason)
       show(settledNotice({
         ...sessionFacts(ctx, agent.session),

@@ -6,6 +6,11 @@
 
 ## 已实现
 
+- [x] 通知静默用户手动停止的轮次（notify，2026-10-22）：settle 判定新增 `isUserStopped`——
+  turn/end 记录 `aborted` 且取消原因为 `user`（停止按钮/Esc 统一经 `session.cancel` →
+  `agent.cancel({ kind: 'user' })`，出处 `packages/api/session-controller/src/commands.ts`）时
+  不再弹「这一轮停了」；hook 中断、生命周期回收（disposed）、崩溃恢复（interrupted）等
+  其他截断仍照常通知。纯宿主半行为，无设置与界面变化（组件总数 22）。
 - [x] 复制工作区路径（workspace-path，2026-10-22）：侧栏工作区标题行 hover 出现的 `···`
   菜单（原生只有重命名/删除，无插件槽位——会话行菜单才有 `sidebar.workspaces.session.menu.item`）
   注入「复制路径」项：捕获工作区行 `[data-row-key="workspace:<id>"]` 点击归因 → Menu portal
@@ -158,7 +163,7 @@
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；跨工作区：另一工作区面板可见并可停止/读日志（带来源徽标、当前工作区排前），`service_list scope:"all"` 与全局重名拒绝；日志在 DSH_HOME/dsh-kit/logs（项目目录零落盘），旧项目注册表与旧日志首次触达时自动认领/回捞；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
 | files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；Git 变更面板（右键入口、清单与 diff、左右对比/换行、深浅主题与中英文）待实机确认 |
-| notify | Windows 通知实际弹出、点击卡片把官方桌面版带到前台（未装桌面版时退化为仅关闭）、关闭按钮仍只关闭、专注助手与权限设置提示正确。设置页开关写入在 CLI 冒烟形态被上游 0.2.0-rc.2 缺陷阻塞（见 [插件机制](dsh/plugins.md) 设置写入一节），官方桌面不受影响 |
+| notify | Windows 通知实际弹出、点击卡片把官方桌面版带到前台（未装桌面版时退化为仅关闭）、关闭按钮仍只关闭、专注助手与权限设置提示正确；任务运行中手动停止后不弹通知，失败等其他结束仍弹出。设置页开关写入在 CLI 冒烟形态被上游 0.2.0-rc.2 缺陷阻塞（见 [插件机制](dsh/plugins.md) 设置写入一节），官方桌面不受影响 |
 | tools-inspector | 工具清单与历史调用、失败次数统计与只读性 |
 | skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 首轮消息点击后新建同工作区会话并回填这条消息；其余消息子会话只继承前置历史，草稿可编辑，原会话不变 |

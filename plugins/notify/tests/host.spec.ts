@@ -256,6 +256,24 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent[0]?.body).toBe('这一轮失败了（TRANSPORT），等待输入')
   })
 
+  it('stays quiet about a turn the person stopped themselves', () => {
+    const agent = fakeAgent()
+    const built = fakeCtx({ roots: [agent] })
+    const notifier = recorder()
+    apply(built.ctx, built.config, { notifier })
+
+    endTurn(built, agent.session, { kind: 'aborted', reason: { kind: 'user' } })
+    built.emit('agent/status', { agent, status: 'idle' })
+    vi.advanceTimersByTime(SETTLE_DEBOUNCE_MS)
+    expect(notifier.sent).toHaveLength(0)
+
+    // 静默只属于这一次结束；同一会话下一轮正常完成仍然通知。
+    endTurn(built, agent.session, { kind: 'completed' })
+    built.emit('agent/status', { agent, status: 'idle' })
+    vi.advanceTimersByTime(SETTLE_DEBOUNCE_MS)
+    expect(notifier.sent).toEqual([{ title: 'DSH · dsh-kit', body: '任务已完成，等待输入' }])
+  })
+
   it('keeps the ending of one session out of another', () => {
     const first = fakeAgent()
     const second = fakeAgent({ session: { header: { cwd: '/srv/other' } } })
