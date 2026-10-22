@@ -84,7 +84,8 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
 - 外部包列在「已安装」，标题按展示规则去掉常见包名前缀，简介来自 package.json 的
   `description`，不是 README；因此分发介质必须保留 manifest 的准确中文简介。
 - Bundle 开关改有序 bundles 数组；行开关改 profile patch 的 disabled，两者不是同一种停用。
-  没有 HMR 时需要重启 dsh 才应用运行时变更；管理页出现卡片不等于功能已经加载。
+  装载层变更（开关、patch 行、新组件）需要重启 dsh 才应用；浏览器半产物变更由常驻
+  client-hmr 热替换（见「客户端产物」）。管理页出现卡片不等于功能已经加载。
 - 每个 Bundle `insert` 行必须给出跨重组稳定且全局唯一的 `id`。Cordis Loader 会给匿名行生成随机 ID，
   Profile HMR 全量重读 Bundle 后便会把未变化的匿名行当成新条目，并在旧条目仍存活时重复 import。
   这会使任意 Bundle 开关被无关插件的 `failed to import` 阻断；磁盘选择已保存但旧 fiber 未卸载，
@@ -131,8 +132,14 @@ React、Cordis、store、slots、ui-primitives 等共享运行时保持 external
 缺失 dist/client.js 会导致客户端模块激活失败，可能使整个 Web UI 无法启动。
 `pnpm plugins:build` 与 `pnpm suite:build` 必须同时检查宿主与浏览器产物。
 
-注册时 readFileSync 将 bundle 读成不可变快照，以 IMMUTABLE_CACHE 下发；只有 rebuilt() 会重读，
-该回调由 HMR watch 触发。套件所在 profile 没有 HMR，任何插件改动都必须构建并重启 dsh。
+注册时 readFileSync 将 bundle 读成不可变快照，以 IMMUTABLE_CACHE 下发；只有 rebuilt() 会重读。
+官方 web-app Bundle 常驻 client-hmr 行（`packages/bundle/web-app/cordis.patch.yml`，注释明言
+always mounted）：宿主半以默认 500ms stat 轮询全部已装载组件的浏览器产物（mtime/ctime/size，
+`packages/client/hmr/src/index.ts`），变化即 rebuilt() 重读 bundle、重组模块图并经
+`/plugins/events` SSE 推 rebuilt 帧，浏览器半就地热替换（`packages/client/hmr/src/client`）。
+因此纯浏览器半改动（dist/client.js）构建落盘即自动生效，无需重启 dsh 或刷新页面，本地路径
+安装（link: 语义）同样被轮询；宿主半（dist/index.js）与装载层变更（Bundle/行开关、patch 行、
+新组件、依赖物化）不在此列，仍需重启 dsh。
 
 ## 原生客户端加载页
 

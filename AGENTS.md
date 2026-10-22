@@ -110,6 +110,8 @@ services 与 terminal 共用 IconApiOutlineMedium。
 
 - 插件使用说明放包根 README，[插件索引](docs/plugins.md) 做导航；源码契约按 docs/dsh 的主题归属维护。
 - docs 每个文件最多 600 行，只保留现行行为与明确待办，不追加旧方案或调试过程。
-- 修改插件任何一半后都要构建并重启 dsh，套件所在 profile 没有 HMR，刷新页面不会更新产物。
+- 修改插件任何一半后都要构建两半产物；浏览器半（dist/client.js）构建落盘后由官方 web-app
+  常驻 client-hmr（500ms stat 轮询）自动热替换，无需重启或刷新；宿主半与装载层改动
+  （行开关、patch 行、新组件、依赖物化）必须重启 dsh。
 - 上游源码引用使用相对 dsh 根路径，不在其他文件记录本地绝对路径。
 - 未记录的架构决策先向用户确认，不猜 dsh 行为。

@@ -1,7 +1,7 @@
 /**
  * 在不启动 dsh 或打开会话的情况下，对 workspace-collapse 浏览器产物做冒烟检查。
  * 它在小型浏览器模块 shim 中执行构建后的加载器包装，验证头部按钮注入编排的
- * 挂载参数、折叠动作的选择器契约，以及 bundle 内的 dsh DOM 契约字符串。
+ * 挂载参数、收起/展开两个动作的选择器契约，以及 bundle 内的 dsh DOM 契约字符串。
  *
  * 构建插件后运行：
  *
@@ -59,6 +59,7 @@ const sandbox = {
   window: { __ModuleLoader__: { load: entry => { loaded = entry } } },
   document: fakeDocument,
   MutationObserver: FakeMutationObserver,
+  setTimeout,
   console,
 }
 runInContext(source, createContext(sandbox), { filename: BUNDLE })
@@ -98,6 +99,12 @@ check(
   '观察 body 子树的 childList + subtree',
   JSON.stringify(observations[0]?.options),
 )
+check(
+  observations[0]?.options?.attributes === true
+  && observations[0]?.options?.attributeFilter?.includes('aria-expanded') === true,
+  '监听 aria-expanded 属性变化以跟随收起/展开模式',
+  JSON.stringify(observations[0]?.options),
+)
 check(queries.includes('[data-row-key^="workspace:"]'), '挂载后立即按工作区行选择器评估存量 DOM', JSON.stringify(queries))
 check(headChildren.length === 1 && headChildren[0].tagName === 'STYLE', '按钮样式注入 head')
 
@@ -120,11 +127,37 @@ check(
   '导出选择器常量与 DOM 契约一致',
 )
 
+// 展开动作契约：只命中收起中的分组行，多轮探测（父行展开后子行才挂载），
+// 每行只点一次直到再无新收起行。
+const expandedClicks = []
+let expandRounds = 0
+const expandRoot = {
+  querySelectorAll: selector => {
+    check(
+      selector === '[data-row-key^="workspace:"][aria-expanded="false"]',
+      '展开查询使用收起中的工作区分组行选择器',
+      selector,
+    )
+    expandRounds += 1
+    return expandRounds === 1 ? [{ click: () => { expandedClicks.push('parent') } }] : []
+  },
+}
+check(
+  await exports.expandCollapsedRows(expandRoot) === 1
+  && expandedClicks.join(',') === 'parent'
+  && expandRounds === 2,
+  '展开按轮次点击收起行并在无新行后结束',
+)
+
 // DOM 契约字符串：类名后缀定位（bundle 字符串里的引号可能被转义）+ 原生退场规则 + 中英文文案。
 check(/sectionHeader\\?"/.test(source) && /searchSlot\\?"/.test(source), 'bundle 包含 sectionHeader/searchSlot 类名后缀定位')
 check(source.includes('headerActionsHidden') && source.includes(':has(~ '), 'bundle 包含搜索展开退场的 :has 规则')
 check(source.includes('data-row-key') && source.includes('aria-expanded'), 'bundle 包含工作区行 DOM 契约')
-check(source.includes('收起全部工作区') && source.includes('Collapse all workspaces'), 'bundle 包含中英文按钮文案')
+check(
+  source.includes('收起全部工作区') && source.includes('Collapse all workspaces')
+  && source.includes('展开全部工作区') && source.includes('Expand all workspaces'),
+  'bundle 包含收起与展开两个方向的中英文文案',
+)
 check(source.includes('IconChevronDownOutlineMedium') && source.includes('IconChevronUpOutlineMedium'), 'bundle 使用上下双 chevron 原生字形')
 check(
   source.includes('--dsw-alias-label-secondary') && source.includes('--ds-ease-in-out')

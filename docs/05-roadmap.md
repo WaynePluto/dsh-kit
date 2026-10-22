@@ -6,19 +6,23 @@
 
 ## 已实现
 
-- [x] 一键收起工作区（workspace-collapse，2026-10-22）：侧栏「工作区」标题栏（搜索按钮
-  左侧）新增收起按钮，点击折叠下方全部工作区分组（含未分组桶与当前会话所在分组，重启后
-  保持）。section header 是 ui-workspace 私有界面、无插件槽位，展开状态在其私有 view
-  store（persist `dsh.workspace.view.v5`），组件按 DOM 注入工作：从工作区行
-  `[data-row-key^="workspace:"]` 向上找带 sectionHeader 直接子节点的祖先定位头部，按钮插
-  在搜索槽（searchSlot）之前（原生动作簇 max-width 60px 只装两钮，不可内插；searchSlot 的
-  `margin-left:auto` 会把注入项顶到标题旁，容器以同名 auto margin 接管剩余空间并把该
-  margin 归零）；点击对全部 `[aria-expanded="true"]` 分组行按文档逆序（树形模式先子后父）
-  合成 click，走原生 onToggle 写回 store 并持久化。分组视图未展示（flat/搜索/空态/rail）
-  时无工作区行，按钮一并隐藏；搜索展开时经 `:has(~ …headerActionsHidden)` 随原生动作簇
-  同节奏退场。样式复刻原生 iconButton 28px 契约，图标为两条原生 chevron 字形纵向叠放的
-  上下挤压记号（下箭头在上、上箭头在下），原生 Tooltip。纯浏览器半、无宿主服务（组件总数
-  23，浏览器行 22）；随 conversation-enhancements 组合包分发。
+- [x] 一键收起/展开工作区（workspace-collapse，2026-10-22）：侧栏「工作区」标题栏（搜索按钮
+  左侧）新增动作按钮——只要还有展开中的分组就是「收起全部工作区」，点击折叠下方全部工作
+  区分组（含未分组桶与当前会话所在分组，重启后保持）；全部分组收起后就地变「展开全部工作
+  区」，用户手动逐个折叠/展开时文案与字形实时跟随。section header 是 ui-workspace 私有界
+  面、无插件槽位，展开状态在其私有 view store（persist `dsh.workspace.view.v5`），组件按
+  DOM 注入工作：从工作区行 `[data-row-key^="workspace:"]` 向上找带 sectionHeader 直接子节
+  点的祖先定位头部，按钮插在搜索槽（searchSlot）之前（原生动作簇 max-width 60px 只装两钮，
+  不可内插；searchSlot 的 `margin-left:auto` 会把注入项顶到标题旁，容器以同名 auto margin
+  接管剩余空间并把该 margin 归零）；收起对全部 `[aria-expanded="true"]` 分组行按文档逆序
+  （树形模式先子后父）合成 click，展开按文档顺序多轮点击（上游只在父分组展开时渲染子分组
+  行，每轮之间等渲染落 DOM、每行只点一次），都走原生 onToggle 写回 store 并持久化；方向
+  跟随靠观察器监听行内 `aria-expanded` 属性变化（叶子分组折叠/展开只改属性、无 childList）。
+  分组视图未展示（flat/搜索/空态/rail）时无工作区行，按钮一并隐藏；搜索展开时经
+  `:has(~ …headerActionsHidden)` 随原生动作簇同节奏退场。样式复刻原生 iconButton 28px 契约，
+  图标为两条原生 chevron 字形纵向叠放的挤压记号（收起方向两箭头指向彼此，展开方向指向外
+  侧），原生 Tooltip。纯浏览器半、无宿主服务（组件总数 23，浏览器行 22）；随
+  conversation-enhancements 组合包分发。
 - [x] 通知静默用户手动停止的轮次（notify，2026-10-22）：settle 判定新增 `isUserStopped`——
   turn/end 记录 `aborted` 且取消原因为 `user`（停止按钮/Esc 统一经 `session.cancel` →
   `agent.cancel({ kind: 'user' })`，出处 `packages/api/session-controller/src/commands.ts`）时
@@ -173,7 +177,7 @@
 | session-rename | 双击顶栏会话标题弹出重命名弹窗（回车提交、IME 不误提交、错误就地显示）；重命名后顶栏与侧栏同步、标题固定不再自动生成；空白会话与祖先 crumb 双击不响应；停用组件后顶栏双击无反应、侧栏原生入口不受影响；深浅主题与中英文界面 |
 | model-provider | 模型选择按钮左侧显示当前提供商名（切换模型实时跟随、目录未装载回退 provider id）；行宽不足紧凑模式下随模型文字一起隐藏；停用组件后恢复原生；深浅主题与中英文界面 |
 | workspace-path | 工作区 `···` 菜单出现「复制路径」，点击后剪贴板为该工作区完整路径；悬停显示路径；方向键可到达并回车触发；停用组件后菜单恢复原生两项；深浅主题与中英文界面 |
-| workspace-collapse | 工作区标题栏搜索按钮左侧出现收起按钮；点击后全部分组收起（含未分组桶与当前会话分组），重启后保持；单个分组可再展开；flat 列表、搜索态与 rail 下按钮不出现，搜索框展开时按钮随原生动作簇退场；停用组件后按钮消失；深浅主题与中英文界面 |
+| workspace-collapse | 工作区标题栏搜索按钮左侧出现动作按钮；有分组展开时显示「收起全部工作区」，点击后全部分组收起（含未分组桶与当前会话分组），重启后保持；全部收起后按钮就地变「展开全部工作区」，点击逐层展开全部分组（含嵌套子分组）；手动逐个折叠/展开时按钮文案与字形实时跟随；flat 列表、搜索态与 rail 下按钮不出现，搜索框展开时按钮随原生动作簇退场；停用组件后按钮消失；深浅主题与中英文界面 |
 | services | 启动、就绪、日志、停止；重启 dsh 后服务存活并能认领；跨工作区：另一工作区面板可见并可停止/读日志（带来源徽标、当前工作区排前），`service_list scope:"all"` 与全局重名拒绝；日志在 DSH_HOME/dsh-kit/logs（项目目录零落盘），旧项目注册表与旧日志首次触达时自动认领/回捞；dock 单行省略与日志弹窗全屏（含深浅主题）待实机确认 |
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
 | files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；Git 变更面板（右键入口、清单与 diff、左右对比/换行、深浅主题与中英文）待实机确认 |

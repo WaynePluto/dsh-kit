@@ -26,7 +26,7 @@
 | [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填 |
 | [会话重命名](../plugins/session-rename/README.md) | 顶栏 → 双击会话标题 | 双击对话顶栏的当前会话标题，弹窗重命名（原生入口只在侧栏） |
 | [复制工作区路径](../plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制该工作区的完整目录路径 |
-| [收起全部工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增收起按钮，一键收起下方所有工作区分组 |
+| [收起/展开全部工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增动作按钮：有分组展开时一键收起全部，全部收起后一键展开 |
 | [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
@@ -50,7 +50,7 @@
 | 分发包 | 类型 | 包含组件或功能 |
 |---|---|---|
 | model-enhancements | 组合包 | Copilot 登录、模型目录更新、模型能力与协议、常用模型、模型提供商、DeepSeek 官方 API 开关；模型目录和模型能力共享运行时目录服务，不可单独停用 |
-| conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、会话重命名、复制工作区路径、收起全部工作区、任务通知 |
+| conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、会话重命名、复制工作区路径、收起/展开全部工作区、任务通知 |
 | development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
 | proxy | 独立包 | 出网代理 |
 | agents-md | 独立包 | 全局提示词 |

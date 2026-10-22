@@ -1,16 +1,23 @@
 // @vitest-environment jsdom
-/** 工作区头部一键收起的 DOM 编排测试：折叠选择与逆序、注入位置、跟随显隐与卸载。 */
+/** 工作区头部一键收起/展开的 DOM 编排测试：折叠与展开选择、注入位置、模式跟随与卸载。 */
 
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  BUTTON_ATTR, COLLAPSE_STYLE, CONTAINER_CLASS, collapseExpandedRows,
-  installWorkspaceCollapse, sectionHeaderOf,
+  BUTTON_ATTR, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
+  collapseExpandedRows, expandCollapsedRows, installWorkspaceCollapse, sectionHeaderOf,
 } from '../src/client/collapse.js'
-import type { CollapseButtonOptions } from '../src/client/collapse.js'
+import type {
+  CollapseButtonOptions, CollapseDeps,
+} from '../src/client/collapse.js'
 
 /** 等 MutationObserver 的微任务回调跑完。 */
 async function flush(): Promise<void> {
   await new Promise<void>(resolve => { setTimeout(resolve, 0) })
+}
+
+/** 等多轮宏任务：覆盖展开动作的若干轮「点击 → 落 DOM → 再探」周期。 */
+async function settle(rounds = 8): Promise<void> {
+  for (let index = 0; index < rounds; index += 1) await flush()
 }
 
 /** 造一个工作区分组行；点击行为记录到传入的日志。 */
@@ -55,19 +62,26 @@ function nativeBrowser(): {
   return { root, header, searchSlot, actions, listArea }
 }
 
-/** 记录挂载/卸载的假依赖。 */
-function harness(label = '收起全部工作区') {
+/** 记录挂载/更新/卸载的假依赖。 */
+function harness(labels = { collapse: '收起全部工作区', expand: '展开全部工作区' }) {
   const mounted: { container: HTMLElement; options: CollapseButtonOptions }[] = []
+  const updates: CollapseButtonOptions[] = []
   const unmounted: number[] = []
-  const deps = {
+  const deps: CollapseDeps = {
     document,
     mount: (container: HTMLElement, options: CollapseButtonOptions) => {
       mounted.push({ container, options })
-      return () => { unmounted.push(mounted.length) }
+      return {
+        update: (next: CollapseButtonOptions) => {
+          updates.push(next)
+          mounted[mounted.length - 1]!.options = next
+        },
+        unmount: () => { unmounted.push(mounted.length) },
+      }
     },
-    label,
+    labels,
   }
-  return { deps, mounted, unmounted }
+  return { deps, mounted, updates, unmounted }
 }
 
 afterEach(() => {
@@ -110,6 +124,49 @@ describe('collapseExpandedRows', () => {
   })
 })
 
+describe('expandCollapsedRows', () => {
+  it('点击全部收起中的分组行，父行展开后多轮补点新挂载的子行', async () => {
+    const clicks: string[] = []
+    const list = document.createElement('div')
+    const parent = groupRow('ws-parent', false, clicks)
+    // 点击父行翻转展开态并挂载一个保持收起的子分组（原生 renderGroup 行为）。
+    parent.addEventListener('click', () => {
+      parent.setAttribute('aria-expanded', 'true')
+      const child = groupRow('ws-child', false, clicks)
+      child.addEventListener('click', () => {
+        child.setAttribute('aria-expanded', 'true')
+      })
+      list.appendChild(child)
+    })
+    list.append(parent, groupRow('ws-open', true, clicks), sessionRow('s1', clicks))
+    document.body.appendChild(list)
+
+    expect(await expandCollapsedRows(document)).toBe(2)
+    // 第一轮父行（展开行不命中、会话行不命中），等一拍后第二轮补点新挂载的子行。
+    expect(clicks).toEqual(['ws-parent', 'ws-child'])
+    expect(list.querySelector(COLLAPSED_ROW_SELECTOR)).toBeNull()
+  })
+
+  it('原生开关不翻转时每行只点一次，有限轮后终止', async () => {
+    const clicks: string[] = []
+    const list = document.createElement('div')
+    list.appendChild(groupRow('ws-stuck', false, clicks))
+    document.body.appendChild(list)
+
+    expect(await expandCollapsedRows(document)).toBe(1)
+    expect(clicks).toEqual(['ws-stuck'])
+  })
+
+  it('没有收起中的行时返回 0', async () => {
+    const clicks: string[] = []
+    const list = document.createElement('div')
+    list.appendChild(groupRow('ws-a', true, clicks))
+    document.body.appendChild(list)
+    expect(await expandCollapsedRows(document)).toBe(0)
+    expect(clicks).toEqual([])
+  })
+})
+
 describe('sectionHeaderOf', () => {
   it('从行向上找到浏览器根的 sectionHeader', () => {
     const { header, listArea } = nativeBrowser()
@@ -143,16 +200,67 @@ describe('installWorkspaceCollapse', () => {
     dispose()
   })
 
-  it('点击按钮折叠全部分组', async () => {
-    const clicks: string[] = []
+  it('存在展开中的行时挂载为收起态，全部收起后更新为展开态', async () => {
     const { listArea } = nativeBrowser()
-    listArea.append(groupRow('ws-a', true, clicks), groupRow('ws-b', true, clicks))
-    const { deps, mounted } = harness()
+    const row = groupRow('ws-a', true, [])
+    listArea.append(row, groupRow('ws-b', false, []))
+    const { deps, mounted, updates } = harness()
     const dispose = installWorkspaceCollapse(deps)
     await flush()
 
-    mounted[0]!.options.onCollapse()
-    expect(clicks.sort()).toEqual(['ws-a', 'ws-b'])
+    expect(mounted).toHaveLength(1)
+    expect(mounted[0]!.options.mode).toBe('collapse')
+    expect(mounted[0]!.options.label).toBe('收起全部工作区')
+
+    row.setAttribute('aria-expanded', 'false')
+    await flush()
+    expect(updates).toHaveLength(1)
+    expect(mounted[0]!.options.mode).toBe('expand')
+    expect(mounted[0]!.options.label).toBe('展开全部工作区')
+    dispose()
+  })
+
+  it('点击按钮按当前模式动作：收起态折叠并翻到展开态，再点击多轮展开翻回收起态', async () => {
+    const clicks: string[] = []
+    const { listArea } = nativeBrowser()
+    // 点击后翻转展开态的行，模拟原生 onToggle。
+    const flippingRow = (key: string, expanded: boolean): HTMLElement => {
+      const row = groupRow(key, expanded, clicks)
+      row.addEventListener('click', () => {
+        row.setAttribute('aria-expanded', String(row.getAttribute('aria-expanded') !== 'true'))
+      })
+      return row
+    }
+    listArea.append(flippingRow('ws-a', true), flippingRow('ws-b', true))
+    const { deps, mounted } = harness()
+    const dispose = installWorkspaceCollapse(deps)
+    await flush()
+    expect(mounted[0]!.options.mode).toBe('collapse')
+
+    mounted[0]!.options.onActivate()
+    // 逆序收起，行点击翻转展开态后按钮切到展开方向。
+    expect(clicks).toEqual(['ws-b', 'ws-a'])
+    await flush()
+    expect(mounted[0]!.options.mode).toBe('expand')
+    expect(mounted[0]!.options.label).toBe('展开全部工作区')
+
+    // 收起的父行点击后挂载保持收起的子行（原生 renderGroup 行为）。
+    const parent = flippingRow('ws-parent', false)
+    parent.addEventListener('click', () => {
+      if (parent.getAttribute('aria-expanded') === 'true') {
+        listArea.appendChild(flippingRow('ws-child', false))
+      }
+    })
+    listArea.appendChild(parent)
+    await flush()
+
+    mounted[0]!.options.onActivate()
+    await settle()
+    // 多轮补点：第一轮按文档顺序点开全部收起行（含上一阶段收掉的 ws-a/ws-b 与
+    // 父行），父行展开挂载子行后第二轮补点；全展开后按钮翻回收起方向。
+    expect(clicks).toEqual(['ws-b', 'ws-a', 'ws-a', 'ws-b', 'ws-parent', 'ws-child'])
+    expect(mounted[0]!.options.mode).toBe('collapse')
+    expect(mounted[0]!.options.label).toBe('收起全部工作区')
     dispose()
   })
 
