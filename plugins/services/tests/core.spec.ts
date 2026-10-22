@@ -1,13 +1,14 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  ENV_OVERRIDES, START_TIME_TOLERANCE_MS, identify, listLogNames, logPath, matchesReadyLog, readRegistry,
-  reconcile, registryPath, reportedIdentity, shellDialectWarning, shellInvocation, writeRegistry,
+  ENV_OVERRIDES, START_TIME_TOLERANCE_MS, findExistingLog, identify, legacyLogPath, listLegacyLogNames,
+  listLogNames, logPath, matchesReadyLog, readRegistry, reconcile, registryPath, reportedIdentity,
+  shellDialectWarning, shellInvocation, withRegistryLock, writeRegistry,
 } from '../src/core.js'
-import type { Identity, ServiceRecord } from '../src/core.js'
-import { formatUptime, isValidName, midEllipsis, tailText } from '../src/shared.js'
+import type { Identity, Registry, ServiceRecord } from '../src/core.js'
+import { baseNameOf, formatUptime, isValidName, midEllipsis, tailText } from '../src/shared.js'
 
 const roots: string[] = []
 
@@ -24,11 +25,17 @@ function record(over: Partial<ServiceRecord> = {}): ServiceRecord {
     name: 'web',
     command: 'pnpm dev',
     cwd: 'C:\\project',
+    root: 'C:\\project',
     pid: 4242,
     startedAt: 1_000_000,
     logFile: 'C:\\project\\.agents\\logs\\web.log',
     ...over,
   }
+}
+
+/** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
+function put(home: string, services: ServiceRecord[], rootsIndex: string[] = []): void {
+  writeRegistry(home, { version: 2, services, roots: rootsIndex })
 }
 
 afterEach(() => {
@@ -53,52 +60,113 @@ describe('name validation', () => {
 
 describe('registry I/O', () => {
   it('round-trips through an atomic write and leaves no temp file behind', () => {
-    const root = project()
-    writeRegistry(root, [record()])
-    expect(readRegistry(root).services).toEqual([record()])
+    const home = project()
+    const a = project()
+    put(home, [record({ root: a })], [a])
+    const round: Registry = readRegistry(home)
+    expect(round.services).toEqual([record({ root: a })])
+    expect(round.roots).toEqual([a])
     // 临时文件会 rename，不会留在目标旁边。
-    expect(listLogNames(root)).toEqual([])
-    expect(readFileSync(registryPath(root), 'utf8')).toContain('"version": 1')
+    expect(listLogNames(home)).toEqual([])
+    expect(readFileSync(registryPath(home), 'utf8')).toContain('"version": 2')
+  })
+
+  it('lives under the dsh home, not inside any project', () => {
+    const home = project()
+    expect(registryPath(home)).toBe(join(home, 'dsh-kit', 'services.json'))
   })
 
   it('treats a missing registry as empty rather than failing', () => {
-    expect(readRegistry(project()).services).toEqual([])
+    const round = readRegistry(project())
+    expect(round.services).toEqual([])
+    expect(round.roots).toEqual([])
   })
 
   it('treats a corrupt registry as empty, because it is a cache and not the truth', () => {
-    const root = project()
-    mkdirSync(join(root, '.agents'), { recursive: true })
-    writeFileSync(registryPath(root), '{ this is not json', 'utf8')
-    expect(readRegistry(root).services).toEqual([])
+    const home = project()
+    mkdirSync(join(home, 'dsh-kit'), { recursive: true })
+    writeFileSync(registryPath(home), '{ this is not json', 'utf8')
+    expect(readRegistry(home).services).toEqual([])
   })
 
-  it('drops rows missing the fields later operations depend on', () => {
-    const root = project()
-    mkdirSync(join(root, '.agents'), { recursive: true })
-    writeFileSync(registryPath(root), JSON.stringify({
-      version: 1,
-      services: [record(), { name: 'broken' }, null, 'nope'],
+  it('drops rows missing the fields later operations depend on, root included', () => {
+    const home = project()
+    mkdirSync(join(home, 'dsh-kit'), { recursive: true })
+    writeFileSync(registryPath(home), JSON.stringify({
+      version: 2,
+      services: [record(), { name: 'broken' }, { name: 'rootless', pid: 1, command: 'x', cwd: 'x', startedAt: 1, logFile: 'x' }, null, 'nope'],
+      roots: [],
     }), 'utf8')
-    expect(readRegistry(root).services.map(item => item.name)).toEqual(['web'])
+    expect(readRegistry(home).services.map(item => item.name)).toEqual(['web'])
+  })
+
+  it('forgets roots whose directory no longer exists, so the index cannot grow forever', () => {
+    const home = project()
+    const gone = join(project(), 'removed')
+    put(home, [], [gone, home])
+    expect(readRegistry(home).roots).toEqual([home])
+  })
+})
+
+describe('registry lock', () => {
+  it('releases the lockfile when the critical section ends, even on throw', () => {
+    const home = project()
+    expect(withRegistryLock(home, () => 7)).toBe(7)
+    expect(existsSync(`${registryPath(home)}.lock`)).toBe(false)
+    expect(() => withRegistryLock(home, () => { throw new Error('boom') })).toThrow('boom')
+    expect(existsSync(`${registryPath(home)}.lock`)).toBe(false)
+  })
+
+  it('breaks a stale lock left behind by a crashed writer instead of waiting forever', () => {
+    const home = project()
+    mkdirSync(join(home, 'dsh-kit'), { recursive: true })
+    const lock = `${registryPath(home)}.lock`
+    writeFileSync(lock, '999999 0\n', 'utf8')
+    // mtime 拨回 1 小时前，超出陈旧阈值。
+    const old = new Date(Date.now() - 3_600_000)
+    utimesSync(lock, old, old)
+    expect(withRegistryLock(home, () => 'ok')).toBe('ok')
+    expect(existsSync(lock)).toBe(false)
   })
 })
 
 describe('log discovery', () => {
   it('lists log basenames and ignores anything that is not a valid service log', () => {
-    const root = project()
-    mkdirSync(join(root, '.agents', 'logs'), { recursive: true })
+    const home = project()
+    mkdirSync(join(home, 'dsh-kit', 'logs'), { recursive: true })
     for (const file of ['web.log', 'api.log', 'notes.txt', 'a b.log']) {
-      writeFileSync(join(root, '.agents', 'logs', file), '', 'utf8')
+      writeFileSync(join(home, 'dsh-kit', 'logs', file), '', 'utf8')
     }
-    expect(listLogNames(root)).toEqual(['api', 'web'])
+    expect(listLogNames(home)).toEqual(['api', 'web'])
   })
 
   it('reports no logs rather than throwing when the directory is absent', () => {
     expect(listLogNames(project())).toEqual([])
   })
 
-  it('places logs under .agents/logs beside the registry', () => {
-    expect(logPath('C:\\p', 'web')).toBe(join('C:\\p', '.agents', 'logs', 'web.log'))
+  it('places logs under the dsh home, next to the registry — not in any project', () => {
+    const home = project()
+    expect(logPath(home, 'web')).toBe(join(home, 'dsh-kit', 'logs', 'web.log'))
+    expect(legacyLogPath('C:\\p', 'web')).toBe(join('C:\\p', '.agents', 'logs', 'web.log'))
+  })
+
+  it('still lists legacy project logs for the migration fallback', () => {
+    const root = project()
+    mkdirSync(join(root, '.agents', 'logs'), { recursive: true })
+    writeFileSync(join(root, '.agents', 'logs', 'old.log'), '', 'utf8')
+    expect(listLegacyLogNames(root)).toEqual(['old'])
+    expect(listLegacyLogNames(project())).toEqual([])
+  })
+
+  it('finds a stopped service log by scanning candidate roots in order', () => {
+    const a = project()
+    const b = project()
+    mkdirSync(join(b, '.agents', 'logs'), { recursive: true })
+    writeFileSync(join(b, '.agents', 'logs', 'api.log'), 'x', 'utf8')
+    expect(findExistingLog([a, b], 'api')).toBe(join(b, '.agents', 'logs', 'api.log'))
+    expect(findExistingLog([a], 'api')).toBeUndefined()
+    // 非法名称直接拒绝，不构造路径。
+    expect(findExistingLog([b], '../escape')).toBeUndefined()
   })
 })
 
@@ -245,6 +313,12 @@ describe('presentation helpers', () => {
     expect(tailText('a\r\nb\r\n', 5)).toBe('a\nb')
     expect(tailText('', 3)).toBe('')
     expect(tailText('a\nb', 0)).toBe('')
+  })
+
+  it('takes the last path segment on either separator, for the origin badge', () => {
+    expect(baseNameOf('C:\\work\\dsh-kit')).toBe('dsh-kit')
+    expect(baseNameOf('/home/liu/work/dsh-kit')).toBe('dsh-kit')
+    expect(baseNameOf('dsh-kit')).toBe('dsh-kit')
   })
 
   it('shows one unit of duration precision', () => {

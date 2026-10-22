@@ -18,8 +18,11 @@ export interface StartOptions {
   name: string
   command: string
   /**
-   * 拥有该服务的项目目录：registry 行和日志都写在这里，始终是 session 项目目录。
-   * 与命令实际运行的 {@link cwd} 分开；服务可以运行在子包或 sibling checkout，但 `service_list` 只知道 session 目录，不能随命令目录迁移 registry。
+   * dsh home：日志写在这里（机器级资源，方案一），registry 也在这里。
+   */
+  home: string
+  /**
+   * 拥有该服务的项目目录（启动它的会话工作区）：面板来源徽标与重启归属，不再决定日志位置。
    */
   root: string
   /** 命令实际运行的工作目录；默认使用 {@link root}。 */
@@ -87,8 +90,8 @@ const ENCODING_PREAMBLE =
  * @throws Error 无法取得可用 pid 时抛出。
  */
 export async function startProcess(options: StartOptions): Promise<ServiceRecord> {
-  // 日志属于拥有服务的项目，而不是命令运行目录；`listLogNames` 和 `service_logs` 都从拥有项目读取。
-  const logFile = logPath(options.root, options.name)
+  // 日志是机器级资源，与 registry 同住 dsh home；项目目录不再承载服务的任何状态。
+  const logFile = logPath(options.home, options.name)
   fs.mkdirSync(path.dirname(logFile), { recursive: true })
   // 截断而非追加：每次运行拥有自己的日志，probe 和 tail 只描述本次尝试。
   const fd = fs.openSync(logFile, 'w')
@@ -110,6 +113,7 @@ export async function startProcess(options: StartOptions): Promise<ServiceRecord
       name: options.name,
       command: options.command,
       cwd: options.cwd,
+      root: options.root,
       pid,
       startedAt: Date.now(),
       logFile,

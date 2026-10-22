@@ -52,7 +52,10 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
   回答）、工具 shadow 过滤提权字段。行开关或套件关闭并重启后新会话恢复原生权限控制；
   原生权限预设服务与选择器不再隐藏（会话级 override 会把实际执行拉回 YOLO 值）。
   升级运行 yolo-mode-check（覆盖独立 Bundle 与套件两形态），任何契约变化必须响亮失败。
-- services 在沙箱外 spawn，受限模式 start/restart 必须批准；终端沿用 dsh PTY 沙箱。
+- services 在沙箱外 spawn，受限模式 start/restart 必须批准（读调用方会话自己的沙箱模式，跨工作区不绕过）；
+  注册表与日志都在 DSH_HOME/dsh-kit/（services.json + logs/<name>.log）、同 home 所有工作区共享，服务名全局唯一，
+  项目内 .agents/services.json 与 .agents/logs 只是旧版存量、由 roots 索引回捞，旧注册表惰性认领（D17）；
+  终端沿用 dsh PTY 沙箱。
   interactive_terminal 只用于预期用户直接输入，普通 Git、构建、测试和长任务用 pwsh/bash；
   Linux sudo 管理任务的命令统一走交互终端，可在同一终端内复用系统缓存，但不建立持续 root shell。
 - Windows 杀进程树用 taskkill /T /F；常驻服务用两级启动器并记录 L2 pid，不以 detached:true 保证存活。

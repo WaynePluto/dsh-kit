@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { writeRegistry } from '../src/core.js'
-import { cwdOf, dispatch, emptySnapshot, gateSpawn } from '../src/index.js'
+import type { ServiceRecord } from '../src/core.js'
+import { cwdOf, dispatch, gateSpawn } from '../src/index.js'
 import type { Config } from '../src/index.js'
 import { BAD_PAYLOAD_CODE, UNKNOWN_ENDPOINT_CODE } from '../src/shared.js'
 import type { ServicesSnapshot } from '../src/shared.js'
@@ -17,6 +18,20 @@ function project(): string {
   const root = mkdtempSync(join(tmpdir(), 'dsh-services-host-'))
   roots.push(root)
   return root
+}
+
+/** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
+function record(root: string, over: Partial<ServiceRecord> = {}): ServiceRecord {
+  return {
+    name: over.name ?? 'web',
+    command: 'pnpm dev',
+    cwd: root,
+    root,
+    pid: 4242,
+    startedAt: 1_000_000,
+    logFile: join(root, '.agents', 'logs', `${over.name ?? 'web'}.log`),
+    ...over,
+  }
 }
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
@@ -128,68 +143,91 @@ describe('gateSpawn — the sandbox escape gate', () => {
 
 describe('dispatch — channel contract', () => {
   it('rejects an endpoint this channel does not serve', async () => {
-    const result = await dispatch(fakeCtx().ctx, 'start', { sessionId: 's' }, ON)
+    const home = project()
+    const result = await dispatch(fakeCtx().ctx, 'start', { sessionId: 's' }, ON, home)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error.code).toBe(UNKNOWN_ENDPOINT_CODE)
   })
 
   it('rejects a payload with no session id', async () => {
-    const result = await dispatch(fakeCtx().ctx, 'list', {}, ON)
+    const home = project()
+    const result = await dispatch(fakeCtx().ctx, 'list', {}, ON, home)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error.code).toBe(BAD_PAYLOAD_CODE)
   })
 
   it('rejects a named endpoint with no service name', async () => {
-    const result = await dispatch(fakeCtx({ cwd: 'C:\\p' }).ctx, 'stop', { sessionId: 's' }, ON)
+    const home = project()
+    const result = await dispatch(fakeCtx({ cwd: 'C:\\p' }).ctx, 'stop', { sessionId: 's' }, ON, home)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error.code).toBe(BAD_PAYLOAD_CODE)
   })
 
   it('rejects a non-positive line count instead of coercing it', async () => {
-    const result = await dispatch(fakeCtx({ cwd: 'C:\\p' }).ctx, 'logs', { sessionId: 's', name: 'web', lines: 0 }, ON)
+    const home = project()
+    const result = await dispatch(fakeCtx({ cwd: 'C:\\p' }).ctx, 'logs', { sessionId: 's', name: 'web', lines: 0 }, ON, home)
     expect(result.ok).toBe(false)
   })
 
-  it('answers list with an empty snapshot when the session has no live agent', async () => {
-    const result = await dispatch(fakeCtx().ctx, 'list', { sessionId: 's' }, ON)
+  it('answers list with the global snapshot even when the session has no live agent', async () => {
+    const home = project()
+    const a = project()
+    // pid/startedAt 取测试进程自身：真实 identify 判定为存活（ours 或 unknown 都保留），无需注入 probe。
+    writeRegistry(home, { version: 2, services: [record(a, { pid: process.pid, startedAt: Date.now() })], roots: [a] })
+    const result = await dispatch(fakeCtx().ctx, 'list', { sessionId: 'no-such-session' }, ON, home)
     expect(result.ok).toBe(true)
-    if (result.ok) expect((result.value as ServicesSnapshot).cwd).toBeNull()
+    if (result.ok) {
+      const value = result.value as ServicesSnapshot
+      // 冷会话也能看到全局服务：registry 与会话无关，这正是跨工作区可见性的要点。
+      expect(value.cwd).toBeNull()
+      expect(value.services.map(service => service.name)).toEqual(['web'])
+    }
   })
 
-  it('answers list from the live agent project directory', async () => {
-    const root = project()
-    writeRegistry(root, [])
-    const result = await dispatch(fakeCtx({ cwd: root }).ctx, 'list', { sessionId: 's' }, ON)
+  it('answers list with every workspace, session workspace first', async () => {
+    const home = project()
+    const a = project()
+    const b = project()
+    const pid = process.pid
+    const startedAt = Date.now()
+    writeRegistry(home, {
+      version: 2,
+      services: [
+        record(a, { name: 'a-web', pid, startedAt }),
+        record(b, { name: 'b-api', pid, startedAt }),
+      ],
+      roots: [a, b],
+    })
+    const result = await dispatch(fakeCtx({ cwd: b }).ctx, 'list', { sessionId: 's' }, ON, home)
     expect(result.ok).toBe(true)
-    if (result.ok) expect((result.value as ServicesSnapshot).cwd).toBe(root)
+    if (result.ok) {
+      const value = result.value as ServicesSnapshot
+      expect(value.cwd).toBe(b)
+      expect(value.services.map(service => service.name)).toEqual(['b-api', 'a-web'])
+    }
   })
 
-  it('reports a refusal as a successful call carrying ok:false, not a transport error', async () => {
-    const root = project()
-    const result = await dispatch(fakeCtx({ cwd: root }).ctx, 'stop', { sessionId: 's', name: 'ghost' }, ON)
+  it('serves named endpoints without a session project directory', async () => {
+    const home = project()
+    const result = await dispatch(fakeCtx().ctx, 'stop', { sessionId: 's', name: 'ghost' }, ON, home)
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.value).toEqual({ ok: false, message: '没有名为 ghost 的运行中服务' })
   })
 
   it('puts panel-driven restart behind the same sandbox gate as the tool', async () => {
-    const root = project()
-    const harness = fakeCtx({ cwd: root, mode: 'read-only', approval: 'rejected' })
-    const result = await dispatch(harness.ctx, 'restart', { sessionId: 's', name: 'web' }, ON)
+    const home = project()
+    const harness = fakeCtx({ cwd: project(), mode: 'read-only', approval: 'rejected' })
+    const result = await dispatch(harness.ctx, 'restart', { sessionId: 's', name: 'web' }, ON, home)
     expect(result.ok).toBe(true)
     if (result.ok) expect((result.value as { message: string }).message).toContain('启动被拒绝')
     expect(harness.request).toHaveBeenCalledOnce()
   })
 
   it('has no start endpoint at all — creating a service stays with the gated tool', async () => {
+    const home = project()
     for (const endpoint of ['start', 'create', 'spawn']) {
-      const result = await dispatch(fakeCtx({ cwd: 'C:\\p' }).ctx, endpoint, { sessionId: 's', name: 'x' }, ON)
+      const result = await dispatch(fakeCtx({ cwd: 'C:\\p' }).ctx, endpoint, { sessionId: 's', name: 'x' }, ON, home)
       expect(result.ok).toBe(false)
     }
-  })
-})
-
-describe('emptySnapshot', () => {
-  it('is a well-formed snapshot that renders as nothing', () => {
-    expect(emptySnapshot(5)).toEqual({ cwd: null, services: [], stoppedLogs: [], now: 5 })
   })
 })

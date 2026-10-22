@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { midEllipsis } from '../shared.js'
+import { baseNameOf, midEllipsis } from '../shared.js'
 import type { ServiceView } from '../shared.js'
 import type { ServicesKey } from './locales.js'
 import { factsStyle, nameSizerStyle, nameStyle, nameTextStyle, rowActionsStyle, rowStyle, warnStyle } from './styles.js'
@@ -15,6 +15,8 @@ import type { Busy, ServicesDockInjected } from './types.js'
 /** 单行渲染所需的输入。 */
 export interface ServiceRowProps {
   service: ServiceView
+  /** 发起面板的会话项目目录；非本工作区的服务带来源徽标。 */
+  sessionCwd: string | null
   busy: Busy
   actions?: Partial<ServicesDockInjected> | undefined
   translate: (key: ServicesKey) => string
@@ -65,17 +67,22 @@ function useNameGlyphCapacity(name: string): NameMeasure {
 }
 
 /** 渲染一个运行中服务的名称、事实和操作按钮。 */
-export function ServiceRow({ service, busy, actions, translate, elapsed, onShowLog, onAction }: ServiceRowProps) {
+export function ServiceRow({ service, sessionCwd, busy, actions, translate, elapsed, onShowLog, onAction }: ServiceRowProps) {
   const { capacity, boxRef, sizerRef } = useNameGlyphCapacity(service.name)
   // capacity 为 null（未测量）时显示原文，避免首帧闪现省略号。
   const visibleName = capacity === null ? service.name : midEllipsis(service.name, capacity)
+  // 其他工作区的服务以项目目录末段打头，宿主已把当前工作区排在最前；悬停可见完整来源路径。
+  const foreign = sessionCwd !== null && service.root !== sessionCwd
+  const origin = foreign ? `[${baseNameOf(service.root)}]` : undefined
   // 每个服务只占一行；命令等 facts 超长时在中间省略，完整内容通过 title 提供。
   const facts = [
+    origin,
     service.port === undefined ? undefined : `:${String(service.port)}`,
     `pid ${String(service.pid)}`,
     elapsed(service),
     service.command,
   ].filter(Boolean).join('  ')
+  const factsTitle = foreign ? `${service.root}  ${facts}` : facts
   return (
     <li style={{ minWidth: 0 }}>
       <div style={rowStyle}>
@@ -83,7 +90,7 @@ export function ServiceRow({ service, busy, actions, translate, elapsed, onShowL
           <span ref={sizerRef} style={nameSizerStyle} aria-hidden={true}>{service.name}</span>
           <span style={nameTextStyle} title={service.name} aria-label={service.name}>{visibleName}</span>
         </span>
-        <span style={factsStyle} title={facts}>{facts}</span>
+        <span style={factsStyle} title={factsTitle}>{facts}</span>
         <span style={rowActionsStyle}>
           <Button
             variant="outline"

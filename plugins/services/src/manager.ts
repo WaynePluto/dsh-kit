@@ -1,13 +1,17 @@
 /**
  * services 的操作层：registry reconciliation、启动/停止/重启和日志读取都在此实现一次。
  * tools 与浏览器 panel 只是这些函数的两种入口；每次入口都先把 registry 与 OS 状态对齐。
+ * registry 以 dsh home 为作用域，服务名在整台部署内全局唯一；
+ * 跨工作区的 stop/restart/logs 都按名称直接寻址，来源项目只影响展示与日志发现顺序。
  *
  * @module @dsh-kit/dsh-plugin-services/manager
  */
 
+import fs from 'node:fs'
 import {
-  identify, killTree, listLogNames, logPath, readRegistry, reconcile, reportedIdentity,
-  startProcess, tailFile, waitForReady, writeRegistry,
+  claimLegacyRegistry, findExistingLog, identify, killTree, listLegacyLogNames, listLogNames, logPath,
+  readRegistry, reconcile, reportedIdentity, startProcess, tailFile, unionRoots,
+  waitForReady, withRegistryLock, writeRegistry,
 } from './core.js'
 import type { Identity, ServiceRecord } from './core.js'
 import { DEFAULT_LOG_LINES, MAX_LOG_LINES, isValidName } from './shared.js'
@@ -23,23 +27,27 @@ export const MAX_READY_TIMEOUT_MS = 120_000
 export interface ManagerDeps {
   identify?: (record: ServiceRecord) => Identity
   now?: () => number
+  /** 终止进程树；mock 测试注入记录器，避免真的杀 pid。 */
+  kill?: (pid: number) => void
 }
 
 /**
- * 将已保存 registry 与 OS 对齐，并持久化修复结果。
- * @param cwd - 项目目录。
+ * 将已保存 registry 与 OS 对齐，并持久化修复结果。读取、判定与写回在同一个锁内完成。
+ * @param home - dsh home（全局 registry 所在）。
  * @param deps - 注入的 probe。
  * @returns 仍存活的记录及各自的身份判定。
  */
 export function refresh(
-  cwd: string,
+  home: string,
   deps: ManagerDeps = {},
 ): { record: ServiceRecord; identity: Identity }[] {
   const identifyFn = deps.identify ?? ((record: ServiceRecord) => identify(record))
-  const stored = readRegistry(cwd).services
-  const { live, dropped } = reconcile(stored, identifyFn)
-  if (dropped.length > 0) writeRegistry(cwd, live)
-  return live.map(record => ({ record, identity: identifyFn(record) }))
+  return withRegistryLock(home, () => {
+    const registry = readRegistry(home)
+    const { live, dropped } = reconcile(registry.services, identifyFn)
+    if (dropped.length > 0) writeRegistry(home, { ...registry, services: live })
+    return live.map(record => ({ record, identity: identifyFn(record) }))
+  })
 }
 
 /**
@@ -53,6 +61,7 @@ function toView(record: ServiceRecord, identity: Identity): ServiceView {
     name: record.name,
     command: record.command,
     cwd: record.cwd,
+    root: record.root,
     pid: record.pid,
     startedAt: record.startedAt,
     logFile: record.logFile,
@@ -61,25 +70,59 @@ function toView(record: ServiceRecord, identity: Identity): ServiceView {
   }
 }
 
+/** {@link snapshot} 的可见性选项。 */
+export interface SnapshotOptions {
+  /** 发起调用的会话项目目录；没有 live agent 时为 null。 */
+  cwd: string | null
+  /** true 时返回整台部署的全部存活服务（面板与 `service_list scope:"all"`）；默认只看本工作区。 */
+  all?: boolean
+}
+
 /**
- * 构造 panel 与 `service_list` 共用的 snapshot。
- * @param cwd - 项目目录。
+ * 日志发现的候选目录：会话项目最优先，其余按 registry 的 roots 索引。
+ * 只用于回捞 D17 前留在项目内的旧版日志；现行日志都在 home 日志目录。
+ * @param home - dsh home。
+ * @param cwd - 会话项目目录；可为 null。
+ * @returns 去重后的候选列表，会话目录居首。
+ */
+function discoveryRoots(home: string, cwd: string | null): string[] {
+  const roots = readRegistry(home).roots
+  if (cwd === null) return roots
+  return [cwd, ...roots.filter(root => root !== cwd)]
+}
+
+/**
+ * 构造 panel 与 `service_list` 共用的 snapshot。all 模式下当前工作区的服务排在最前，其余保持注册顺序。
+ * 已停止日志提示合并两个来源：home 日志目录（现行）与 roots 索引下的旧项目日志（D17 前存量）。
+ * @param home - dsh home。
+ * @param options - 会话项目目录与可见范围。
  * @param deps - 注入的 probe。
  * @returns 存活服务、可读的已停止日志和 Host 时钟。
  */
-export function snapshot(cwd: string, deps: ManagerDeps = {}): ServicesSnapshot {
-  const live = refresh(cwd, deps)
+export function snapshot(home: string, options: SnapshotOptions, deps: ManagerDeps = {}): ServicesSnapshot {
+  const cwd = options.cwd
+  if (cwd !== null) claimLegacyRegistry(cwd, home)
+  const live = refresh(home, deps)
+  const visible = options.all === true
+    ? [...live].sort((a, b) => Number(b.record.root === cwd) - Number(a.record.root === cwd))
+    : live.filter(entry => entry.record.root === cwd)
   const running = new Set(live.map(entry => entry.record.name))
+  const stoppedLogs = [
+    ...new Set([
+      ...listLogNames(home),
+      ...discoveryRoots(home, cwd).flatMap(root => listLegacyLogNames(root)),
+    ]),
+  ].filter(name => !running.has(name)).toSorted()
   return {
     cwd,
-    services: live.map(entry => toView(entry.record, entry.identity)),
-    stoppedLogs: listLogNames(cwd).filter(name => !running.has(name)),
+    services: visible.map(entry => toView(entry.record, entry.identity)),
+    stoppedLogs,
     now: (deps.now ?? Date.now)(),
   }
 }
 
 /**
- * 按名称查找一条存活记录。
+ * 按名称查找一条存活记录；名称在整台部署内唯一，跨工作区寻址不需要目录。
  * @param live - reconciliation 后的记录。
  * @param name - 服务名称。
  * @returns 匹配项；没有时返回 undefined。
@@ -93,13 +136,14 @@ function find(
 
 /**
  * 停止一个服务并从 registry 移除。无法确认 pid 仍属于该服务时返回拒绝结果而不是抛错，避免误杀其他进程树。
- * @param cwd - 项目目录。
+ * @param home - dsh home。
  * @param name - 要停止的服务。
  * @param deps - 注入的 probe。
  * @returns 是否停止成功及展示文案。
  */
-export function stopService(cwd: string, name: string, deps: ManagerDeps = {}): ServiceActionResult {
-  const live = refresh(cwd, deps)
+export function stopService(home: string, name: string, deps: ManagerDeps = {}): ServiceActionResult {
+  const kill = deps.kill ?? killTree
+  const live = refresh(home, deps)
   const entry = find(live, name)
   if (entry === undefined) return { ok: false, message: `没有名为 ${name} 的运行中服务` }
 
@@ -114,18 +158,23 @@ export function stopService(cwd: string, name: string, deps: ManagerDeps = {}): 
     }
   }
 
-  killTree(entry.record.pid)
-  writeRegistry(cwd, live.filter(item => item.record.name !== name).map(item => item.record))
+  kill(entry.record.pid)
+  withRegistryLock(home, () => {
+    const registry = readRegistry(home)
+    writeRegistry(home, { ...registry, services: registry.services.filter(item => item.name !== name) })
+  })
   return { ok: true, message: `${name} 已停止（pid ${String(entry.record.pid)}）` }
 }
 
 /** {@link startService} 接受的全部请求字段。 */
 export interface StartRequest {
+  /** dsh home：全局 registry 与日志所在。 */
+  home: string
   name: string
   command: string
   /**
-   * 拥有 registry 和日志的项目目录：始终是 session 项目目录，而不是命令目录。
-   * ⚠️ 必须与 {@link cwd} 分开，才能让自定义工作目录的服务仍被 `service_list` 和 panel 看到；两者只知道 session 目录。
+   * 拥有该服务的项目目录（启动它的会话工作区）：面板来源徽标与重启归属。
+   * 日志在 {@link home}，与此处无关；仍须与命令运行的 {@link cwd} 分开以标记归属工作区。
    */
   root: string
   /** 命令运行的工作目录；可以不同于 {@link root}。 */
@@ -146,20 +195,29 @@ export interface StartResult {
   record?: ServiceRecord
 }
 
+/** 同名服务已存在（可能是本机任何工作区启动的）时的拒绝文案。 */
+function duplicateMessage(name: string, owner: string): string {
+  return `${name} 已在运行（属于项目 ${owner}）；要换命令请先 service_stop，或用 service_restart`
+}
+
 /**
  * 启动一个服务并等待其看起来已就绪。启动期间退出的进程会先从 registry 移除，避免后续操作把不存在的服务当成存活。
+ * 名称在整台部署内全局唯一：spawn 前后各查一次重名，写入时在锁内复核——两个窗口同时用同名启动时，
+ * 后写入者会杀掉自己刚拉起的进程并如实报告，而不是留下两行同名记录。
  * @param request - 名称、命令、目录和 probe 配置。
  * @param deps - 注入的 probe。
  * @returns 等待结果及合并日志 tail 的文案。
  */
 export async function startService(request: StartRequest, deps: ManagerDeps = {}): Promise<StartResult> {
+  const kill = deps.kill ?? killTree
   if (!isValidName(request.name)) {
     return { ok: false, message: `服务名 ${request.name} 不合法：只允许字母、数字、点、下划线和连字符，且不超过 64 字符` }
   }
-  const registryRoot = request.root
-  const live = refresh(registryRoot, deps)
-  if (find(live, request.name) !== undefined) {
-    return { ok: false, message: `${request.name} 已在运行；要换命令请先 service_stop，或用 service_restart` }
+  const home = request.home
+  claimLegacyRegistry(request.root, home)
+  const existing = find(refresh(home, deps), request.name)
+  if (existing !== undefined) {
+    return { ok: false, message: duplicateMessage(request.name, existing.record.root) }
   }
 
   // Windows pid handoff 或命令 spawn 可能失败；这是启动失败结果，不应作为异常冒泡，调用方需要可展示的句子。
@@ -168,7 +226,8 @@ export async function startService(request: StartRequest, deps: ManagerDeps = {}
     record = await startProcess({
       name: request.name,
       command: request.command,
-      root: registryRoot,
+      home: request.home,
+      root: request.root,
       cwd: request.cwd,
       ...request.port === undefined ? {} : { port: request.port },
       ...request.shell === undefined ? {} : { shell: request.shell },
@@ -179,7 +238,23 @@ export async function startService(request: StartRequest, deps: ManagerDeps = {}
       message: `${request.name} 没能启动：${error instanceof Error ? error.message : String(error)}`,
     }
   }
-  writeRegistry(registryRoot, [...live.map(entry => entry.record), record])
+  // 锁内重读复核：spawn 期间（Windows pid handoff 最长 15 秒）另一个窗口可能已写入同名服务。
+  const collision = withRegistryLock(home, () => {
+    const registry = readRegistry(home)
+    const clash = registry.services.find(item => item.name === request.name)
+    if (clash === undefined) {
+      writeRegistry(home, {
+        ...registry,
+        services: [...registry.services, record],
+        roots: unionRoots(registry.roots, request.root),
+      })
+    }
+    return clash
+  })
+  if (collision !== undefined) {
+    kill(record.pid)
+    return { ok: false, message: duplicateMessage(request.name, collision.root) }
+  }
 
   const timeoutMs = Math.min(request.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS, MAX_READY_TIMEOUT_MS)
   const outcome = await waitForReady(record, {
@@ -190,10 +265,13 @@ export async function startService(request: StartRequest, deps: ManagerDeps = {}
   const tail = tailFile(record.logFile, DEFAULT_LOG_LINES)
 
   if (outcome === 'exited') {
-    writeRegistry(
-      registryRoot,
-      readRegistry(registryRoot).services.filter(item => item.name !== request.name),
-    )
+    withRegistryLock(home, () => {
+      const registry = readRegistry(home)
+      writeRegistry(home, {
+        ...registry,
+        services: registry.services.filter(item => item.name !== request.name),
+      })
+    })
     return {
       ok: false,
       outcome,
@@ -213,30 +291,33 @@ export async function startService(request: StartRequest, deps: ManagerDeps = {}
 }
 
 /**
- * 使用启动时记录的命令停止并重新启动服务。重放 stored command 可保证 panel 的“重启”不会意外改变实际执行内容。
- * @param root - 拥有 registry 的项目目录。
+ * 使用启动时记录的命令停止并重新启动服务——可以在任何工作区发起，命令与目录都从记录重放。
+ * 重放 stored command 可保证 panel 的“重启”不会意外改变实际执行内容；
+ * 是否允许发起仍由调用方会话自己的沙箱门控决定（见 index.ts 的 gateSpawn）。
+ * @param home - dsh home。
  * @param name - 服务名称。
  * @param readyTimeoutMs - 可选的就绪 deadline。
  * @param deps - 注入的 probe。
  * @returns 是否重新启动成功及展示文案。
  */
 export async function restartService(
-  root: string,
+  home: string,
   name: string,
   readyTimeoutMs?: number,
   deps: ManagerDeps = {},
 ): Promise<ServiceActionResult> {
-  const previous = find(refresh(root, deps), name)?.record
+  const previous = find(refresh(home, deps), name)?.record
   if (previous === undefined) return { ok: false, message: `没有名为 ${name} 的运行中服务` }
 
-  const stopped = stopService(root, name, deps)
+  const stopped = stopService(home, name, deps)
   // 拒绝终止时必须中止重启：第一份服务可能仍占用 port，启动第二份比不操作更危险。
   if (!stopped.ok) return { ok: false, message: `重启中止：${stopped.message}` }
 
   const started = await startService({
+    home,
     name: previous.name,
     command: previous.command,
-    root,
+    root: previous.root,
     // 从记录重放命令自身目录，因此在子包启动的服务会回到同一子包。
     cwd: previous.cwd,
     ...previous.port === undefined ? {} : { port: previous.port },
@@ -248,20 +329,27 @@ export async function restartService(
 
 /**
  * 读取一个服务的日志 tail；服务已退出时仍可用，这正是最需要日志判断退出原因的时刻。
- * @param cwd - 项目目录。
+ * 记录在 registry 中的服务直接用记录的绝对路径（迁移前启动的服务仍指向项目内旧文件）；
+ * 已停止的按「home 日志目录 → 会话项目与 roots 索引的旧版项目日志」顺序回捞。
+ * @param home - dsh home。
+ * @param cwd - 会话项目目录；没有 live agent 时为 null。
  * @param name - 服务名称。
  * @param lines - 末尾行数，截到 {@link MAX_LOG_LINES}。
  * @param deps - 注入的 probe。
  * @returns 日志路径、tail 和运行状态。
  */
 export function logsOf(
-  cwd: string,
+  home: string,
+  cwd: string | null,
   name: string,
   lines: number = DEFAULT_LOG_LINES,
   deps: ManagerDeps = {},
 ): ServiceLogsResult {
-  const entry = find(refresh(cwd, deps), name)
-  const file = entry?.record.logFile ?? logPath(cwd, name)
+  const entry = find(refresh(home, deps), name)
+  const canonical = logPath(home, name)
+  const file = entry?.record.logFile
+    ?? (existsFile(canonical) ? canonical : findExistingLog(discoveryRoots(home, cwd), name))
+    ?? canonical
   return {
     file,
     tail: tailFile(file, Math.min(Math.max(lines, 1), MAX_LOG_LINES)),
@@ -269,8 +357,18 @@ export function logsOf(
   }
 }
 
+/** 文件存在且是普通文件。 */
+function existsFile(file: string): boolean {
+  try {
+    return fs.statSync(file).isFile()
+  } catch {
+    return false
+  }
+}
+
 /**
  * 面向模型的 snapshot 文本。已停止服务按名称单独列出，因为读取日志是唯一剩余操作且需要名称。
+ * 其他工作区的服务带来源目录标注，模型在排查端口占用时能直接定位项目。
  * @param value - 要描述的 snapshot。
  * @returns 紧凑的多行报告。
  */
@@ -286,6 +384,7 @@ export function formatSnapshot(value: ServicesSnapshot): string {
     if (service.port !== undefined) parts.push(`:${String(service.port)}`)
     parts.push(`pid ${String(service.pid)}`)
     if (service.identity === 'unknown') parts.push('(身份待确认)')
+    if (value.cwd !== null && service.root !== value.cwd) parts.push(`项目 ${service.root}`)
     parts.push(service.command)
     return `  ${parts.join('  ')}\n    日志 ${service.logFile}`
   })

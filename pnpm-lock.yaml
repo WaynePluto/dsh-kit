@@ -819,6 +819,9 @@ importers:
 
   plugins/services:
     dependencies:
+      '@deepseek-ai/dsh-home-paths':
+        specifier: 0.2.1-rc.2
+        version: 0.2.1-rc.2(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.1-rc.2
         version: 0.2.1-rc.2(f4f5dafa2004c02f6afbbbc8518bca23)
@@ -5006,6 +5009,7 @@ snapshots:
 
   '@dsh-kit/dsh-plugin-services@file:plugins/services(f4f5dafa2004c02f6afbbbc8518bca23)':
     dependencies:
+      '@deepseek-ai/dsh-home-paths': 0.2.1-rc.2(@deepseek-ai/cordis@4.0.5)
       '@deepseek-ai/dsh-tools': 0.2.1-rc.2(f4f5dafa2004c02f6afbbbc8518bca23)
       '@deepseek-ai/schemastery': 3.18.5
       '@dsh-kit/plugin-rpc': link:packages/plugin-rpc

@@ -139,6 +139,14 @@ async function main() {
     (startTool?.description ?? '').includes('outside the sandbox'),
     'service_start 的描述告诉模型它跑在沙箱之外',
   )
+  // 跨工作区可见性：service_list 默认本项目，scope:"all" 看全局（排查端口占用）。
+  const listTool = artifact.tools.find(tool => tool.name === 'service_list')
+  check(
+    Array.isArray(listTool?.parameters?.properties?.scope?.enum)
+      && listTool.parameters.properties.scope.enum.includes('all'),
+    'service_list 的 scope 参数提供 project/all 两档',
+    JSON.stringify(listTool?.parameters?.properties?.scope),
+  )
 
   const client = inspectClientBundle()
   check(client.seats.length === 1, '浏览器产物只占一个座位', `共 ${client.seats.length} 个`)

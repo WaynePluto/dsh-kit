@@ -45,6 +45,7 @@ export function ServicesPanel({ sessionId, actions, t }: ServicesPanelProps) {
   const {
     collapsed,
     setCollapsed,
+    snapshot,
     error,
     busy,
     openLog,
@@ -89,6 +90,7 @@ export function ServicesPanel({ sessionId, actions, t }: ServicesPanelProps) {
             <ServiceRow
               key={service.name}
               service={service}
+              sessionCwd={snapshot?.cwd ?? null}
               busy={busy[service.name]}
               actions={actions}
               translate={translate}

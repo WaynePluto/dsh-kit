@@ -47,12 +47,14 @@ export type ServiceIdentity = 'ours' | 'unknown'
 
 /** 页面看到的一项存活服务。 */
 export interface ServiceView {
-  /** registry 主键，也是日志文件基本名。 */
+  /** 全局唯一的 registry 主键，也是日志文件基本名。 */
   name: string
   /** 用户输入的命令；restart 精确重放此值。 */
   command: string
   /** 命令运行的工作目录。 */
   cwd: string
+  /** 拥有该服务的项目目录（启动它的会话工作区）：日志所在地、跨工作区徽标的来源。 */
+  root: string
   /** launcher 进程的 OS process id。 */
   pid: number
   /** 本插件 spawn 它时的 epoch ms；uptime 从这里计算。 */
@@ -141,6 +143,17 @@ export function isNamedRequest(value: unknown): value is NamedRequest {
 export function isValidName(name: string): boolean {
   if (name === '.' || name === '..') return false
   return /^[A-Za-z0-9._-]{1,64}$/u.test(name)
+}
+
+/**
+ * 取路径的最后一段（兼容 `/` 与 `\`），作为其他工作区服务的来源徽标。
+ * 本模块同时编译进浏览器，不能依赖 `node:path`。
+ * @param value - 绝对路径。
+ * @returns 末段；路径以分隔符结尾或为空串时返回原样。
+ */
+export function baseNameOf(value: string): string {
+  const last = value.split(/[\\/]/u).findLast(segment => segment !== '')
+  return last ?? value
 }
 
 /** 调用方未指定时返回的默认末尾日志行数。 */

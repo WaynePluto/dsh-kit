@@ -83,13 +83,25 @@ ask_user_question 保持用户回答，原生工具的结果、diff、取消与�
 出处：`packages/jobs/jobs/src/types.ts`、`docs/subsystems/jobs.md`、`docs/subsystems/shell.md`。
 
 dsh jobs 生命周期绑定 owner；Agent 销毁会取消并等待任务，无 owner 的任务也活不过 service disposal。
-项目 services 使用 detached 进程与项目 .agents/services.json 注册表，日志位于 .agents/logs/<name>.log。
+项目 services 的注册表与日志都以 `$DSH_HOME`（`@deepseek-ai/dsh-home-paths` 的 `resolveDshHome`，
+默认 `~/.dsh`）为作用域：`$DSH_HOME/dsh-kit/services.json` 单文件记录全部存活服务，
+`$DSH_HOME/dsh-kit/logs/<name>.log` 每名一份当前日志（每次启动截断）；
+同一部署（同用户、同 home）的所有工作区共享可见性；隔离 home（D8 的 `~/.dsh-dev`）天然互不可见。
+项目内 `.agents/services.json` 与 `.agents/logs/` 是 D17 前的存量：旧注册表在该工作区首次被
+snapshot/start/logs 触达时惰性并入全局并删除（v1 记录补 root 字段，重名以全局为准）；
+旧项目日志经注册表的 roots 索引（启动过服务的项目目录，读取时剔除已删除目录）回捞，
+运行中旧服务的日志文件不搬（fd 打开中，Windows 锁定），下次 restart 自动落位 home。
+服务名在部署内全局唯一，重名 start 拒绝并指认属主项目。
+并发写入由注册表旁 lockfile（`O_EXCL` 创建、陈旧 10 秒打破、等待 5 秒接管）串行化；
+两个窗口同时以同名启动时，写入方在锁内复核发现撞名后杀掉自己刚拉起的进程。
 以 pid 和创建时间识别，避免复用 pid 时误杀。
 
-直接 node:child_process.spawn 不经过沙箱，所以 service_start/restart 必须读取 session 的 sandbox mode。
-danger-full-access 不额外提问；受限模式需 ctx.approval 且仅 allowed-once 放行。
-缺会话或批准能力时 fail closed；面板不提供创建服务入口。
+直接 node:child_process.spawn 不经过沙箱，所以 service_start/restart 必须读取**调用方会话**的 sandbox mode。
+danger-full-access 不额外提问；受限模式需 ctx.approval 且仅 allowed-once 放行——跨工作区发起
+也不会绕过调用方自己的批准。缺会话或批准能力时 fail closed；面板不提供创建服务入口。
 权限预设只写 mode/policy，不替自行 spawn 的插件做逐工具沙箱隔离。
+`service_list` 默认本项目，`scope:"all"` 返回全部工作区（当前工作区排前）；
+面板 list 恒为全局。stop/restart/logs 按全局唯一名称寻址，不要求会话有项目目录。
 
 ### PowerShell
 

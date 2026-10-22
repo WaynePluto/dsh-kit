@@ -7,13 +7,21 @@
 
 export {
   REGISTRY_VERSION,
+  claimLegacyRegistry,
   readRegistry,
   registryPath,
+  unionRoots,
+  withRegistryLock,
   writeRegistry,
 } from './registry.js'
 export type { Registry, ServiceRecord } from './registry.js'
 
 export {
+  findExistingLog,
+  homeLogsDir,
+  legacyLogPath,
+  legacyLogsDir,
+  listLegacyLogNames,
   listLogNames,
   logPath,
   readText,
