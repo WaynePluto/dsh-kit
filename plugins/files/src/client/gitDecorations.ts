@@ -10,6 +10,30 @@ interface PreviousAttributes {
 
 const previous = new WeakMap<HTMLButtonElement, PreviousAttributes>()
 
+/**
+ * 每个快照的 path → status 装饰结果缓存。树内任何 mutation 都会全量重装饰
+ * （幂等操作），未变化的行在此复用结果、跳过对 Git 条目上限（2000 条）的
+ * 线性扫描；Git 快照刷新换新引用，缓存随 WeakMap 整体失效。
+ */
+const statusCache = new WeakMap<FilesSnapshot, Map<string, GitStatus | undefined>>()
+
+function cachedStatusForPath(
+  snapshot: FilesSnapshot,
+  relative: string,
+  directory: boolean,
+): GitStatus | undefined {
+  let cache = statusCache.get(snapshot)
+  if (cache === undefined) {
+    cache = new Map()
+    statusCache.set(snapshot, cache)
+  }
+  const key = directory ? `d\u0000${relative}` : `f\u0000${relative}`
+  if (cache.has(key)) return cache.get(key)
+  const status = statusForPath(relative, directory, snapshot.git.entries)
+  cache.set(key, status)
+  return status
+}
+
 function statusLabel(t: Translate, status: GitStatus): string {
   switch (status) {
     case 'modified': return t('statusModified')
@@ -72,7 +96,7 @@ export function decorateNativeRows(
       : workspaceRelativePath(snapshot.workspacePath, absolute)
     const status = relative === undefined
       ? undefined
-      : statusForPath(relative, row.dataset.filesEntry === 'directory', snapshot.git.entries)
+      : cachedStatusForPath(snapshot, relative, row.dataset.filesEntry === 'directory')
     if (status === undefined) clearButton(button)
     else decorateButton(button, status, statusLabel(t, status))
   }

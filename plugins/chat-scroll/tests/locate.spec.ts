@@ -22,6 +22,28 @@ describe('chat-scroll locator math', () => {
     expect(assistantMessageNodeKey(snapshot, 'missing')).toBeNull()
   })
 
+  it('traverses a snapshot once for repeated lookups from every message button', () => {
+    const nodes = new Map([
+      ['assistant-1', { kind: 'assistant-step', data: { finalNode: { messageId: 'msg-1' } } }],
+      ['assistant-2', { kind: 'assistant-step', data: { finalNode: { messageId: 'msg-2' } } }],
+    ])
+    let reads = 0
+    const snapshot = {
+      order: ['assistant-1', 'assistant-2'],
+      nodes: {
+        get: (key: string) => {
+          reads += 1
+          return nodes.get(key)
+        },
+      },
+    }
+    expect(assistantMessageNodeKey(snapshot, 'msg-1')).toBe('assistant-1')
+    const afterFirst = reads
+    expect(assistantMessageNodeKey(snapshot, 'msg-2')).toBe('assistant-2')
+    expect(assistantMessageNodeKey(snapshot, 'missing')).toBeNull()
+    expect(reads).toBe(afterFirst)
+  })
+
   it('places a message on the dsh reading line without negative scroll', () => {
     expect(scrollTopForMessage(380, 920, 120)).toBe(1_156)
     expect(scrollTopForMessage(0, 10, 120)).toBe(0)

@@ -13,6 +13,33 @@ import type {
 import type { CapabilityKey } from './locales.js'
 import * as css from './styles.js'
 
+let selectStyleUsers = 0
+let selectStyleElement: HTMLStyleElement | null = null
+
+/**
+ * 引用计数注入 select 样式。每个展开的模型行各 portal 一个编辑器实例且样式
+ * 内容相同；共享一个 head 内 `<style>` 而不是每实例渲染一份，最后一个实例
+ * 卸载时移除。留在本模块（而非 styles.ts）是因为宿主半测试也 import 后者，
+ * 那里没有 DOM lib。
+ */
+function acquireSelectStyles(): () => void {
+  if (selectStyleElement === null) {
+    const style = document.createElement('style')
+    style.textContent = css.selectStyles
+    document.head.append(style)
+    selectStyleElement = style
+  }
+  selectStyleUsers += 1
+  return () => {
+    selectStyleUsers -= 1
+    if (selectStyleUsers <= 0 && selectStyleElement !== null) {
+      selectStyleElement.remove()
+      selectStyleElement = null
+      selectStyleUsers = 0
+    }
+  }
+}
+
 export interface ModelCapabilitiesPanelProps {
   form?: ConfigForm<PiAiSettings>
   protocolForm?: ConfigForm<ProtocolOverrideSettings>
@@ -112,6 +139,8 @@ export function ModelCapabilityEditor(props: ModelCapabilityEditorProps): ReactN
     setProtocol(current => current !== initialProtocol && current !== undefined ? current : initialProtocol)
     setSaved(false)
   }, [initialKey])
+  // select 样式经引用计数共享一份，替代每实例渲染一个 <style>。
+  useEffect(() => acquireSelectStyles(), [])
 
   const shell = props.inline === true ? css.inlineModel : css.model
   if (configured && (draft === undefined || initial === undefined)) {
@@ -218,7 +247,6 @@ export function ModelCapabilityEditor(props: ModelCapabilityEditorProps): ReactN
 
   return (
     <>
-      <style>{css.selectStyles}</style>
       <div style={shell}>
       {props.inline === true ? <div style={css.inlineTitle}>{props.t('inlineTitle')}</div> : (
         <div style={css.modelTitle}>
@@ -314,7 +342,9 @@ export function ModelCapabilitiesPanel({ form, protocolForm, t }: ModelCapabilit
     () => form?.getSnapshot() ?? unavailableSnapshot,
     () => form?.getSnapshot() ?? unavailableSnapshot,
   )
-  const models = configuredModels(snapshot.value)
+  // models 按 snapshot.value memo：稳定引用让 groups 的 useMemo 生效，
+  // 目录加载外的重渲染不再全量重建 provider×model 分组。
+  const models = useMemo(() => configuredModels(snapshot.value), [snapshot.value])
   const groups = useMemo(() => {
     const grouped = new Map<string, typeof models>()
     for (const model of models) grouped.set(model.route, [...grouped.get(model.route) ?? [], model])

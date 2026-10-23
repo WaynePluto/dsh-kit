@@ -108,6 +108,45 @@ describe('installNativeFilesEnhancement（DOM 级）', () => {
     expect(getComputedStyle(host).height).toBe('0px')
   })
 
+  it('树内新增行经合并装饰；无关 body 变更不做发现扫描', async () => {
+    const twoEntries = (): FilesSnapshot => ({
+      workspacePath: 'C:\\work',
+      git: {
+        available: true,
+        truncated: false,
+        entries: [
+          { path: 'a.md', status: 'modified' },
+          { path: 'b.md', status: 'added' },
+        ],
+      },
+    })
+    const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => twoEntries())
+    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
+    await flush()
+
+    // 树内新增一行：rowObserver 的重装饰经 rAF 合并后落到新行上。
+    const row2 = document.createElement('li')
+    row2.dataset.filesEntry = 'file'
+    row2.dataset.filesPath = 'C:\\work\\b.md'
+    const button2 = document.createElement('button')
+    button2.textContent = 'b.md'
+    row2.append(button2)
+    document.querySelector('ul')?.append(row2)
+    // jsdom 的 rAF 按帧间隔触发，等待一个帧周期以上再断言。
+    await new Promise(resolve => { setTimeout(resolve, 100) })
+    await flush()
+    expect(button2.dataset.filesGitStatus).toBe('added')
+
+    // 无关 body 变更（别处新增子树）不触发全文档 [data-files-state] 扫描。
+    const querySpy = vi.spyOn(document, 'querySelectorAll')
+    const chat = document.createElement('div')
+    chat.innerHTML = '<p>streaming <span>token</span></p>'
+    document.body.append(chat)
+    await flush()
+    expect(querySpy.mock.calls.map(call => call[0])).not.toContain('[data-files-state]')
+    querySpy.mockRestore()
+  })
+
   it('Git 截断时在树根前插入提示节点', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot({ truncated: true }))
     dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => `t:${key}`, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())

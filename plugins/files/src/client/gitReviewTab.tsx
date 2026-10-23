@@ -651,6 +651,9 @@ function TextDiff({ diff, split, wrap, t }: {
   const { hunks, truncated } = useMemo(() => renderedHunks(diff.hunks), [diff.hunks])
   const highlighter = useCodeHighlighter(languageForPath(diff.path))
   const highlights = useMemo(() => hunks.map(hunk => hunkHighlights(hunk, highlighter)), [hunks, highlighter])
+  // 行投影只在 hunk 集合变化时重算；换行（wrap）是纯 CSS，不参与投影。
+  const pairedRows = useMemo(() => hunks.map(hunk => splitRows(hunk)), [hunks])
+  const flatRows = useMemo(() => hunks.map(hunk => hunkRows(hunk)), [hunks])
   return (
     <div className="dsh-files-gr-body"
       data-dsh-files-gr-view={split ? 'split' : 'unified'} data-dsh-files-gr-wrap={wrap || undefined}>
@@ -660,7 +663,7 @@ function TextDiff({ diff, split, wrap, t }: {
         const highlighted = highlights[position]
         return <section key={position} className="dsh-files-gr-hunk">
           <div className="dsh-files-gr-hunk-header" data-dsh-files-gr-hunk-header>{hunkHeader(hunk)}</div>
-          {split ? splitRows(hunk).map((row, at) => (
+          {split ? (pairedRows[position] ?? []).map((row, at) => (
             <div key={at} className="dsh-files-gr-split-line" data-dsh-files-gr-line={splitRowKind(row)}>
               <span className={`dsh-files-gr-cell ${row.left === undefined ? 'dsh-files-gr-empty' : `dsh-files-gr-${row.left.kind}`}`}>
                 <span className="dsh-files-gr-number">{row.left?.no ?? ''}</span>
@@ -671,7 +674,7 @@ function TextDiff({ diff, split, wrap, t }: {
                 <DiffText text={row.right?.text ?? ''} spans={row.right === undefined ? undefined : highlighted?.new?.get(row.right.no)} />
               </span>
             </div>
-          )) : hunkRows(hunk).map((row, at) => (
+          )) : (flatRows[position] ?? []).map((row, at) => (
             <div key={at} className={`dsh-files-gr-line dsh-files-gr-${row.kind}`} data-dsh-files-gr-line={row.kind}>
               <span className="dsh-files-gr-number">{row.old ?? ''}</span>
               <span className="dsh-files-gr-number">{row.new ?? ''}</span>

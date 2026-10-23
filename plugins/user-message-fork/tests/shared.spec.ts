@@ -30,6 +30,28 @@ describe('user-message-fork shared boundaries', () => {
     expect(previousCompletedTurnEnd(timeline, 2)).toBeUndefined()
   })
 
+  it('reuses one traversal for repeated lookups on the same timeline', () => {
+    class CountingTurns extends Map<number, { end?: { seq: number } }> {
+      reads = 0
+      override get(turn: number): { end?: { seq: number } } | undefined {
+        this.reads += 1
+        return super.get(turn)
+      }
+    }
+    const turns = new CountingTurns([
+      [1, { end: { seq: 10 } }],
+      [2, { end: { seq: 20 } }],
+      [3, { end: { seq: 30 } }],
+    ])
+    const timeline = { turnOrder: [1, 2, 3], turns }
+    expect(previousCompletedTurnEnd(timeline, 3)).toBe(20)
+    const afterFirst = turns.reads
+    expect(previousCompletedTurnEnd(timeline, 2)).toBe(10)
+    expect(previousCompletedTurnEnd(timeline, 1)).toBeUndefined()
+    expect(previousCompletedTurnEnd(timeline, 99)).toBeUndefined()
+    expect(turns.reads).toBe(afterFirst)
+  })
+
   it('joins text blocks and marks attachments or unknown blocks as lossy', () => {
     expect(userMessageContentFacts([
       { type: 'text', text: '前' },

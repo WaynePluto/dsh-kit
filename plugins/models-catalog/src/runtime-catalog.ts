@@ -161,7 +161,17 @@ export function createModelCatalogRuntime(): ModelCatalogRuntime {
 }
 
 /** 从 model id 提取带版本号的系列；未知命名不猜测。 */
+const familyCache = new Map<string, { family: string; version: number[] } | undefined>()
+
 function modelFamily(value: string): { family: string; version: number[] } | undefined {
+  const cached = familyCache.get(value)
+  if (cached !== undefined || familyCache.has(value)) return cached
+  const parsed = parseFamily(value)
+  familyCache.set(value, parsed)
+  return parsed
+}
+
+function parseFamily(value: string): { family: string; version: number[] } | undefined {
   const parts = value.toLowerCase().split('-')
   const versionIndex = parts.findIndex(part => /^\d+(?:\.\d+)*$/u.test(part))
   if (versionIndex < 0) return undefined
@@ -173,22 +183,44 @@ function modelFamily(value: string): { family: string; version: number[] } | und
 
 /** 比较主次版本；缺席的小版本视为零。 */
 function compareVersions(left: readonly number[], right: readonly number[]): number {
-  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+  for (let i = 0; i < Math.max(left.length, right.length); i += 1) {
     const difference = (left[i] ?? 0) - (right[i] ?? 0)
     if (difference !== 0) return difference
   }
   return 0
 }
 
+/**
+ * 每个 route 的原生候选按系列分组的缓存。规划一次会对大量 id 反复求近邻，
+ * 解析结果与候选分组只随非 runtime 原生模型集合变化；`ensureRuntimeModel`
+ * 注册的都是 runtime 模型（候选排除项），原生集合不变，缓存无需失效。
+ */
+const nativeCandidatesCache = new Map<string, ReadonlyMap<string, readonly { model: Model<Api>; version: readonly number[] }[]>>()
+
+function nativeCandidates(route: string): ReadonlyMap<string, readonly { model: Model<Api>; version: readonly number[] }[]> | undefined {
+  const cached = nativeCandidatesCache.get(route)
+  if (cached !== undefined) return cached
+  const map = modelMap(route)
+  if (map === undefined) return undefined
+  const byFamily = new Map<string, { model: Model<Api>; version: number[] }[]>()
+  for (const model of Object.values(map)) {
+    if (isRuntimeModel(route, model.id)) continue
+    const family = modelFamily(model.id)
+    if (family === undefined) continue
+    const list = byFamily.get(family.family)
+    if (list === undefined) byFamily.set(family.family, [{ model, version: family.version }])
+    else list.push({ model, version: family.version })
+  }
+  nativeCandidatesCache.set(route, byFamily)
+  return byFamily
+}
+
 /** 只在同一路由、同一模型系列中选择版本最接近且不晚于目标的原生模型。 */
 export function nearestNativeModel(route: string, id: string): Model<Api> | undefined {
   const target = modelFamily(id)
   if (target === undefined) return undefined
-  const candidates = Object.values(modelMap(route) ?? {}).flatMap((model) => {
-    if (isRuntimeModel(route, model.id) || model.id === id) return []
-    const candidate = modelFamily(model.id)
-    return candidate?.family === target.family ? [{ model, version: candidate.version }] : []
-  })
+  const candidates = (nativeCandidates(route)?.get(target.family) ?? [])
+    .filter(entry => entry.model.id !== id)
   const earlier = candidates.filter(entry => compareVersions(entry.version, target.version) <= 0)
   const ordered = (earlier.length > 0 ? earlier : candidates).toSorted((a, b) =>
     (earlier.length > 0 ? -1 : 1) * compareVersions(a.version, b.version) || a.model.id.localeCompare(b.model.id))

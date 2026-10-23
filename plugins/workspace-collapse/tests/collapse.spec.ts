@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /** 工作区头部一键收起/展开的 DOM 编排测试：折叠与展开选择、注入位置、模式跟随与卸载。 */
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   BUTTON_ATTR, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
+  WORKSPACE_ROW_SELECTOR,
   collapseExpandedRows, expandCollapsedRows, installWorkspaceCollapse, sectionHeaderOf,
 } from '../src/client/collapse.js'
 import type {
@@ -336,5 +337,32 @@ describe('installWorkspaceCollapse', () => {
     row.remove()
     await flush()
     expect(header.querySelectorAll(`[${BUTTON_ATTR}]`)).toHaveLength(0)
+  })
+
+  it('无关 DOM 变更与行外的 aria-expanded 不触发全文档查询', async () => {
+    const { listArea } = nativeBrowser()
+    listArea.appendChild(groupRow('ws-a', true, []))
+    const { deps } = harness()
+    const dispose = installWorkspaceCollapse(deps)
+    await flush()
+
+    const querySpy = vi.spyOn(document, 'querySelector')
+    // 聊天流式输出形态的变更批次：别处新增子树 + 文本变更。
+    const chat = document.createElement('div')
+    chat.innerHTML = '<p>streaming <span>token</span></p>'
+    document.body.appendChild(chat)
+    chat.querySelector('p')?.append('more')
+    // 行外控件的 aria-expanded 翻转（attributeFilter 会让它进回调，但与按钮无关）。
+    chat.querySelector('span')?.setAttribute('aria-expanded', 'true')
+    await settle(2)
+
+    expect(querySpy.mock.calls.map(call => call[0])).not.toContain(WORKSPACE_ROW_SELECTOR)
+    querySpy.mockRestore()
+
+    // 相关变更仍然生效：行移除后按钮退场。
+    listArea.querySelector(`[data-row-key="workspace:ws-a"]`)?.remove()
+    await flush()
+    expect(document.querySelector(`.${CONTAINER_CLASS}`)).toBeNull()
+    dispose()
   })
 })

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { CSSProperties, ReactNode } from 'react'
-import { documentFault, MAX_BYTES, utf8Bytes } from '../shared.js'
+import { documentFaultOf, MAX_BYTES, utf8Bytes } from '../shared.js'
 import type { AgentsMdDocument } from '../shared.js'
 import { fill } from './locales.js'
 import type { AgentsMdKey } from './locales.js'
@@ -111,8 +111,9 @@ export function AgentsMdSection(props: AgentsMdSectionProps): ReactNode {
   const stored = document_?.content ?? ''
   const content = draft ?? stored
   const dirty = draft !== undefined && draft !== stored
+  // 每次击键只做一次全量编码：字节数与超限判定共用同一结果（上限 1 MiB）。
   const bytes = utf8Bytes(content)
-  const tooLarge = documentFault(content) !== undefined
+  const tooLarge = documentFaultOf(bytes) !== undefined
 
   const commit = useCallback(async (): Promise<void> => {
     if (save === undefined || tooLarge) return

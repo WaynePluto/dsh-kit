@@ -6,6 +6,43 @@
 
 ## 已实现
 
+- [x] 插件性能整改·第二轮（2026-10-23，services 修复后的全套件审查）：修复 11 个组件
+  的 13 项确证性能问题（3 高 6 中 4 低），核心病灶是浏览器半「常驻无过滤全量」——
+  与 services 当初的宿主半同步探针同性质，只是发生在 DOM 层：
+  - body 级 MutationObserver 泛滥（流式输出每批 DOM 变更都做全文档扫描）：stats-hours
+    含 characterData，回调改为按 records 判定弹窗子树相关性后才全 body 扫描（弹窗
+    绝大多数时间不存在）；workspace-collapse 按 records 判定工作区行挂载/卸载与行内
+    aria-expanded 后才全文档查询；files 发现树根按 records 判定 `[data-files-state]`
+    挂载/卸载后才扫描绑定表；workspace-path 观察范围从 subtree 收窄为 body 直接
+    子节点（portal 菜单本就 body 直挂，删除「被包一层」防御形态）。
+  - chat-scroll（高）：每条已完成助手消息的操作按钮各挂 useChat selector 线性扫全
+    order，流式期间每次 store 通知 O(轮数×节点数)；改按 snapshot 建一次
+    messageId→key 反查索引（WeakMap，每次通知 O(order+按钮数)）。
+  - user-message-fork：previousCompletedTurnEnd 改按 timeline 建一次前缀索引；
+    UserMessageForkNodeView 与官方 UserMessageNodeView 一致地包 memo。
+  - models-catalog（宿主半，唯一阻塞宿主事件循环的问题）：modelFamily 解析结果缓存
+    + nearestNativeModel 按 route 缓存候选分组（runtime 注册只增 runtime 模型、原生
+    候选集不变，缓存无需失效）；planRoute 内按 id 缓存 API/推理档位派生值并把
+    ownedModels 循环内线性查找换 Map；status/preview 无写入时复用同一次 route facts
+    读取（写入后仍重读）。打开模型设置页不再对每个新增模型 × 每个候选做全表重解析
+    （openrouter 401 模型时原为 10⁵–10⁶ 次字符串解析）。
+  - files：树内重装饰经 rAF 合并 + 快照级 status 缓存（重复装饰跳过 2000 条 Git 条目
+    线性扫描）；图片预览 overlay 坐标未变返回同引用（滚动/缩放 tick 不再触发重渲染
+    与 style.zoom 自激发循环）、滚动回调用已认领的 view 就地重算并 rAF 合并；diff
+    行投影（wrapped-split/unified）移入 useMemo（split 不换列原已 memo）。
+  - agents-md：编辑器每击键一次全量 UTF-8 编码（原两次，encoder 复用单例；上限 1MiB）。
+  - terminal：screen 轮询 unchanged 分支同引用 bail out（仅首帧或 running 翻转发
+    新对象），面板打开期间不再每周期重渲染 + scrollHeight 强制布局读。
+  - favorite-models：selected/staleFavorites 按 input memo（搜索击键不再全目录重建
+    favoriteKey Set）。
+  - model-capabilities：select 样式改引用计数共享一份（原每个展开的模型行 portal
+    一份 `<style>`）；Panel 的 models 按 snapshot.value memo，修复 groups useMemo
+    因新数组引用恒失效。
+  nav-glyph 共享观察器（notify/agents-md）本就有 className 过滤 + rAF 合并，不动。
+  回归锁：chat-scroll locate（同 snapshot 单次遍历）、workspace-collapse（无关变更
+  与行外 aria-expanded 不查询）、stats-hours install（无关变更不扫描、弹窗覆写仍
+  改写、卸载停改写）、files adapter（rAF 合并装饰新行 + 无关 body 变更不扫描）、
+  user-message-fork（同 timeline 单次遍历）。
 - [x] 常驻服务面板性能修复（2026-10-23）：页面慢的根因是每次 list/logs 前的全量对账做了
   2N 次同步 PowerShell 身份探针（每条记录判两遍 × ~0.4s/次，3 服务实测 ~2.4s，且 spawnSync
   阻塞宿主事件循环）。修复：`identifyBatch` 逐条 signal 0 现查存活 + 一次子进程批量取创建
@@ -201,6 +238,10 @@
 
 ## 后续任务
 
+- [ ] 插件性能整改实机验收：长会话流式输出期间主线程占用下降（chat-scroll/
+  workspace-collapse/stats-hours/agent-md 四个常驻观察器组件）；models-catalog 打开
+  模型设置页在大路由（openrouter）下的首屏不再数百 ms 卡顿；files 图片预览滚动/缩放
+  与 Git 面板交互流畅；其余小项随日常使用回归。
 - [ ] 组件停用/启用后的浏览器半回归：每个组件的行开关在真实宿主里生效，
   且不影响其他组件的槽位与服务。
 - [ ] 仓库公开后实测「添加插件」用 Git 地址安装（`file:` 相对依赖在 git 依赖语境的解析基准）。

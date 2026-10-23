@@ -100,11 +100,19 @@ export function FavoriteModelsPanel({ form, session, getDirectory, t }: Favorite
     setFailure(undefined)
   }, [storedFavoritesKey])
 
-  const selected = canonicalizeFavorites(draft ?? settings.favorites)
+  // selected 与 stale 都按输入 memo：搜索框每次击键的重渲染不再重建全目录
+  // 的 favoriteKey Set（目录可达上千模型），selectedKeys 的 memo 也随之生效。
+  const selected = useMemo(
+    () => canonicalizeFavorites(draft ?? settings.favorites),
+    [draft, settings.favorites],
+  )
   const selectedKeys = useMemo(() => new Set(selected.map(favoriteKey)), [selected])
   const dirty = draft !== undefined && !sameFavorites(draft, settings.favorites)
   const readyDirectory = directoryState.status === 'ready'
-  const stale = readyDirectory ? staleFavorites(directoryState.groups, selected) : []
+  const stale = useMemo(
+    () => readyDirectory ? staleFavorites(directoryState.groups, selected) : [],
+    [readyDirectory, directoryState.groups, selected],
+  )
   const query = search.trim().toLocaleLowerCase()
   const visibleGroups = useMemo(() => {
     if (query === '') return directoryState.groups

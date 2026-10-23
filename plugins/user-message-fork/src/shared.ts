@@ -27,6 +27,29 @@ export type UserMessageForkAvailability =
   | { readonly kind: 'unavailable'; readonly reason: UserMessageForkUnavailableReason }
 
 /**
+ * 每个 timeline 的 turn → 之前最近完成 turn 边界索引。每条已挂载 user message
+ * 各挂一个 useChat selector，流式期间每次 store 通知都会对全部订阅者重跑；
+ * 按 timeline 建一次索引把每次通知的总成本从 O(消息数 × turn 数) 降为
+ * O(turn 数 + 消息数)。timeline 随 snapshot 替换，索引随 WeakMap 回收。
+ */
+const previousEndIndexCache = new WeakMap<ForkTimeline, ReadonlyMap<number, number | undefined>>()
+
+function previousEndIndex(timeline: ForkTimeline): ReadonlyMap<number, number | undefined> {
+  const cached = previousEndIndexCache.get(timeline)
+  if (cached !== undefined) return cached
+  const index = new Map<number, number | undefined>()
+  // 从前向后滚动累积：每个 turn 的答案就是它之前最近完成 turn 的边界。
+  let lastEnd: number | undefined
+  for (const turn of timeline.turnOrder) {
+    index.set(turn, lastEnd)
+    const boundary = timeline.turns.get(turn)
+    if (boundary?.end !== undefined) lastEnd = boundary.end.seq
+  }
+  previousEndIndexCache.set(timeline, index)
+  return index
+}
+
+/**
  * 查找消息所属 turn 之前最近完成的 turn。dsh fork API 从 `atSeq` 之后首个 `turn/end` 截断，因此返回值正好排除被点击 turn 并保留更早的完成 turn。
  * @param timeline - Chat 不可变的 turn 顺序和边界。
  * @param currentTurn - 被点击普通 user message 所在 turn。
@@ -38,11 +61,7 @@ export function previousCompletedTurnEnd(
 ): number | undefined {
   const currentIndex = timeline.turnOrder.indexOf(currentTurn)
   if (currentIndex <= 0) return undefined
-  for (let index = currentIndex - 1; index >= 0; index -= 1) {
-    const turn = timeline.turns.get(timeline.turnOrder[index]!)
-    if (turn?.end !== undefined) return turn.end.seq
-  }
-  return undefined
+  return previousEndIndex(timeline).get(currentTurn)
 }
 
 /** 从一条 user message 提取的文本和可能丢失内容事实。 */

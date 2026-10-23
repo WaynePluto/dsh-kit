@@ -214,6 +214,31 @@ export interface CollapseDeps {
 }
 
 /**
+ * 判定一批 mutation 是否可能影响按钮：工作区行的挂载/卸载（分组视图出现/消失、
+ * 子分组展开时新行落 DOM），或工作区行内的 `aria-expanded` 变化（模式切换）。
+ * 观察器常驻 body 全子树，聊天流式输出等高频变更批次在此被丢弃，evaluate 的
+ * 全文档查询只在相关变更后执行；对新增/移除节点的子树查询与该批变更自身的
+ * 规模同阶，不随全文档大小增长。
+ */
+function affectsButton(records: readonly MutationRecord[]): boolean {
+  for (const record of records) {
+    if (record.type === 'attributes') {
+      if (record.target instanceof Element
+        && record.target.closest(WORKSPACE_ROW_SELECTOR) !== null) return true
+      continue
+    }
+    for (const nodes of [record.addedNodes, record.removedNodes]) {
+      for (const node of nodes) {
+        if (!(node instanceof Element)) continue
+        if (node.matches(WORKSPACE_ROW_SELECTOR)
+          || node.querySelector(WORKSPACE_ROW_SELECTOR) !== null) return true
+      }
+    }
+  }
+  return false
+}
+
+/**
  * 安装工作区头部的一键收起/展开按钮：注入样式、跟随列表出现/消失挂载与移除按钮，
  * 并跟随行内 `aria-expanded` 变化在收起/展开两个动作间切换。
  * @param deps - 外部依赖。
@@ -275,7 +300,9 @@ export function installWorkspaceCollapse(deps: CollapseDeps): () => void {
     handle = deps.mount(container, optionsFor(next))
   }
 
-  const observer = new MutationObserver(evaluate)
+  const observer = new MutationObserver(records => {
+    if (affectsButton(records)) evaluate()
+  })
   observer.observe(doc.body, {
     childList: true,
     subtree: true,

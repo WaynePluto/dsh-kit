@@ -185,16 +185,17 @@ export function installWorkspaceMenuCopy(deps: MenuPathDeps): () => void {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (!(node instanceof Element)) continue
-        // portal 菜单直接是 body 的 [role=menu] 子节点；兼容被包了一层的形态。
+        // portal 菜单直接是 body 的 [role=menu] 子节点（契约见 workspace 菜单
+        // portal 的 createPortal(document.body)）。只观察 body 直接子节点的增删，
+        // 不用 subtree——聊天流式输出的深层 DOM 变更不进本回调。
         if (node.matches('[role="menu"]')) adoptMenu(node)
-        else for (const menu of node.querySelectorAll('[role="menu"]')) adoptMenu(menu)
       }
       for (const node of record.removedNodes) releaseMenus(node)
     }
   })
 
   deps.document.addEventListener('click', onCaptureClick, true)
-  observer.observe(deps.document.body, { childList: true, subtree: true })
+  observer.observe(deps.document.body, { childList: true })
   return () => {
     deps.document.removeEventListener('click', onCaptureClick, true)
     observer.disconnect()

@@ -87,12 +87,16 @@ export class CatalogService {
     return readRouteFacts(this.ctx, this.provenance())
   }
 
-  /** 对 managed routes 执行无提示清理，并记录 reclaimed ids。 */
-  async reconcile(): Promise<boolean> {
-    const plans = this.facts()
-      .filter(facts => facts.managed)
-      .map(facts => planRoute(facts, undefined))
+  /** 对 managed routes 生成 cleanup plans；无写入项时为空。 */
+  private cleanupPlans(facts: readonly RouteFacts[]): readonly RoutePlan[] {
+    return facts
+      .filter(item => item.managed)
+      .map(item => planRoute(item, undefined))
       .filter(plan => plan.next !== undefined)
+  }
+
+  /** 提交 cleanup plans 并记录 reclaimed 通知；返回是否发生写入。 */
+  private async commitCleanup(plans: readonly RoutePlan[]): Promise<boolean> {
     if (plans.length === 0) return false
     const written = await commitPlans(this.ctx, plans)
     if (written) {
@@ -107,6 +111,11 @@ export class CatalogService {
     return written
   }
 
+  /** 对 managed routes 执行无提示清理，并记录 reclaimed ids。 */
+  async reconcile(): Promise<boolean> {
+    return await this.commitCleanup(this.cleanupPlans(this.facts()))
+  }
+
   /** 按 source URL 缓存/刷新 models.dev catalog。 */
   private async source(force: boolean, signal?: AbortSignal): Promise<SourceCatalog> {
     if (this.catalog !== undefined && !force) return this.catalog
@@ -117,39 +126,42 @@ export class CatalogService {
   }
 
   /** 为每个 route 生成 preview plan；没有 source 时仍保留 route facts。 */
-  private plans(catalog: SourceCatalog | undefined): readonly RoutePlan[] {
+  private plans(catalog: SourceCatalog | undefined, facts: readonly RouteFacts[] = this.facts()): readonly RoutePlan[] {
     // 只从当前 route facts 生成 plans；source 缺席时仍能展示 route 的 template/block 原因。
-    return this.facts().map(facts => planRoute(facts, catalog?.get(facts.route)))
+    return facts.map(item => planRoute(item, catalog?.get(item.route)))
   }
 
   /** 将当前 source、fetch time、route plans 和 cleanup notices 组装成页面 view。 */
-  private view(error?: string): CatalogStatusView {
+  private view(facts: readonly RouteFacts[] = this.facts(), error?: string): CatalogStatusView {
     const snapshotAt = installedSnapshotAt()
     return {
       sourceUrl: this.sourceUrl,
       ...snapshotAt === undefined ? {} : { builtinSnapshotAt: snapshotAt },
       ...this.fetchedAt === undefined ? {} : { fetchedAt: this.fetchedAt },
-      routes: this.plans(this.catalog).map(plan => plan.preview),
+      routes: this.plans(this.catalog, facts).map(plan => plan.preview),
       ...this.reconciled.length === 0 ? {} : { reconciled: this.reconciled },
       ...error === undefined ? {} : { error },
     }
   }
 
-  /** 刷新本插件清理并返回当前 status。 */
+  /** 刷新本插件清理并返回当前 status；无写入时复用同一份 route facts，不重复读取 settings。 */
   async status(): Promise<CatalogStatusView> {
-    await this.reconcile()
-    return this.view()
+    const facts = this.facts()
+    const written = await this.commitCleanup(this.cleanupPlans(facts))
+    return this.view(written ? this.facts() : facts)
   }
 
   /** 强制读取最新 catalog，返回不写入的 preview。 */
   async preview(signal?: AbortSignal): Promise<CatalogStatusView> {
-    await this.reconcile()
+    const facts = this.facts()
+    const written = await this.commitCleanup(this.cleanupPlans(facts))
+    const current = written ? this.facts() : facts
     try {
       await this.source(true, signal)
     } catch (error: unknown) {
-      return this.view(error instanceof Error ? error.message : String(error))
+      return this.view(current, error instanceof Error ? error.message : String(error))
     }
-    return this.view()
+    return this.view(current)
   }
 
   /** 对用户选择的 routes 写入 additions，并先确保 runtime catalog 可接受每个 model。 */

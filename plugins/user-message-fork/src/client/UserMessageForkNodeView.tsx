@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   IconBranchOutlineMedium, IconCheckOutlineMedium, IconCopyOutlineMedium,
   Tooltip, writeClipboard,
@@ -237,8 +237,10 @@ function UserStyleBubble({
   )
 }
 
-/** 实现说明：此处记录相关接口、边界和生命周期约束。 */
-export function UserMessageForkNodeView({
+/** 实现说明：此处记录相关接口、边界和生命周期约束。
+ * 与官方 UserMessageNodeView 一致地 memo：node 等 props 在数据未变时引用稳定，
+ * 外层 seat 因 turn 状态变化重渲染时可跳过本行。 */
+export const UserMessageForkNodeView = memo(function UserMessageForkNodeView({
   node, loadImage, renderFactorySlot, forkMessage, useChat, useSession, t,
 }: UserMessageForkNodeProps) {
   const turnLocation = node.location.kind === 'turn' || node.location.kind === 'step'
@@ -263,4 +265,4 @@ export function UserMessageForkNodeView({
       t={t}
     />
   )
-}
+})

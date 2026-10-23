@@ -51,12 +51,19 @@ export function isAgentsMdEndpoint(endpoint: string): endpoint is AgentsMdEndpoi
 }
 
 /** 计算文本的 UTF-8 字节数，用于保存前的有界校验。 */
+const encoder = new TextEncoder()
+
 export function utf8Bytes(text: string): number {
-  // Node 22 以及 dsh 支持的所有浏览器都提供 TextEncoder。
-  return new TextEncoder().encode(text).length
+  // Node 22 以及 dsh 支持的所有浏览器都提供 TextEncoder；编码器复用单例。
+  return encoder.encode(text).length
+}
+
+/** 检查已计算的 UTF-8 字节数是否超过 AGENTS.md 上限。 */
+export function documentFaultOf(bytes: number): 'too-large' | undefined {
+  return bytes > MAX_BYTES ? 'too-large' : undefined
 }
 
 /** 检查内容是否超过 AGENTS.md 字节上限。 */
 export function documentFault(content: string): 'too-large' | undefined {
-  return utf8Bytes(content) > MAX_BYTES ? 'too-large' : undefined
+  return documentFaultOf(utf8Bytes(content))
 }

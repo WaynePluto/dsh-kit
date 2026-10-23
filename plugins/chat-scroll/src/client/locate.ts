@@ -34,15 +34,33 @@ function finalizedAssistantMessageId(
   return typeof messageId === 'string' ? messageId : null
 }
 
-/** 查找一个已完成助手消息对应的 Chat Node key。 */
+/**
+ * 每个 Chat snapshot 的 messageId → key 反查索引。
+ * 每条已完成助手消息的操作按钮各挂一个 useChat selector，流式期间每次 store 通知
+ * 都会对全部订阅者重跑 selector；按 snapshot 建一次索引把每次通知的总成本从
+ * O(按钮数 × order 长度) 降为 O(order 长度 + 按钮数)。snapshot 被替换后随 WeakMap 回收。
+ */
+const assistantKeyIndexCache = new WeakMap<ChatOrderSnapshot, ReadonlyMap<string, string>>()
+
+function assistantKeyIndex(snapshot: ChatOrderSnapshot): ReadonlyMap<string, string> {
+  const cached = assistantKeyIndexCache.get(snapshot)
+  if (cached !== undefined) return cached
+  const index = new Map<string, string>()
+  for (const key of snapshot.order) {
+    if (key === undefined) continue
+    const messageId = finalizedAssistantMessageId(snapshot.nodes.get(key))
+    if (messageId !== null && !index.has(messageId)) index.set(messageId, key)
+  }
+  assistantKeyIndexCache.set(snapshot, index)
+  return index
+}
+
+/** 查找一个已完成助手消息对应的 Chat Node key（order 中最先出现者）。 */
 export function assistantMessageNodeKey(
   snapshot: ChatOrderSnapshot,
   messageId: string,
 ): string | null {
-  for (const key of snapshot.order) {
-    if (key !== undefined && finalizedAssistantMessageId(snapshot.nodes.get(key)) === messageId) return key
-  }
-  return null
+  return assistantKeyIndex(snapshot).get(messageId) ?? null
 }
 
 /** 查找一个已渲染的助手行，优先使用 snapshot 的稳定 key。 */

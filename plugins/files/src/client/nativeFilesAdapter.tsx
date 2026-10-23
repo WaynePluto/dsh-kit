@@ -29,6 +29,8 @@ interface RootBinding {
   readonly paneRef: PreviewPaneRef
   readonly note: HTMLElement
   readonly rowObserver: MutationObserver
+  /** 待执行重装饰的 rAF 句柄；0 表示无待执行。 */
+  decorateFrame: number
   controller: AbortController
   git: FilesSnapshot | undefined
   failure: boolean
@@ -38,6 +40,21 @@ interface RootBinding {
 /** Locate the workspace root the native tree is currently showing, if any. */
 function filesRootOf(root: HTMLElement): string | undefined {
   return root.dataset.filesState === 'tree' ? root.dataset.filesRoot : undefined
+}
+
+// 只有伴随树根挂载/卸载的 mutation 才需要扫描绑定表；聊天流式输出等高频
+// 变更批次在此被丢弃，全文档 [data-files-state] 扫描不再随每个批次执行。
+function affectsDiscovery(records: readonly MutationRecord[]): boolean {
+  for (const record of records) {
+    for (const nodes of [record.addedNodes, record.removedNodes]) {
+      for (const node of nodes) {
+        if (!(node instanceof Element)) continue
+        if (node.matches('[data-files-state]')
+          || node.querySelector('[data-files-state]') !== null) return true
+      }
+    }
+  }
+  return false
 }
 
 /**
@@ -90,6 +107,16 @@ export function installNativeFilesEnhancement(
 
   const decorate = (binding: RootBinding): void => {
     decorateNativeRows(binding.root, binding.git, translate)
+  }
+
+  // 树内 mutation（展开/折叠、懒加载、行挂载）密集出现时，把全量重装饰合并到
+  // 下一帧一次；配合 gitDecorations 的快照级 status 缓存，重复装饰只做幂等属性写。
+  const scheduleDecorate = (binding: RootBinding): void => {
+    if (binding.decorateFrame !== 0) return
+    binding.decorateFrame = requestAnimationFrame(() => {
+      binding.decorateFrame = 0
+      decorate(binding)
+    })
   }
 
   const updateNote = (binding: RootBinding): void => {
@@ -170,7 +197,8 @@ export function installNativeFilesEnhancement(
       root,
       paneRef: { current: undefined },
       note,
-      rowObserver: new MutationObserver(() => { decorate(binding) }),
+      rowObserver: new MutationObserver(() => { scheduleDecorate(binding) }),
+      decorateFrame: 0,
       controller: new AbortController(),
       git: undefined,
       failure: false,
@@ -250,6 +278,8 @@ export function installNativeFilesEnhancement(
   }
 
   const detach = (binding: RootBinding): void => {
+    if (binding.decorateFrame !== 0) cancelAnimationFrame(binding.decorateFrame)
+    binding.decorateFrame = 0
     binding.rowObserver.disconnect()
     binding.controller.abort()
     binding.note.remove()
@@ -268,7 +298,9 @@ export function installNativeFilesEnhancement(
     }
   }
 
-  const discovery = new MutationObserver(scan)
+  const discovery = new MutationObserver(records => {
+    if (affectsDiscovery(records)) scan()
+  })
   discovery.observe(document.body, { childList: true, subtree: true })
   const unsubscribeMounted = sidebar.mounted.subscribe(() => {
     for (const binding of bindings.values()) refreshGit(binding)

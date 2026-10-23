@@ -85,9 +85,39 @@ function reasoningEffortsFor(facts: RouteFacts, model: ModelAddition): Record<st
   return Object.keys(efforts).length > 0 ? efforts : undefined
 }
 
+/**
+ * 一次规划内按 id 复用的派生计算。同一 id 的 API 与推理档位只随 facts 与
+ * source 变化，而规划流程会对每个 id 重复求值 2–3 次（upgradable 判定、
+ * entries、runtime specs、preview）；缓存后每个 id 只做一次近邻与线性查找。
+ */
+interface PlanDerivations {
+  apiFor: (model: ModelAddition) => string
+  effortsFor: (model: ModelAddition) => Record<string, string> | undefined
+}
+
+function derivationsOf(facts: RouteFacts): PlanDerivations {
+  const apiCache = new Map<string, string>()
+  const effortsCache = new Map<string, Record<string, string> | undefined>()
+  return {
+    apiFor: model => {
+      const hit = apiCache.get(model.id)
+      if (hit !== undefined) return hit
+      const api = apiForAddition(facts, model)
+      apiCache.set(model.id, api)
+      return api
+    },
+    effortsFor: model => {
+      if (effortsCache.has(model.id)) return effortsCache.get(model.id)
+      const efforts = reasoningEffortsFor(facts, model)
+      effortsCache.set(model.id, efforts)
+      return efforts
+    },
+  }
+}
+
 /** 将 models.dev addition 转为 dsh `models` entry，只复制允许字段。 */
-function entryOf(facts: RouteFacts, model: ModelAddition): ModelEntry {
-  const reasoningEfforts = reasoningEffortsFor(facts, model)
+function entryOf(model: ModelAddition, derivations: PlanDerivations): ModelEntry {
+  const reasoningEfforts = derivations.effortsFor(model)
   return {
     id: model.id,
     name: model.name,
@@ -122,14 +152,14 @@ function apiForAddition(facts: RouteFacts, model: ModelAddition): string {
 }
 
 /** 从 addition 生成 runtime catalog spec，并补入 route/API。 */
-function runtimeSpecOf(facts: RouteFacts, model: ModelAddition): RuntimeModelSpec {
+function runtimeSpecOf(facts: RouteFacts, model: ModelAddition, derivations: PlanDerivations): RuntimeModelSpec {
   return {
     id: model.id,
     name: model.name,
     ...model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow },
     ...model.maxTokens === undefined ? {} : { maxTokens: model.maxTokens },
     ...model.input === undefined ? {} : { input: [...model.input] },
-    api: apiForAddition(facts, model),
+    api: derivations.apiFor(model),
     route: facts.route,
   }
 }
@@ -144,20 +174,22 @@ export function planRoute(facts: RouteFacts, source: SourceProvider | undefined)
   const reclaimed = owned.filter(id => installed.has(id))
   const kept = owned.filter(id => !installed.has(id))
   const sourceModels = new Map(source?.models.map(model => [model.id, model]) ?? [])
+  const ownedById = new Map(facts.ownedModels.map(entry => [entry.id, entry]))
+  const derivations = derivationsOf(facts)
   const upgradableIds = kept.filter((id) => {
     const model = sourceModels.get(id)
     if (model === undefined) return false
-    const previous = facts.ownedModels.find(entry => entry.id === id)
+    const previous = ownedById.get(id)
     const entry = configured.get(id)
-    return (previous !== undefined && previous.api !== apiForAddition(facts, model))
-      || (entry?.['reasoningEfforts'] === undefined && reasoningEffortsFor(facts, model) !== undefined)
+    return (previous !== undefined && previous.api !== derivations.apiFor(model))
+      || (entry?.['reasoningEfforts'] === undefined && derivations.effortsFor(model) !== undefined)
   })
   const keptModels = kept.flatMap((id) => {
-    const previous = facts.ownedModels.find(entry => entry.id === id)
+    const previous = ownedById.get(id)
     if (previous === undefined) return []
     const sourceModel = sourceModels.get(id)
     return [{ ...previous, ...sourceModel !== undefined && upgradableIds.includes(id)
-      ? { api: apiForAddition(facts, sourceModel) } : {} }]
+      ? { api: derivations.apiFor(sourceModel) } : {} }]
   })
 
   const blockedReason = !canAddModels(facts)
@@ -170,7 +202,7 @@ export function planRoute(facts: RouteFacts, source: SourceProvider | undefined)
   // 没有 configured API 时，runtime catalog 需要补齐 models.dev additions 的 API spec。
   const needsRuntimeCatalog = !facts.hasConfiguredApi && facts.installedApis.length !== 1
   const runtimeAdditions = needsRuntimeCatalog
-    ? additions.map(model => runtimeSpecOf(facts, model))
+    ? additions.map(model => runtimeSpecOf(facts, model, derivations))
     : []
 
   const preview: RoutePreview = {
@@ -179,7 +211,7 @@ export function planRoute(facts: RouteFacts, source: SourceProvider | undefined)
     ...source === undefined ? {} : { source: source.id },
     ownedIds: kept,
     ...upgradableIds.length === 0 ? {} : { upgradableIds },
-    additions: additions.map(model => ({ ...model, ...reasoningEffortsFor(facts, model) === undefined
+    additions: additions.map(model => ({ ...model, ...derivations.effortsFor(model) === undefined
       ? {} : { reasoningUnavailable: false } })),
     reclaimed,
     ...blockedReason === undefined ? {} : { blocked: blockedReason },
@@ -197,12 +229,12 @@ export function planRoute(facts: RouteFacts, source: SourceProvider | undefined)
     const entry = configured.get(id) ?? { id }
     const sourceModel = sourceModels.get(id)
     const efforts = sourceModel === undefined || entry['reasoningEfforts'] !== undefined
-      ? undefined : reasoningEffortsFor(facts, sourceModel)
+      ? undefined : derivations.effortsFor(sourceModel)
     return [id, efforts === undefined ? entry : { ...entry, reasoningEfforts: efforts }] as const
   }))
   const next: ModelEntry[] = additions.length === 0 && reclaimed.length === 0
     ? facts.configuredEntries.map(entry => updatedOwned.get(entry.id) ?? entry)
-    : [...base, ...reclaimed.map(id => ({ id })), ...updatedOwned.values(), ...additions.map(model => entryOf(facts, model))]
+    : [...base, ...reclaimed.map(id => ({ id })), ...updatedOwned.values(), ...additions.map(model => entryOf(model, derivations))]
   // 若结果已经等于 installed 原生列表，清理 settings list 而不是保留空的插件痕迹。
   if (canRestore(facts, nextOwned, next.map(entry => entry.id))) {
     return { preview, next: null, nextOwnedIds: [], nextOwnedModels: [] }

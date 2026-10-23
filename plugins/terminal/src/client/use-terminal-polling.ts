@@ -105,7 +105,13 @@ export function useTerminalPolling(options: TerminalPollingOptions): TerminalPol
       revisionRef.current = next.revision
       // 未变化的回答刻意不携带正文；用 revision 请求的目的就是保留之前的 screen。
       if (!next.unchanged) setScreen(next)
-      else setScreen(previous => previous === undefined ? next : { ...previous, running: next.running })
+      else setScreen(previous => {
+        // 只有首帧或 running 翻转才发新对象：同引用返回让 setState bail out，
+        // 避免面板打开期间每个轮询周期都重渲染一次。
+        if (previous === undefined) return next
+        if (previous.running === next.running) return previous
+        return { ...previous, running: next.running }
+      })
     } catch (cause: unknown) {
       onFailure(cause)
     }

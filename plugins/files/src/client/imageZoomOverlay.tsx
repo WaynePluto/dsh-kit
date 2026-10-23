@@ -94,6 +94,13 @@ export function ImageZoomOverlay({ tabId, paneId, address, signal, states, t }: 
     states.set(tabId, next)
     setState(next)
   }, [states, tabId])
+  // 坐标未变时返回同一引用，滚动/缩放等高频布局事件不再触发重渲染。
+  const applyPosition = useCallback((next: CSSProperties): void => {
+    setPosition(current => {
+      if (current !== undefined && current.top === next.top && current.right === next.right) return current
+      return next
+    })
+  }, [])
   const fixedScale = useCallback((next: number): void => {
     update({ mode: 'fixed', scale: clamp(next) })
   }, [update])
@@ -113,25 +120,33 @@ export function ImageZoomOverlay({ tabId, paneId, address, signal, states, t }: 
     const scan = (): void => {
       const next = selectedTab(tabId) ? findImageView(address, paneId) : undefined
       setView(current => current?.frame === next?.frame ? current : next)
-      if (next !== undefined) setPosition(positionFor(next))
+      if (next !== undefined) applyPosition(positionFor(next))
     }
     scan()
     const pane = [...document.querySelectorAll<HTMLElement>('[data-dockkit-pane]')]
       .find(element => element.dataset.dockkitPane === paneId)
     const mutation = typeof MutationObserver === 'undefined' || pane === undefined ? undefined : new MutationObserver(scan)
     if (mutation !== undefined && pane !== undefined) mutation.observe(pane, { childList: true, subtree: true, attributes: true })
+    // 滚动/resize 用已认领的 view 就地重算位置，不再每次全文档重找 pane；
+    // rAF 把一批滚动事件合并为一次布局读。
+    let frame = 0
     const onLayout = (): void => {
-      const current = findImageView(address, paneId)
-      if (current !== undefined) setPosition(positionFor(current))
+      if (frame !== 0) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (view === undefined || !view.frame.isConnected) return
+        applyPosition(positionFor(view))
+      })
     }
     window.addEventListener('resize', onLayout)
     window.addEventListener('scroll', onLayout, true)
     return () => {
+      if (frame !== 0) cancelAnimationFrame(frame)
       mutation?.disconnect()
       window.removeEventListener('resize', onLayout)
       window.removeEventListener('scroll', onLayout, true)
     }
-  }, [address, image, paneId, tabId])
+  }, [address, applyPosition, image, paneId, tabId, view])
 
   useLayoutEffect(() => {
     if (view === undefined) return undefined
@@ -140,14 +155,14 @@ export function ImageZoomOverlay({ tabId, paneId, address, signal, states, t }: 
       const availableWidth = Math.max(1, view.body.clientWidth - 16)
       const availableHeight = Math.max(1, view.body.clientHeight - 16)
       setFitScale(clamp(Math.min(1, availableWidth / view.image.naturalWidth, availableHeight / view.image.naturalHeight)))
-      setPosition(positionFor(view))
+      applyPosition(positionFor(view))
     }
     measure()
     const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
     resize?.observe(view.body)
     resize?.observe(view.image)
     return () => { resize?.disconnect() }
-  }, [view])
+  }, [applyPosition, view])
 
   useLayoutEffect(() => {
     if (view === undefined) return undefined
