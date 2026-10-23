@@ -1,7 +1,7 @@
 # AGENTS.md
 
 适用于本仓库中的 AI 编码助手。本项目 dsh-kit（用户文案「DSH 增强套件」）是官方
-DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」输入一条路径安装 23 个
+DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」输入一条路径安装 22 个
 功能组件，扩展只走官方插件机制，不含远程访问能力。
 
 ## 开始前
@@ -45,13 +45,6 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
   baseUrl 的 createRequire 探测组件包）探测不到就整行禁用、延迟到重启装载，不产生
   failed to import 报错（守卫只用于 insert 子行）。组件包不能依赖套件当前在工作区里存在。
   组件依赖的 workspace 共享包（`packages/` 下）由 build-suite.mjs 自包含物化进套件。
-- yolo-mode 默认停用（v3）：本层只有 yolo-mode 插件 insert 行（「Bundle 在 bundles 且
-  profile patch 显式启用本行」判定），不覆写任何官方行。启用后生效面全部由插件代码承担：
-  agent/created 同步修复会话级策略事件（danger-full-access + ask，先于首个模型请求）、
-  session/event 监听修复漂移、approval answerer prepend 自动 allowed-once（用户提问不自动
-  回答）、工具 shadow 过滤提权字段。行开关或套件关闭并重启后新会话恢复原生权限控制；
-  原生权限预设服务与选择器不再隐藏（会话级 override 会把实际执行拉回 YOLO 值）。
-  升级运行 yolo-mode-check（覆盖独立 Bundle 与套件两形态），任何契约变化必须响亮失败。
 - services 在沙箱外 spawn，受限模式 start/restart 必须批准（读调用方会话自己的沙箱模式，跨工作区不绕过）；
   注册表与日志都在 DSH_HOME/dsh-kit/（services.json + logs/<name>.log）、同 home 所有工作区共享，服务名全局唯一，
   项目内 .agents/services.json 与 .agents/logs 只是旧版存量、由 roots 索引回捞，旧注册表惰性认领（D17）；

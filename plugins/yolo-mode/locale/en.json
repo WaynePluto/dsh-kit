@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "Fixed YOLO",
-    "description": "Disabled by default; once enabled, pin full access and auto-approve permission requests while user questions still need answers"
-  }
-}

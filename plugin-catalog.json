@@ -124,16 +124,6 @@
       ]
     },
     {
-      "name": "@dsh-kit/dsh-plugin-yolo-mode",
-      "source": "plugins/yolo-mode",
-      "components": [
-        {
-          "name": "@dsh-kit/dsh-plugin-yolo-mode",
-          "rowId": "yolo-mode"
-        }
-      ]
-    },
-    {
       "name": "@dsh-kit/dsh-plugin-web-search-switch",
       "source": "plugins/web-search-switch",
       "components": [

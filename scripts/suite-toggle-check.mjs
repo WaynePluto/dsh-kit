@@ -37,7 +37,7 @@ const PROBE_MODULE = join(PROBE_DIRECTORY, 'probe.mjs')
 const COMPONENT_ROWS = [
   'proxy', 'agents-md', 'chat-scroll', 'copilot-auth', 'favorite-models',
   'files', 'model-capabilities', 'models-catalog', 'notify', 'services', 'skills-inspector',
-  'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch', 'yolo-mode',
+  'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch',
 ]
 // PENDING=0、ACTIVE=2、FAILED=3（cordis FiberState 值镜像，见 dsh app-boot）。
 const FIBER_ACTIVE = 2
@@ -239,7 +239,7 @@ async function checkToggle() {
     liveAssertions: async ({ cookie }) => {
       const boot = await waitFor(context, cookie,
         value => CORE_ROWS.every(id => rowOf(value.rows, id)?.fiberState === FIBER_ACTIVE)
-          && COMPONENT_ROWS.every(id => rowOf(value.rows, id)?.fiberState === FIBER_ACTIVE || id === 'yolo-mode'),
+          && COMPONENT_ROWS.every(id => rowOf(value.rows, id)?.fiberState === FIBER_ACTIVE),
         40_000)
       assertCoreRows(boot.rows, '冷启动')
       assertNoFailureSignatures(boot, '冷启动', processState)
@@ -258,12 +258,10 @@ async function checkToggle() {
       // ── 在线重新启用（用户报错路径 2）──
       writeManifest(true)
       const enabled = await waitFor(context, cookie,
-        value => COMPONENT_ROWS.filter(id => id !== 'yolo-mode')
+        value => COMPONENT_ROWS
           .every(id => rowOf(value.rows, id)?.fiberState === FIBER_ACTIVE)
           && CORE_ROWS.every(id => rowOf(value.rows, id)?.fiberState === FIBER_ACTIVE),
         40_000)
-      const yolo = rowOf(enabled.rows, 'yolo-mode')
-      check(yolo?.disabled === true, '重新启用后 yolo-mode 仍默认停用', JSON.stringify(yolo))
       assertCoreRows(enabled.rows, '重新启用后')
       assertNoFailureSignatures(enabled, '重新启用后', processState)
     },

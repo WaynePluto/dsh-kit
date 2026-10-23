@@ -24,17 +24,16 @@ dsh-kit 只使用官方安装流程：「添加插件」写 dependency 与 bundl
 patch 应用时对目标行按键整段替换——`!!js` 表达式会被布尔值整体覆盖。行自身的 `disabled: !!js`
 表达式在 loader ctx 求值，config 的 `!!js` 在行 fiber ctx 求值，`baseUrl` 都是 profile 目录
 （根 config `cordis.yml` 所在目录），因此表达式能读 profile 的 package.json 与 `cordis.patch.yml`。
-组件行开关只命中同 id 的行：bundle patch 里同一组件的兄弟覆写行（如 yolo-mode 的四个官方行
-覆写）是独立 entry，必须各自跟随组件开关；且**覆写行的 disabled 会连官方基础行一起整行禁用**
-——需要「未激活时保留官方行为」的覆写必须用 config 条件回退而不是行 disabled
-（已修复，见 [运行时](runtime.md) 固定 YOLO 一节）。
+组件行开关只命中同 id 的行：bundle patch 里同一组件的兄弟覆写行是独立 entry，必须各自跟随
+组件开关；且**覆写行的 disabled 会连官方基础行一起整行禁用**
+——需要「未激活时保留官方行为」的覆写必须用 config 条件回退而不是行 disabled。
 
 套件 patch 由 `scripts/build-suite.mjs` 生成，不是手写文件：**本层只有 insert 行，永不覆写官方行
 （D16，2026-10-14）**——任何 id 命中官方 Bundle 行的覆写（历史上的 `llm-pi-ai` 屏障行、
-connection 行 webServer 注入覆写、yolo-mode 四行）都会让套件启停的重组合重启该行 fiber 并沿
+connection 行 webServer 注入覆写）都会让套件启停的重组合重启该行 fiber 并沿
 注入链级联到 session-controller，命中 file-upload Agent resolver 二次注册竞态。其余为各组件
 `cordis.patch.yml` 顶层条目的改写（入口换成裸包名，insert 子行补「套件成员 + 组件包可解析」
-双条件 `disabled` 表达式，顶层覆写行只补套件成员表达式）。生成后脚本把组件包、组件依赖的
+双条件 `disabled` 表达式）。生成后脚本把组件包、组件依赖的
 workspace 共享包（`packages/` 下，如 `@dsh-kit/plugin-rpc`）与 registry 依赖闭包物化进
 `plugins/suite/node_modules/`；`@deepseek-ai/*` 由 dsh 运行时树提供，不复制第二份单例。
 套件包移动目录后仍可工作（入口是包内相对路径，裸包名从套件自身安装目录解析）。

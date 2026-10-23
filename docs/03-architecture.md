@@ -3,7 +3,7 @@
 ## 1. 全景
 
 官方 dsh（桌面版或 web 版）是唯一宿主：Agent、工具、会话、界面与服务都由它提供。
-本项目是它的第三方插件套件——一个 Bundle 包 `plugins/suite`，安装后把 21 个组件挂进宿主。
+本项目是它的第三方插件套件——一个 Bundle 包 `plugins/suite`，安装后把 22 个组件挂进宿主。
 项目里没有常驻进程，也没有自有数据目录。
 
 ```mermaid
@@ -47,7 +47,7 @@ dsh 的三层事实（契约出处见 [插件机制](dsh/plugins.md)）：
 3. 生成后把组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`
    （本地目录安装不装 link 包的依赖；`@deepseek-ai/*` 由宿主运行时树提供，不复制第二份）。
 
-顺序约定：`proxy` 先于模型组件生效，`yolo-mode` 最后；其余按名字排序。组件包之间没有 import 依赖，
+顺序约定：`proxy` 先于模型组件生效；其余按名字排序。组件包之间没有 import 依赖，
 跨插件协作一律走 dsh 的服务与事件。
 
 ## 4. 插件包结构
@@ -84,6 +84,6 @@ plugins/<组件>/
 | `pnpm suite:build` | 生成套件 patch 并物化依赖闭包到 `plugins/suite/node_modules/` |
 | `pnpm dev` | 隔离开发实例：DSH_HOME=`~/.dsh-dev`、profile `dsh-kit-dev`、端口 3180，启动前自动检查运行时并安装套件 |
 | `node scripts/<主题>-check.mjs` | 隔离 home + 真实 dsh 的冒烟断言，入口表见 [源码依据](02-dsh-facts.md) |
-| `node scripts/verify-suite-client.mjs --token <token>` | 校验运行中宿主首页的 `__DSH_BOOT__` 图含全部 17 个浏览器行 |
+| `node scripts/verify-suite-client.mjs --token <token>` | 校验运行中宿主首页的 `__DSH_BOOT__` 图含全部 22 个浏览器行 |
 
 套件所在 profile 没有 HMR：改动插件任何一半后都要重新构建并重启 dsh。

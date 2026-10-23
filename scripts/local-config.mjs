@@ -43,7 +43,6 @@ export const DEFAULT_PROFILE_BUNDLES = [
   '@dsh-kit/dsh-plugin-tools-inspector',
   '@dsh-kit/dsh-plugin-skills-inspector',
   '@dsh-kit/dsh-plugin-files',
-  '@dsh-kit/dsh-plugin-yolo-mode',
 ]
 
 // pnpm run dev 会先在仓库外生成不含功能插件的 dsh 运行环境，避免安装锚

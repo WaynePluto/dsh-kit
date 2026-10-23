@@ -42,7 +42,7 @@ const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
 const COMPONENT_ROWS = [
   'proxy', 'agents-md', 'chat-scroll', 'copilot-auth', 'favorite-models',
   'files', 'model-capabilities', 'models-catalog', 'notify', 'services', 'skills-inspector',
-  'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch', 'yolo-mode',
+  'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch',
 ]
 // PENDING=0、ACTIVE=2、FAILED=3（cordis FiberState 值镜像，见 dsh app-boot）。
 const FIBER_ACTIVE = 2
@@ -255,17 +255,14 @@ async function checkFirstEnable() {
   })
 }
 
-/** 第二阶段：冷重启同一 profile，断言守卫放行、全部组件行装载（yolo 默认停用除外）。 */
+/** 第二阶段：冷重启同一 profile，断言守卫放行、全部组件行装载。 */
 async function checkColdRestart() {
   const context = makeContext()
   await runLiveDshCheck(context, {
     liveAssertions: async ({ cookie }) => {
       const boot = await callEntries(context, cookie)
-      const loadable = COMPONENT_ROWS.filter(id => id !== 'yolo-mode')
-      const loaded = loadable.filter(id => rowOf(boot.rows, id)?.disabled !== false || rowOf(boot.rows, id)?.fiberState !== FIBER_ACTIVE)
+      const loaded = COMPONENT_ROWS.filter(id => rowOf(boot.rows, id)?.disabled !== false || rowOf(boot.rows, id)?.fiberState !== FIBER_ACTIVE)
       check(loaded.length === 0, '冷重启后全部组件行装载（守卫放行）', `未装载：${loaded.join(', ') || '无'}`)
-      const yolo = rowOf(boot.rows, 'yolo-mode')
-      check(yolo?.disabled === true, '冷重启后 yolo-mode 保持默认停用', JSON.stringify(yolo))
       check(rowOf(boot.rows, 'session-controller')?.fiberState === FIBER_ACTIVE, '冷重启后 session-controller 正常')
     },
   })

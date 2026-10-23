@@ -51,7 +51,6 @@
 跨工作区操作同一门控：danger-full-access 无需额外批准，受限模式只接受 allowed-once，
 缺少会话或批准能力则拒绝——在其他工作区发起重启并不会绕过本会话的批准。
 未挂沙箱的组合体没有受限模式。approvalInConfinedSandbox 默认 true，关闭意味着接受服务逃出沙箱。
-默认固定 YOLO 下是全权限执行，请阅读 [固定 YOLO 风险说明](../yolo-mode/README.md)。
 
 ## 维护与验证
 

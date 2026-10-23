@@ -21,7 +21,7 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 
 同一终端只允许一次发送，用户输入最多等待 10 秒；仍忙时保留遮罩草稿。收起 panel、切换 conversation 或 terminal 时清除草稿，
 过时请求不能清空新 terminal 的输入。输入内容可能被目标程序回显或写入输出，输入不经模型参数并不等于输出中绝不会出现敏感信息。
-终端沿用 dsh 的沙箱约束；默认固定 YOLO 下是全权限 shell。
+终端沿用 dsh 的沙箱约束。
 
 ## 配置
 

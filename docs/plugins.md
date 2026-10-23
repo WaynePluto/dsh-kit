@@ -38,12 +38,11 @@
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [固定 YOLO](../plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开行开关并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](../plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
 
 ## 分发组合
 
-23 个功能组件以 8 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+22 个功能组件以 7 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
@@ -55,7 +54,6 @@
 | proxy | 独立包 | 出网代理 |
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
-| yolo-mode | 独立包 | 固定 YOLO |
 | web-search-switch | 独立包 | 网页搜索开关 |
 
 完整包名均为 `@dsh-kit/dsh-plugin-<上表名称>`（套件包为 `@dsh-kit/dsh-plugin-suite`）。
@@ -82,9 +80,6 @@
 - 组合包与套件不要同时安装：两者会提供同名稳定行 id，冲突会被 dsh 拒绝。
 - 改动插件后重新构建并重启 dsh；套件所在 profile 没有 HMR，刷新页面不会加载新产物。
 - 带浏览器半的插件依赖 `dist/client.js`；缺失时应修复构建或重新安装套件，不能跳过检查启动。
-- 固定 YOLO 默认停用，打开行开关并重启才会取消模型执行前的交互式权限边界，
-  关闭行开关（或套件 Bundle 开关）并重启即恢复原生权限控制；
-  详情见 [yolo-mode README](../plugins/yolo-mode/README.md)。
 
 新增、删除或重新分组插件时，以根目录 `plugin-catalog.json` 为唯一清单，并同步维护本索引、
 组合包 README 与组件 README；新决策先写入 [决策](01-decisions.md)。

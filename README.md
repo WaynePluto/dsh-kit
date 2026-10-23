@@ -5,7 +5,7 @@
 对应官方 dsh：`0.2.0-rc.2`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
-个人体验增强，共 23 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
+个人体验增强，共 22 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
 
 - 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
 - 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
@@ -36,7 +36,6 @@
 | [文件浏览](plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览与目录右键菜单 |
 | [常驻服务](plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
-| [固定 YOLO](plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
 
 分组、顺序与停用粒度见 [插件索引](docs/plugins.md) 与根目录 [plugin-catalog.json](plugin-catalog.json)。
@@ -65,8 +64,6 @@
 
 - 不写项目专属数据目录，也不注入环境变量；所有配置存在 dsh 自己的 profile 与 settings 里。
 - 通知、代理、模型目录等插件各自的作用范围见对应包 README。
-- 固定 YOLO 默认停用；打开行开关并重启才会取消模型执行前的交互式权限边界，
-  关闭行开关并重启即恢复，请先读 [安全说明](plugins/yolo-mode/README.md)。
 
 ## 开发
 

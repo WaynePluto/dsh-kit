@@ -1,6 +1,5 @@
 // 套件 patch 的装载守卫契约：insert 子行必须带「套件成员 + 组件包可解析」双条件
-// disabled 表达式；顶层覆写行只允许 yolo-mode 的四个官方行（config 条件回退 +
-// 镜像行，停用语义按重启生效，见 docs/dsh/runtime.md）。守卫表达式与 dsh loader
+// disabled 表达式；套件层不得覆写任何官方行（D16）。守卫表达式与 dsh loader
 // 同构求值（with (ctx) eval，baseUrl 为 profile 目录 URL），模拟三种安装形态：
 // 未选套件、hoisted（组件可从 profile 根解析）与仅套件 junction（运行中首次启用，
 // HMR 重组合的解析表还是安装前的快照）。契约变化必须在这里响亮失败。
@@ -15,11 +14,10 @@ const SUITE_DIR = fileURLToPath(new URL('../', import.meta.url))
 const PLUGINS_DIR = join(SUITE_DIR, '..')
 const patchText = readFileSync(join(SUITE_DIR, 'cordis.patch.yml'), 'utf8')
 
-/** yolo-mode v3 后套件层没有任何官方行覆写；此白名单恒为空，防止回归。 */
+/** 套件层没有任何官方行覆写；此白名单恒为空，防止回归。 */
 const OVERRIDE_ROWS = []
 
-/** 从生成 patch 提取 insert 成员行（id/name/disabled），与 yolo-mode-check 的提取方式同构。
- * 行尾容忍 \r：Windows autocrlf 检出会把工作区 patch 转成 CRLF。 */
+/** 从生成 patch 提取 insert 成员行（id/name/disabled）。行尾容忍 \r：Windows autocrlf 检出会把工作区 patch 转成 CRLF。 */
 function extractInsertRows(text) {
   const rows = []
   const lines = text.split('\n')
@@ -39,7 +37,7 @@ function extractInsertRows(text) {
   return rows
 }
 
-/** 提取顶层（非 insert）覆写行的 id；套件层除 yolo 白名单外不得覆写任何官方行。 */
+/** 提取顶层（非 insert）覆写行的 id；套件层不得覆写任何官方行。 */
 function extractOverrideRowIds(text) {
   const ids = []
   for (const line of text.split('\n')) {
@@ -84,13 +82,10 @@ afterEach(() => {
 describe('suite patch 装载守卫', () => {
   const rows = extractInsertRows(patchText)
   const componentRows = rows
-  const yoloRow = rows.find(row => row.id === 'yolo-mode')
-  const plainRows = componentRows.filter(row => row.id !== 'yolo-mode')
-  const hoistedPackages = plainRows.map(row => [row.name, join(PLUGINS_DIR, row.id)])
-  hoistedPackages.push([yoloRow.name, join(PLUGINS_DIR, yoloRow.id)])
+  const hoistedPackages = componentRows.map(row => [row.name, join(PLUGINS_DIR, row.id)])
 
   it('组件行保持裸包名并各自探测本组件包', () => {
-    expect(plainRows.length).toBeGreaterThanOrEqual(16)
+    expect(componentRows.length).toBeGreaterThanOrEqual(16)
     for (const row of componentRows) {
       expect(row.name?.startsWith('@dsh-kit/'), row.id).toBe(true)
       expect(row.disabled, row.id).toContain('createRequire')
@@ -120,24 +115,17 @@ describe('suite patch 装载守卫', () => {
     const dir = makeProfile('hoisted', hoistedPackages)
     tempDirs.push(dir)
     const base = `${pathToFileURL(dir).href}/`
-    for (const row of plainRows) {
+    for (const row of componentRows) {
       expect(evaluate(row.disabled ?? "", base), row.id).toBe(false)
     }
   })
 
-  it('仅套件 junction（运行中首次启用）时组件行延迟装载、yolo 保持默认停用', () => {
+  it('仅套件 junction（运行中首次启用）时组件行延迟装载', () => {
     const dir = makeProfile('junction-only', hoistedPackages)
     tempDirs.push(dir)
     const base = `${pathToFileURL(dir).href}/`
     for (const row of componentRows) {
       expect(evaluate(row.disabled ?? "", base), row.id).toBe(true)
     }
-  })
-
-  it('hoisted + 显式启用行时 yolo 行生效（守卫不破坏 v2 判定）', () => {
-    const dir = makeProfile('hoisted', hoistedPackages)
-    tempDirs.push(dir)
-    writeFileSync(join(dir, 'cordis.patch.yml'), '[ { id: yolo-mode, disabled: false } ]\n')
-    expect(evaluate(yoloRow.disabled ?? "", `${pathToFileURL(dir).href}/`)).toBe(false)
   })
 })

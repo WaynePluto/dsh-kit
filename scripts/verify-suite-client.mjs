@@ -21,7 +21,6 @@ if (token === undefined || token === '') {
 }
 
 // 与 plugin-catalog.json 对齐：声明 dsh.client 且随套件分发的浏览器行。
-// yolo-mode 无浏览器行。
 const EXPECTED = [
   'agents-md', 'chat-scroll', 'copilot-auth', 'deepseek-official-switch', 'favorite-models', 'files',
   'model-capabilities', 'model-provider', 'models-catalog', 'notify', 'proxy', 'services', 'session-rename',

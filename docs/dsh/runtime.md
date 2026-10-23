@@ -44,40 +44,6 @@ tools/result 等运行时事件适合实时反应，但不是历史计数的唯�
 插件可用的 Host→Client 状态推送是 session projection；浏览器 RPC 不提供 open 流。
 服务和 PTY 不发布可折叠会话事件，因此面板使用有界轮询。
 
-## 固定 YOLO
-
-出处：`packages/interaction/user-approval/src/index.ts`、`packages/sandbox/sandbox-policy/src/{index,session-mode}.ts`、
-`packages/core/agent/src/{index,runtime-types}.ts`、`packages/core/tools/src/index.ts`。
-
-approval policy 只有 ask 和 never：never 在 waterfall 前确定性拒绝，不能实现自动允许。
-项目固定 danger-full-access + ask，并以 prepend answerer 对合法 approval/request 返回 allowed-once。
-ask_user_question 保持用户回答，原生工具的结果、diff、取消与超时仍沿用 dsh。
-
-- sandbox/mode 与 approval/policy 是已知持久事件，可追加策略修正，不改写历史。
-- agent/created 在首个模型请求前同步通知，Agent.ctx 可注册 scoped 同名 shadow。
-- yolo-mode 覆盖 bash、pwsh、write、edit 的 schema、execute 与接收参数的展示回调，
-  从克隆参数中去掉 sandbox_permissions、justification。
-- 只删 schema 不够，模型的既有上下文仍可能发送字段；不能让原参数直接流入工具。
-- 意外受限窗口由 wrapper 使用固定内部 widening 参数经过 dsh 原生链，再修正会话策略。
-- session/event 通知内不能重入 append，修正用 queueMicrotask 并确认 Agent 仍 live。
-- 默认停用契约（2026-10-14 v3）：patch 层只有 yolo-mode 插件 insert 行
-  （「Bundle 在 bundles 且 profile patch 显式启用本行」判定，识别块状与流式两种行形态——
-  writePluginEnabled 追加的是流式 `[ { id: yolo-mode, disabled: false } ]`），
-  **不覆写任何官方行**（D16：v2 曾用 sandbox-policy/approval config 条件回退与
-  permission/ui-permission 镜像 disabled 改写官方行，套件启停重组合会让这些行回退并沿
-  sandbox-policy → fs-sandbox → fs → session-controller 级联触发 file-upload 二次注册竞态）。
-  生效面全部由插件代码承担：agent/created（含恢复的既有 Agent）同步
-  `normalizeAgentPolicy`（会话级 `sandbox/mode` + `approval/policy` 持久事件，先于首个
-  模型请求）、session/event 监听在 microtask 内修复漂移、approval answerer（prepend:true）
-  自动 allowed-once、工具 shadow 拦截提权字段。原生权限预设服务与选择器保持装载，
-  选择只改部署级默认；YOLO 激活期间会话 override 把实际执行拉回 danger-full-access + ask。
-  行开关关闭（或套件 Bundle 开关）并重启后新会话恢复原生控制；已有历史策略事件仍需
-  重新选择权限预设。
-
-工具参数出处：`packages/shell/tool-bash/src/index.ts`、`packages/shell/tool-pwsh/src/index.ts`、
-`packages/fs/tool-fs/src/{write,edit}.ts`、`packages/sandbox/sandbox/src/escalation.ts`。
-目标工具、字段或 scope 契约变化时 yolo-mode-check 必须失败，不能降级成部分 YOLO。
-
 ## 常驻服务
 
 出处：`packages/jobs/jobs/src/types.ts`、`docs/subsystems/jobs.md`、`docs/subsystems/shell.md`。

@@ -96,16 +96,15 @@
 - [x] 修复套件在线停用/启用的 session-controller 竞态（2026-10-14）：用户实机报错
   「停用失败：2 entries did not activate … Agent resolver is already registered」+
   重新启用后「历史加载失败：sessionController is unavailable」。隔离冒烟三度复现并定位：
-  套件层对官方行的任何覆写（llm-pi-ai 屏障、connection webServer 注入、yolo 四行）都会让
+  套件层对官方行的任何覆写（llm-pi-ai 屏障、connection webServer 注入）都会让
   套件启停的重组合重启该行 fiber，沿注入链（sandbox-policy → fs-sandbox → fs →
   session-controller；llm-pi-ai → llm → session-controller）级联，其内嵌 file-upload 在旧
-  注册未释放时二次注册，会话服务当场失败且重启前不恢复。修复（D16）：套件层与 yolo-mode
-  patch 层全部官方行覆写移除——宿主半私有 RPC 统一迁移到官方 `connection.fetch.register`
+  注册未释放时二次注册，会话服务当场失败且重启前不恢复。修复（D16）：套件层全部官方行
+  覆写移除——宿主半私有 RPC 统一迁移到官方 `connection.fetch.register`
   的 `/api` 精确路由（新共享包 `@dsh-kit/plugin-rpc`，11 个组件宿主半 + 浏览器半 + 8 个
-  check 脚本），模型晚注册生效无需启动屏障（删除 fallback 占位行与 BOOTSTRAP 服务），
-  yolo v3 生效面全部由插件代码承担（会话级策略修复 + answerer + 工具 shadow）。
+  check 脚本），模型晚注册生效无需启动屏障（删除 fallback 占位行与 BOOTSTRAP 服务）。
   新增 `scripts/suite-toggle-check.mjs`（在线停用/启用全程官方行 ACTIVE、零报错签名），
-  `suite-first-enable-check` / `yolo-mode-check` / 8 个组件 check 全绿。顺带修复
+  `suite-first-enable-check` / 8 个组件 check 全绿。顺带修复
   favorite-models-check 的陈旧菜单面断言（要求已删除的自绘 `--dsw-specific-menu` 背景；
   0.2.0 起材质由官方 MenuSurface 提供，断言改为 MenuSurface + 抬升阴影 token，见已实现
   2026-10-14 修复条目）。
@@ -129,14 +128,6 @@
   不触碰 `DEEPSEEK_API_KEY` 凭据、`llm-deepseek-account` 行与官方网页搜索；卡片操作区按钮经
   provider-card keyed 槽（key = `llm-deepseek`）+ 隐藏锚点 MutationObserver + portal 注入，
   复刻原生 rowActions 紧凑危险按钮 token。随 model-enhancements 组合包分发（组件总数 19）。
-- [x] yolo-mode 默认停用契约（2026-10-12，v2）：安装后默认停用；行开关写入的流式启用行
-  （`[ { id: yolo-mode, disabled: false } ]`）驱动五行整体生效/退场。v1 暴露两个缺陷并已修复：
-  套件里 permission/ui-permission 硬编码 disabled（行开关与套件开关都无法恢复原生选择器），
-  以及对 sandbox-policy/approval 用行 disabled（覆写行 disabled 会连官方基础行一起整行禁用，
-  服务消失导致 8 项 pending 级联）、未识别流式覆写行形态。v2 改为 sandbox-policy/approval 的
-  config 条件回退官方默认 + 镜像行/插件行 disabled 表达式。yolo-mode-check 覆盖独立 Bundle 与
-  套件两种形态的启用/默认停用实机启动（含服务健康探针；probe overlay 补齐 dsh 0.2.0
-  connection 行 webServer 注入覆写）。
 - [x] 运行中首次启用整包不再报 failed to import（2026-10-12，套件侧修复）：组件 insert 行的
   disabled 表达式加可解析性守卫（与 loader 同一 baseUrl 的 createRequire 探测组件包；dsh 的
   runtime resolution 表随进程冻结，安装前启动的进程里在线启用只能看到
@@ -185,7 +176,7 @@
 | 插件 | 待确认 |
 |---|---|
 | 套件生命周期 | 停用/启用整个套件后重启仍保持；组件级停用保持；卸载后不自动补回，重装仍走「添加插件」；深浅主题与中英文界面 |
-| 首次在线启用 | 安装完成弹窗点「立即启用」不再报整包 failed to import（组件行延迟到重启装载）；重启后全部组件装载、yolo 保持默认停用 |
+| 首次在线启用 | 安装完成弹窗点「立即启用」不再报整包 failed to import（组件行延迟到重启装载）；重启后全部组件装载 |
 | copilot-auth | 设备码登录成功，凭据持久化，账号模型可使用 |
 | proxy | 跟随环境（默认）、使用插件代理地址、强制直连三态：测试 URL、原生 fetch 模型请求和官方网页抓取按所选策略出网；不以子进程或独立网络库作验收前提 |
 | models-catalog | 检查、选择、应用与重启持久化已实机通过；撤销与其余新增模型仍待实机确认 |
@@ -205,7 +196,6 @@
 | tools-inspector | 工具清单与历史调用、失败次数统计与只读性 |
 | skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 首轮消息点击后新建同工作区会话并回填这条消息；其余消息子会话只继承前置历史，草稿可编辑，原会话不变 |
-| yolo-mode | 安装后默认停用、原生权限选择器可见；打开行开关并重启后用户提问正常、常驻服务可启动；关闭行开关并重启后原生权限控制恢复 |
 | web-search-switch | 开关热加载即时生效并落盘，重启 dsh 后保持；官方「网页搜索」卡片随之消失/恢复 |
 | agents-md | 设置页编辑、保存与 dsh 加载器反向认领一致 |
 

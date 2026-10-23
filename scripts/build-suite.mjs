@@ -22,9 +22,8 @@ const COMBO_PACKAGES = new Set([
   'development-tools',
   'suite',
 ])
-// 代理必须先于模型组件生效（见 plugin-catalog 顺序约定）；固定 YOLO 保持最后。
+// 代理必须先于模型组件生效（见 plugin-catalog 顺序约定）。
 const FIRST = ['proxy']
-const LAST = ['yolo-mode']
 
 // 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。
 const DISPLAY_PACKAGE_DIRS = []
@@ -35,7 +34,7 @@ function componentDirectories() {
     .map(entry => entry.name)
     .filter(name => !COMBO_PACKAGES.has(name) && !DISPLAY_PACKAGE_DIRS.includes(name))
     .sort((a, b) => {
-      const rank = name => (FIRST.includes(name) ? 0 : LAST.includes(name) ? 2 : 1)
+      const rank = name => (FIRST.includes(name) ? 0 : 1)
       return rank(a) - rank(b) || a.localeCompare(b)
     })
 }
@@ -68,11 +67,6 @@ function topLevelEntries(text) {
 // 非 './dist/*' 形态行的显示改写：预留（当前无此类行）。
 const ROW_NAME_OVERRIDES = new Map([])
 
-// 不注入套件 disabled 表达式的顶层覆写行（yolo-mode 段）：这两行的 config 自带
-// active 条件回退，行本身必须始终装载——行 disabled 会连官方基础行一起整行禁用，
-// 直接杀掉 sandboxPolicy/approval 服务（套件离开 bundles 时整层 patch 消失，无需表达式）。
-const ROWS_WITHOUT_SUITE_DISABLED = new Set(['sandbox-policy', 'approval'])
-
 function suiteDisabledExpr(indent) {
   return `${indent}disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("${SUITE_PACKAGE}")'`
 }
@@ -93,7 +87,7 @@ function suiteGuardedDisabledExpr(indent, packageName) {
   return `${indent}disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("${SUITE_PACKAGE}"); if (selected) { ${resolvableProbe(packageName)} return false } return true })()'`
 }
 
-/** 组件行自带 disabled 表达式（如 yolo-mode 的 v2 判定）时在外面套同一守卫。 */
+/** 组件行自带 disabled 表达式（如组合包的 bundles 判定）时在外面套同一守卫。 */
 function wrapDisabledWithGuard(packageName, expr) {
   return `(() => { ${resolvableProbe(packageName)} return (${expr}) })()`
 }
@@ -154,7 +148,7 @@ function transformEntry(block, packageName) {
       const disabledMatch = /^(\s*)disabled: !!js '([^']+)'$/u.exec(line)
       if (disabledMatch !== null) {
         // 组件段内 disabled 表达式的 bundles 常量改写为套件包名；自带判定的 insert
-        // 子行（yolo-mode）再套可解析性守卫。
+        // 子行再套可解析性守卫。
         let expr = disabledMatch[2].replaceAll(`includes("${packageName}")`, `includes("${SUITE_PACKAGE}")`)
         if (isInsertChild) {
           if (current.finalName === undefined || current.finalName.startsWith('./')) {
@@ -177,7 +171,7 @@ function transformEntry(block, packageName) {
     // preset 组合等嵌套行（缩进 ≥6）随父行生死，不单独插。
     const loaderLevel = current.idIndent === '' || isInsertChild
     const insertion = []
-    if (loaderLevel && !current.hasOwnDisabled && !ROWS_WITHOUT_SUITE_DISABLED.has(current.rowId)) {
+    if (loaderLevel && !current.hasOwnDisabled) {
       const exprIndent = `${current.idIndent}  `
       if (isInsertChild && current.finalName !== undefined && !current.finalName.startsWith('./')) {
         insertion.push(suiteGuardedDisabledExpr(exprIndent, current.finalName))
