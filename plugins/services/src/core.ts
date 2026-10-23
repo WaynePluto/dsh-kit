@@ -31,13 +31,16 @@ export {
 export {
   findExecutable,
   identify,
+  identifyBatch,
   isPidAlive,
   processStartedAt,
+  processStartTimes,
   reconcile,
+  reconcileIdentified,
   reportedIdentity,
   START_TIME_TOLERANCE_MS,
 } from './process-identity.js'
-export type { Identity } from './process-identity.js'
+export type { Identity, IdentityEntry } from './process-identity.js'
 
 export {
   ENV_OVERRIDES,

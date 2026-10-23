@@ -2,8 +2,11 @@
 
 /** 英文文案；同时作为本 namespace 的 key 集合。 */
 export const en = {
+  panel: 'Services',
   title: 'Services',
   summaryRunning: '{count} running',
+  emptyRunning: 'No services are running. Ask the model to start one, then it will show up here.',
+  loading: 'Loading services…',
   stop: 'Stop',
   stopping: 'Stopping…',
   restart: 'Restart',
@@ -25,8 +28,11 @@ export type ServicesKey = keyof typeof en
 
 /** 中文文案，按 `en` 的 key 集合实现。 */
 export const zh: Record<ServicesKey, string> = {
+  panel: '服务',
   title: '常驻服务',
   summaryRunning: '{count} 个运行中',
+  emptyRunning: '当前没有正在运行的服务。让模型启动一个，它会出现在这里。',
+  loading: '正在读取服务…',
   stop: '停止',
   stopping: '正在停止…',
   restart: '重启',

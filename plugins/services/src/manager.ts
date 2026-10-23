@@ -9,11 +9,11 @@
 
 import fs from 'node:fs'
 import {
-  claimLegacyRegistry, findExistingLog, identify, killTree, listLegacyLogNames, listLogNames, logPath,
-  readRegistry, reconcile, reportedIdentity, startProcess, tailFile, unionRoots,
-  waitForReady, withRegistryLock, writeRegistry,
+  claimLegacyRegistry, findExistingLog, identifyBatch, isPidAlive, killTree, listLegacyLogNames,
+  listLogNames, logPath, readRegistry, reconcileIdentified, reportedIdentity, startProcess,
+  tailFile, unionRoots, waitForReady, withRegistryLock, writeRegistry,
 } from './core.js'
-import type { Identity, ServiceRecord } from './core.js'
+import type { Identity, IdentityEntry, ServiceRecord } from './core.js'
 import { DEFAULT_LOG_LINES, MAX_LOG_LINES, isValidName } from './shared.js'
 import type { ServiceActionResult, ServiceLogsResult, ServiceView, ServicesSnapshot } from './shared.js'
 
@@ -23,6 +23,13 @@ export const DEFAULT_READY_TIMEOUT_MS = 8000
 /** 调用方提供的就绪 deadline 上限。 */
 export const MAX_READY_TIMEOUT_MS = 120_000
 
+/**
+ * 面板轮询（snapshot）允许复用的创建时间缓存窗口：覆盖数个 5 秒轮询周期，
+ * 把宿主事件循环上的同步探针从每轮一次降到每窗口一次。只影响展示；
+ * stop/restart 的身份判定始终现查（缓存命中无法排除 pid 回收窗口）。
+ */
+export const SNAPSHOT_IDENTITY_CACHE_MS = 20_000
+
 /** 测试注入的 probe，用于替代真实 OS。 */
 export interface ManagerDeps {
   identify?: (record: ServiceRecord) => Identity
@@ -31,22 +38,38 @@ export interface ManagerDeps {
   kill?: (pid: number) => void
 }
 
+/** {@link refresh} 的探针选项。 */
+export interface RefreshOptions {
+  /**
+   * 身份探针允许复用的创建时间缓存窗口（毫秒）；0（默认）始终现查。
+   * 只有展示路径（snapshot）传窗口；stop/restart 必须现查。
+   */
+  identityCacheMs?: number
+}
+
 /**
  * 将已保存 registry 与 OS 对齐，并持久化修复结果。读取、判定与写回在同一个锁内完成。
+ * 真实路径按批判定：存活逐条 signal 0 现查（实时、微秒级），创建时间一次子进程全取；
+ * 每条记录只判定一次——判定结果随条目透传，不再二次询问。
  * @param home - dsh home（全局 registry 所在）。
  * @param deps - 注入的 probe。
+ * @param options - 探针选项（缓存窗口）。
  * @returns 仍存活的记录及各自的身份判定。
  */
 export function refresh(
   home: string,
   deps: ManagerDeps = {},
-): { record: ServiceRecord; identity: Identity }[] {
-  const identifyFn = deps.identify ?? ((record: ServiceRecord) => identify(record))
+  options: RefreshOptions = {},
+): IdentityEntry[] {
   return withRegistryLock(home, () => {
     const registry = readRegistry(home)
-    const { live, dropped } = reconcile(registry.services, identifyFn)
-    if (dropped.length > 0) writeRegistry(home, { ...registry, services: live })
-    return live.map(record => ({ record, identity: identifyFn(record) }))
+    const identifyFn = deps.identify
+    const identified = identifyFn === undefined
+      ? identifyBatch(registry.services, { maxCacheMs: options.identityCacheMs ?? 0 })
+      : registry.services.map(record => ({ record, identity: identifyFn(record) }))
+    const { live, dropped } = reconcileIdentified(identified)
+    if (dropped.length > 0) writeRegistry(home, { ...registry, services: live.map(entry => entry.record) })
+    return live
   })
 }
 
@@ -102,9 +125,11 @@ function discoveryRoots(home: string, cwd: string | null): string[] {
 export function snapshot(home: string, options: SnapshotOptions, deps: ManagerDeps = {}): ServicesSnapshot {
   const cwd = options.cwd
   if (cwd !== null) claimLegacyRegistry(cwd, home)
-  const live = refresh(home, deps)
+  // 展示路径允许短缓存：把每 5 秒轮询的同步探针降到每窗口一次；
+  // 死亡判定仍逐条实时（signal 0），缓存只作用于存活 pid 的创建时间。
+  const live = refresh(home, deps, { identityCacheMs: SNAPSHOT_IDENTITY_CACHE_MS })
   const visible = options.all === true
-    ? [...live].sort((a, b) => Number(b.record.root === cwd) - Number(a.record.root === cwd))
+    ? live.toSorted((a, b) => Number(b.record.root === cwd) - Number(a.record.root === cwd))
     : live.filter(entry => entry.record.root === cwd)
   const running = new Set(live.map(entry => entry.record.name))
   const stoppedLogs = [
@@ -331,6 +356,8 @@ export async function restartService(
  * 读取一个服务的日志 tail；服务已退出时仍可用，这正是最需要日志判断退出原因的时刻。
  * 记录在 registry 中的服务直接用记录的绝对路径（迁移前启动的服务仍指向项目内旧文件）；
  * 已停止的按「home 日志目录 → 会话项目与 roots 索引的旧版项目日志」顺序回捞。
+ * 只读注册表与 signal 0 存活检查，不做全量对账——日志不需要逐 pid 的创建时间，
+ * 打开弹窗不应为其他服务的身份判定付出子进程探针的钱。
  * @param home - dsh home。
  * @param cwd - 会话项目目录；没有 live agent 时为 null。
  * @param name - 服务名称。
@@ -345,15 +372,18 @@ export function logsOf(
   lines: number = DEFAULT_LOG_LINES,
   deps: ManagerDeps = {},
 ): ServiceLogsResult {
-  const entry = find(refresh(home, deps), name)
+  const record = readRegistry(home).services.find(item => item.name === name)
   const canonical = logPath(home, name)
-  const file = entry?.record.logFile
+  const file = record?.logFile
     ?? (existsFile(canonical) ? canonical : findExistingLog(discoveryRoots(home, cwd), name))
     ?? canonical
+  // running 是展示提示而非安全判定：注册表有记录且 pid 仍在即可；失效记录由下一次 snapshot 对账清理。
+  const running = record !== undefined
+    && (deps.identify !== undefined ? deps.identify(record) !== 'gone' : isPidAlive(record.pid))
   return {
     file,
     tail: tailFile(file, Math.min(Math.max(lines, 1), MAX_LOG_LINES)),
-    running: entry !== undefined,
+    running,
   }
 }
 

@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  ENV_OVERRIDES, START_TIME_TOLERANCE_MS, findExistingLog, identify, legacyLogPath, listLegacyLogNames,
-  listLogNames, logPath, matchesReadyLog, readRegistry, reconcile, registryPath, reportedIdentity,
-  shellDialectWarning, shellInvocation, withRegistryLock, writeRegistry,
+  ENV_OVERRIDES, START_TIME_TOLERANCE_MS, findExistingLog, identify, identifyBatch, legacyLogPath,
+  listLegacyLogNames, listLogNames, logPath, matchesReadyLog, readRegistry, reconcile,
+  registryPath, reportedIdentity, shellDialectWarning, shellInvocation, tailFile, withRegistryLock,
+  writeRegistry,
 } from '../src/core.js'
 import type { Identity, Registry, ServiceRecord } from '../src/core.js'
 import { baseNameOf, formatUptime, isValidName, midEllipsis, tailText } from '../src/shared.js'
@@ -170,6 +171,29 @@ describe('log discovery', () => {
   })
 })
 
+describe('tailFile', () => {
+  it('keeps the requested tail from a bounded window instead of reading a whole log', () => {
+    const root = project()
+    const file = join(root, 'big.log')
+    // 4997 行 × ~95B ≈ 475KB，超过 256KB 读取窗口；结尾三行带可识别标记。
+    const head = Array.from({ length: 4997 }, (_, i) => `filler-${String(i).padStart(6, '0')}-${'x'.repeat(80)}`)
+    writeFileSync(file, [...head, 'tail-a', 'tail-b', 'tail-c'].join('\n') + '\n', 'utf8')
+    expect(tailFile(file, 3)).toBe('tail-a\ntail-b\ntail-c')
+  })
+
+  it('drops the first partial line when the window cuts mid-file', () => {
+    const root = project()
+    const file = join(root, 'cut.log')
+    // 300KB 无换行前缀把窗口起点压在行中间，窗口尾部是完整的两行。
+    writeFileSync(file, 'x'.repeat(300_000) + '\nkeep-a\nkeep-b\n', 'utf8')
+    expect(tailFile(file, 2)).toBe('keep-a\nkeep-b')
+  })
+
+  it('returns empty for a missing file instead of throwing', () => {
+    expect(tailFile(join(project(), 'none.log'), 5)).toBe('')
+  })
+})
+
 describe('pid identity', () => {
   it('reports gone when the process no longer exists', () => {
     expect(identify(record(), { alive: () => false })).toBe('gone')
@@ -208,9 +232,40 @@ describe('reconcile', () => {
       ours: 'ours', unknown: 'unknown', gone: 'gone', recycled: 'recycled',
     }
     const { live, dropped } = reconcile(rows, row => verdicts[row.name] as Identity)
-    expect(live.map(row => row.name)).toEqual(['ours', 'unknown'])
+    // live 携带身份：判定只发生一次，调用方不得再问第二遍（每问一次就是一次子进程探针）。
+    expect(live.map(entry => `${entry.record.name}:${entry.identity}`)).toEqual(['ours:ours', 'unknown:unknown'])
     expect(dropped.map(entry => `${entry.record.name}:${entry.reason}`))
       .toEqual(['gone:gone', 'recycled:recycled'])
+  })
+})
+
+describe('identifyBatch', () => {
+  it('classifies every record from one startedAt table — one spawn per reconcile, not one per record', () => {
+    const startedAt = 1_000_000
+    const rows = [
+      record({ name: 'ours', pid: 11, startedAt }),
+      record({ name: 'recycled', pid: 22, startedAt }),
+      record({ name: 'unknown', pid: 33, startedAt }),
+      record({ name: 'gone', pid: 44, startedAt }),
+    ]
+    const probed: number[][] = []
+    const entries = identifyBatch(rows, {
+      alive: pid => pid !== 44,
+      startedAt: pids => {
+        probed.push([...pids].toSorted((a, b) => a - b))
+        // 只探测存活 pid，且一次拿全部。
+        return new Map([[11, startedAt], [22, startedAt + START_TIME_TOLERANCE_MS + 1], [33, undefined]])
+      },
+    })
+    expect(entries.map(entry => `${entry.record.name}:${entry.identity}`))
+      .toEqual(['ours:ours', 'recycled:recycled', 'unknown:unknown', 'gone:gone'])
+    expect(probed).toEqual([[11, 22, 33]])
+  })
+
+  it('probes nothing for an empty registry — opening a quiet page costs zero spawns', () => {
+    const probed: number[][] = []
+    expect(identifyBatch([], { startedAt: pids => { probed.push([...pids]); return new Map() } })).toEqual([])
+    expect(probed).toEqual([[]])
   })
 })
 

@@ -240,6 +240,33 @@ settings.section 没有 icon 字段，导航 shell 按 id 选择图标，未知 
 公共 helper 使用 dsh shell 已渲染的直接子 SVG 作为 mask 载体，并隐藏其原生子路径，避免伪元素在
 React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`navLabel` 的局部类名；不匹配时退回默认图标。
 
+### 全局面板（侧边栏行 + 主列页面）
+
+出处：`packages/client/ui-sidebar/src/client/{index.ts,SidebarRoot.tsx,contract/slots.ts}`、
+`packages/client/ui-layout/src/client/{index.ts,service.ts,stores.ts}`、官方实例
+`packages/client/ui-plugin-manager/src/client/index.ts` 与 `packages/client/ui-schedule/src/client/index.ts`。
+
+- 侧边栏的全局面板行（插件、自动化任务）不是写死的：`sidebar.panellist` 是 root 域 list 槽，
+  条目 `{ id, order, label }` + 图标组件；ui-sidebar 订阅该槽重建行、按 order 升序排列，
+  label 经 `resolveSlotLabel` 解析、语言切换时重算；行按钮与选中态归 sidebar 所有。
+- 页面注册在 `main` keyed 槽（root 域，`key` = 面板 id）；`layout.selectPanel(id)` 切换主列，
+  `activePanelId: null` 回到会话（`conversation` 是 main 的保留 key）。id 未注册时 selectPanel 抛错，
+  因此先注册页面再注册行（官方顺序）。第三方 id 应带包名前缀，避免与官方 key（plugins/schedules）撞名。
+- AppFrame 渲染 `renderSlot('main', {}, { entryKey: panelId ?? 'conversation' })`：选中面板时会话列卸载，
+  但 mainView 保留由工作区导航层持有（`ui-workspace/src/client/navigation.ts` 的 retain），
+  `ctx.uiSession.adapter.current` 仍是当前会话——全局面板要「当前工作区优先」类锚点时在每次
+  轮询/操作前现取，不要在 inject 工厂里缓存。
+- 页面 props 组合 `PropsRuntime<'main'> & InjectFace<T> & PropsLocale<ns>`；store 可选
+  （ui-plugin-manager 传导航 store，ui-schedule 不传）。行点击埋点只对官方 id 生效，第三方静默。
+- 一级页面版式（`ui-schedule/src/client/TaskManagerPage.module.css` 的
+  `.page/.pageScroll/.pageContent/.pageHeading`）：内容列 `max-width:960px` 居中、
+  `padding:0 clamp(24px,4vw,48px) 48px`、标题行 `padding-top:28px`（darwin 再加
+  `--dsh-frame-top-clearance`）、h1 `20px/28px/500`；滚动区 `scrollbar-gutter:stable`、
+  `--dsh-scrollbar-width:9px; --dsh-scrollbar-thumb-border:2px`。
+- 组件停用后面板行随槽注销消失；正被选中时 layout store 把 activePanelId 回落 null
+  （`stores.ts` 的 selectPanel 清理），不留孤儿视图。
+- 实例：`plugins/services/src/client/{index.tsx,ServicesPage.tsx,ServicesPanelIcon.tsx}`（order 20）。
+
 ### 右侧 Sidebar 页面类型
 
 出处：`packages/client/ui-sidebar-right/src/client/tab-registry.ts`、`contract/slots.ts`、`service.ts`，

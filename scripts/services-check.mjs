@@ -94,8 +94,8 @@ function inspectClientBundle() {
       ['react', { useState: inspectionNoop, useEffect: inspectionNoop, useCallback: inspectionNoop, useMemo: inspectionNoop, useRef: () => ({}), createElement: inspectionNoop }],
       ['react/jsx-runtime', { jsx: inspectionNoop, jsxs: inspectionNoop, Fragment: inspectionNoop }],
       ['@deepseek-ai/dsh-client-ui-primitives', {
-        Modal: inspectionNoop, IconApiOutline14: inspectionNoop,
-        IconChevronUpOutline14: inspectionNoop, IconChevronDownOutline14: inspectionNoop,
+        Modal: inspectionNoop, Button: inspectionNoop,
+        IconFullscreenOutlineMedium: inspectionNoop, IconApiOutlineRegular: inspectionNoop,
       }],
     ]),
     unknownExternal: (id) => new Error('bundle 要求页面模块表之外的模块：' + id),
@@ -106,6 +106,8 @@ function inspectClientBundle() {
         seats,
         namespaces,
         fields: { get: () => undefined },
+        // 侧边栏行的 label 经 ctx.locale.bind(NS) 解析；apply 阶段就要可调。
+        locale: { bind: () => (key) => key },
       })
       exports.apply(ctx)
       return { seats, namespaces, externals: [...new Set(externals)] }
@@ -149,13 +151,14 @@ async function main() {
   )
 
   const client = inspectClientBundle()
-  check(client.seats.length === 1, '浏览器产物只占一个座位', `共 ${client.seats.length} 个`)
-  const seat = client.seats[0]
-  // list 槽靠 order 排先后；`conversation.input.dock` 不是 keyed 槽，所以不会和
-  // dsh 自己的 todo（0）、队列（20）或本仓库的重试横幅（30）抢同一个格子。
-  check(seat?.name === 'conversation.input.dock', '座位是输入框上方那个 list 槽', String(seat?.name))
-  check(seat?.id === 'dsh-plugin-services', '条目 id 用的是包名后缀', String(seat?.id))
-  check(typeof seat?.order === 'number', '声明了 order，不靠注册先后决定位置', String(seat?.order))
+  check(client.seats.length === 2, '浏览器产物只占两个座位（main 页面 + 侧边栏行）', `共 ${client.seats.length} 个`)
+  const pageSeat = client.seats.find(seat => seat?.name === 'main')
+  const rowSeat = client.seats.find(seat => seat?.name === 'sidebar.panellist')
+  // keyed 槽的 key 与 list 槽的 id 必须是同一字符串，行点击的 layout.selectPanel 才落到页面。
+  check(pageSeat?.key === 'dsh-plugin-services', '主列页面注册在 main keyed 槽、key 用包名后缀', String(pageSeat?.key))
+  check(rowSeat?.id === 'dsh-plugin-services', '侧边栏行条目 id 与面板 key 一致', String(rowSeat?.id))
+  check(rowSeat?.order === 20, '侧边栏行 order 20：排在插件（0）与自动化任务（10）之后', String(rowSeat?.order))
+  check(typeof rowSeat?.label === 'function', '行 label 是 thunk，语言切换时 ui-sidebar 会重新解析', typeof rowSeat?.label)
   check(client.namespaces.includes('dsh-plugin-services'), '文案命名空间也是包名后缀',
     client.namespaces.join('、'))
   const PLATFORM_MODULES = new Set([
@@ -183,7 +186,7 @@ async function main() {
       if (url !== null) {
         check(bundle.ok, '插件 bundle 能取到', `status ${bundle.status}`)
         check(bundleBody.includes('__ModuleLoader__.load'), 'bundle 是加载器认识的工件格式')
-        check(bundleBody.includes('conversation.input.dock'), 'bundle 里带着输入框上方的槽注册')
+        check(bundleBody.includes('sidebar.panellist'), 'bundle 里带着侧边栏行的槽注册')
         check(bundleBody.includes('/services'), 'bundle 里带着宿主那条私有通道的路径')
         check(bundleBody.includes('visibilitychange'), 'bundle 里带着「页面不可见就停止轮询」的那半逻辑')
       }
@@ -196,11 +199,20 @@ async function main() {
         JSON.stringify(list.body),
       )
 
-      const malformed = await context.callChannel('list', {}, cookie)
+      // 全局面板没有会话绑定：list 不带 sessionId 也必须应答（排序锚点缺省，cwd 为 null）。
+      const anchorless = await context.callChannel('list', {}, cookie)
+      check(
+        anchorless.status === 200 && anchorless.body?.result?.ok === true
+          && anchorless.body.result.value?.cwd === null,
+        'list 缺省 sessionId 也应答——「服务」页面没有会话绑定',
+        JSON.stringify(anchorless.body),
+      )
+
+      const malformed = await context.callChannel('stop', {}, cookie)
       check(
         malformed.body?.result?.ok === false
         && malformed.body.result.error?.code === 'services/bad-payload',
-        '缺少 sessionId 的调用被通道自己挡下',
+        '缺少服务名的调用被通道自己挡下',
         JSON.stringify(malformed.body),
       )
 

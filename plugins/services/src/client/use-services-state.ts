@@ -1,10 +1,10 @@
 /**
- * services panel 的状态与副作用：轮询、session 切换清理、uptime、操作按钮和日志请求。
+ * services 页面的状态与副作用：轮询、uptime、操作按钮和日志请求。
  * 组件只负责把这份状态投影成 DOM，不在此处改变 Host RPC 契约。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, MutableRefObject, PointerEvent as ReactPointerEvent, SetStateAction } from 'react'
+import type { MutableRefObject, PointerEvent as ReactPointerEvent } from 'react'
 import { formatUptime } from '../shared.js'
 import type { ServiceLogsResult, ServiceView, ServicesSnapshot } from '../shared.js'
 import { fill } from './locales.js'
@@ -24,7 +24,7 @@ import type { LogDialogResizeDirection } from './log-dialog.js'
 import { useLogDialogResize } from './dialog-resize.js'
 import { useDialogFullscreen } from '@dsh-kit/plugin-ui'
 import { publishWidth } from './styles.js'
-import type { Busy, ServicesDockInjected } from './types.js'
+import type { Busy, ServicesActions } from './types.js'
 
 /** tab 可见时 panel 的刷新间隔（毫秒）。 */
 export const POLL_MS = 5000
@@ -47,15 +47,12 @@ const LOG_RESIZE_CONFIG = {
 
 /** panel 状态 hook 的输入。 */
 export interface UseServicesStateOptions {
-  sessionId: string | undefined
-  actions?: Partial<ServicesDockInjected> | undefined
+  actions?: Partial<ServicesActions> | undefined
   translate: (key: ServicesKey) => string
 }
 
 /** panel 状态 hook 的返回值。 */
 export interface ServicesState {
-  collapsed: boolean
-  setCollapsed: Dispatch<SetStateAction<boolean>>
   snapshot: ServicesSnapshot | undefined
   error: string | null
   busy: Record<string, Busy>
@@ -83,11 +80,10 @@ function documentVisible(): boolean {
 
 /**
  * 管理 panel 的远程数据、页面计时与日志 dialog 状态。
- * @param options - session、Host actions 和 locale seat。
+ * @param options - Host actions 和 locale seat。
  * @returns 供 panel 与子组件消费的状态和回调。
  */
-export function useServicesState({ sessionId, actions, translate }: UseServicesStateOptions): ServicesState {
-  const [collapsed, setCollapsed] = useState(true)
+export function useServicesState({ actions, translate }: UseServicesStateOptions): ServicesState {
   const [snapshot, setSnapshot] = useState<ServicesSnapshot | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<Record<string, Busy>>({})
@@ -96,7 +92,7 @@ export function useServicesState({ sessionId, actions, translate }: UseServicesS
   /** 页面收到 snapshot 的时间；uptime 以 Host 时钟为基准再加本地经过时间。 */
   const [receivedAt, setReceivedAt] = useState(() => Date.now())
   const [localNow, setLocalNow] = useState(() => Date.now())
-  /** card 自身的 box；日志 dialog 以它作为宽度标尺。 */
+  /** 页面自身的 box；日志 dialog 以它作为宽度标尺。 */
   const rootRef = useRef<HTMLElement | null>(null)
   const {
     onPointerDown: onLogResizePointerDown,
@@ -108,24 +104,32 @@ export function useServicesState({ sessionId, actions, translate }: UseServicesS
   // ref 防止每次 fetch 返回都拆除/重启 poll effect；effect 依赖操作函数，而不是数据。
   const listRef = useRef(onList)
   listRef.current = onList
+  const actionsRef = useRef(actions)
+  actionsRef.current = actions
+  // 上一轮请求未返回时跳过：宿主侧对账是同步探针，堆积请求只会排队阻塞事件循环。
+  const inFlight = useRef(false)
 
   const load = useCallback(async (): Promise<void> => {
     const fetchList = listRef.current
-    if (fetchList === undefined) return
+    if (fetchList === undefined || inFlight.current) return
+    inFlight.current = true
     try {
-      const next = await fetchList()
+      // 排序锚点每次现取：面板是全局的，当前会话随时可能变化或不存在。
+      const anchor = actionsRef.current?.currentSessionId?.()
+      const next = await fetchList(anchor)
       setSnapshot(next)
       setReceivedAt(Date.now())
       setLocalNow(Date.now())
       setError(null)
     } catch (cause: unknown) {
       setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      inFlight.current = false
     }
   }, [])
 
   // 可见时轮询；隐藏时停止，返回可见后补一次。
   useEffect(() => {
-    if (sessionId === undefined) return
     let timer: ReturnType<typeof setInterval> | undefined
     const start = (): void => {
       if (timer !== undefined) return
@@ -147,24 +151,14 @@ export function useServicesState({ sessionId, actions, translate }: UseServicesS
       stop()
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [sessionId, load])
-
-  // 不同 session 就是不同项目：全部清空，避免首个 poll 到达前显示上一个项目的服务。
-  useEffect(() => {
-    setSnapshot(undefined)
-    setError(null)
-    resetLogResize()
-    setOpenLog(null)
-    setLog(null)
-    setBusy({})
-  }, [sessionId])
+  }, [load])
 
   // 不访问网络，只推进页面显示的 uptime。
   useEffect(() => {
-    if (collapsed || snapshot === undefined || snapshot.services.length === 0) return
+    if (snapshot === undefined || snapshot.services.length === 0) return
     const timer = setInterval(() => { setLocalNow(Date.now()) }, TICK_MS)
     return () => { clearInterval(timer) }
-  }, [collapsed, snapshot])
+  }, [snapshot])
 
   // 全屏开关由公共 hook 管理：进入前保存几何、退出写回、resize 跟随、换服务或关闭即复位。
   const { fullscreen: logFullscreen, toggle: toggleLogFullscreen } = useDialogFullscreen({
@@ -245,8 +239,6 @@ export function useServicesState({ sessionId, actions, translate }: UseServicesS
   }
 
   return {
-    collapsed,
-    setCollapsed,
     snapshot,
     error,
     busy,

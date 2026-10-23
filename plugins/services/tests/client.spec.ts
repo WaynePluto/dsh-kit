@@ -18,7 +18,7 @@ import {
 import { dialogFullscreenGeometry } from '@dsh-kit/plugin-ui'
 import { en, fill, zh } from '../src/client/locales.js'
 import { assertDialogGeometry } from '@dsh-kit/plugin-ui/test'
-/** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。（涉及：`node`、`ServicesDock.tsx`、`@deepseek-ai/dsh-client-ui-primitives`、`log-dialog.ts`） */
+/** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。（涉及：`node`、`ServicesPage.tsx`、`@deepseek-ai/dsh-client-ui-primitives`、`log-dialog.ts`） */
 describe('log dialog width', () => {
   it('takes 80% of the measured panel, which dsh builds to the message width', () => {
     // 界面契约：此处说明布局、主题 token、尺寸或 DOM 接缝。
@@ -151,12 +151,11 @@ describe('shared dialog geometry', () => {
 describe('resize structure', () => {
   it('keeps eight non-button handles in Modal children', () => {
     const dialogSource = readFileSync(new URL('../src/client/ServiceLogDialog.tsx', import.meta.url), 'utf8')
-    const panelSource = readFileSync(new URL('../src/client/ServicesDock.tsx', import.meta.url), 'utf8')
+    const pageSource = readFileSync(new URL('../src/client/ServicesPage.tsx', import.meta.url), 'utf8')
     const resizeSource = readFileSync(new URL('../src/client/dialog-resize.tsx', import.meta.url), 'utf8')
     expect(dialogSource).toContain('data-dsh-services-log-body')
     expect(dialogSource).toContain('LogResizeHandle')
-    expect(panelSource).toMatch(/\['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'\]/u)
-    expect(panelSource).toMatch(/\['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'\]/u)
+    expect(pageSource).toMatch(/\['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'\]/u)
     expect(resizeSource).toMatch(/touchAction: 'none'/u)
     expect(resizeSource).toContain('setPointerCapture')
     expect(resizeSource).toContain('HANDLE_SIZE_PX = 12')
@@ -210,6 +209,42 @@ describe('row name column', () => {
   })
   it('shows the raw name before the first measurement lands', () => {
     expect(rowSource).toContain('capacity === null ? service.name : midEllipsis')
+  })
+})
+describe('global panel seat', () => {
+  const entrySource = readFileSync(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
+  const pageSource = readFileSync(new URL('../src/client/ServicesPage.tsx', import.meta.url), 'utf8')
+  const iconSource = readFileSync(new URL('../src/client/ServicesPanelIcon.tsx', import.meta.url), 'utf8')
+  it('registers the main keyed page and the sidebar row under one panel id', () => {
+    // 界面契约：面板 id 同时是 main 槽 key 与 sidebar.panellist 条目 id，行点击经 layout.selectPanel 落到页面。
+    expect(entrySource).toContain("slots.inject('main'")
+    expect(entrySource).toContain('key: PANEL_ID')
+    expect(entrySource).toContain("slots.inject('sidebar.panellist'")
+    expect(entrySource).toContain('id: PANEL_ID')
+  })
+  it('sits below the official rows: plugins order 0, schedules order 10, services order 20', () => {
+    expect(entrySource).toContain('const ORDER = 20')
+  })
+  it('namespaces the panel id with the package suffix instead of an official-looking word', () => {
+    expect(entrySource).toContain('export const PANEL_ID = SELF_NAMESPACE as MainPanelId')
+  })
+  it('reads the sort anchor from the current session on every poll, not from a session-scoped seat', () => {
+    expect(entrySource).toContain('adapter.current.getSnapshot()')
+    expect(entrySource).not.toContain('conversation.input.dock')
+  })
+  it('renders the page frame the official first-level pages share', () => {
+    // 界面契约：960px 内容列 + 28px 标题上距 + darwin 顶栏补偿，与插件/自动化任务页同一版式。
+    expect(pageSource).toContain('data-dsh-services-page')
+    const stylesSource = readFileSync(new URL('../src/client/styles.ts', import.meta.url), 'utf8')
+    expect(stylesSource).toContain('max-width:960px')
+    expect(stylesSource).toContain("clamp(24px,4vw,48px)")
+    expect(stylesSource).toContain("calc(28px + var(--dsh-frame-top-clearance,0px))")
+  })
+  it('keeps an empty state instead of hiding — a page cannot disappear like the dock card did', () => {
+    expect(pageSource).toContain("translate('emptyRunning')")
+  })
+  it('uses the OutlineRegular glyph family the sidebar rows ask for, at the requested size', () => {
+    expect(iconSource).toContain('IconApiOutlineRegular size={size}')
   })
 })
 describe('move handle structure', () => {

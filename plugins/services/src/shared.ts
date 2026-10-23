@@ -99,8 +99,12 @@ export interface ServiceLogsResult {
 
 /** `list` 的 payload。 */
 export interface ListRequest {
-  /** 其工作目录用于选择 registry 的 session。 */
-  sessionId: string
+  /**
+   * 调用方会话；全局面板没有会话绑定，因此可选。
+   * 提供时用作排序锚点（该会话工作区的服务排前、外来源带徽标）与 restart 的门控归属；
+   * 缺省或找不到 live agent 时 Host 按无锚点处理（不排序、门控 fail closed）。
+   */
+  sessionId?: string
 }
 
 /** `stop`、`restart` 和 `logs` 的 payload。 */
@@ -112,14 +116,15 @@ export interface NamedRequest extends ListRequest {
 }
 
 /**
- * 判断解码后的 payload 是否携带 session id。
+ * 判断解码后的 payload 是否合法（sessionId 可选）。
  * @param value - browser payload。
  * @returns 是否满足 {@link ListRequest}。
  */
 export function isListRequest(value: unknown): value is ListRequest {
-  return typeof value === 'object' && value !== null
-    && typeof (value as ListRequest).sessionId === 'string'
-    && (value as ListRequest).sessionId.length > 0
+  if (typeof value !== 'object' || value === null) return false
+  const sessionId = (value as ListRequest).sessionId
+  return sessionId === undefined
+    || (typeof sessionId === 'string' && sessionId.length > 0)
 }
 
 /**

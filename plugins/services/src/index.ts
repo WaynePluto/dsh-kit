@@ -318,8 +318,8 @@ export async function dispatch(
     }
   }
   try {
-    const request = payload as { sessionId: string; name?: string; lines?: number }
-    const cwd = cwdOf(ctx, request.sessionId)
+    const request = payload as { sessionId?: string; name?: string; lines?: number }
+    const cwd = request.sessionId === undefined ? undefined : cwdOf(ctx, request.sessionId)
     if (endpoint === 'list') {
       return { ok: true, value: snapshot(home, { cwd: cwd ?? null, all: true }) }
     }
@@ -332,7 +332,10 @@ export async function dispatch(
       return { ok: true, value: stopService(home, serviceName) }
     }
     // restart 也使用与 tool 相同的 spawn gate；按按钮不是跳过 sandbox 决策的理由。
-    const agent = ctx.agents.get(request.sessionId as SessionId)
+    // 全局面板可能没有当前会话：没有归属会话时 gateSpawn 自己 fail closed。
+    const agent = request.sessionId === undefined
+      ? undefined
+      : ctx.agents.get(request.sessionId as SessionId)
     const refusal = await gateSpawn(ctx, agent, `重启常驻服务 ${serviceName}`, config)
     if (refusal !== undefined) return { ok: true, value: { ok: false, message: refusal } }
     return { ok: true, value: await restartService(home, serviceName) }

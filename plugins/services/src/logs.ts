@@ -119,12 +119,36 @@ export function readText(file: string): string {
   }
 }
 
+/** tail 读取的最大字节窗口：日志是只增文件，行数需求（≤500 行）远小于任意服务器日志的体量。 */
+const TAIL_MAX_BYTES = 262_144
+
 /**
- * 只读取日志末尾的若干行。
+ * 只读取日志末尾的若干行。先取文件尾 {@link TAIL_MAX_BYTES} 字节再找行边界——
+ * 长跑服务的日志可达数百 MB，整文件读入再 split 会把宿主卡住数秒；
+ * 窗口内的首个不完整行（截断边界）被丢弃。
  * @param file - 绝对路径。
  * @param lines - 保留的末尾行数。
  * @returns tail，或空字符串。
  */
 export function tailFile(file: string, lines: number): string {
-  return tailText(readText(file), lines)
+  try {
+    const handle = fs.openSync(file, 'r')
+    try {
+      const size = fs.fstatSync(handle).size
+      const length = Math.min(size, TAIL_MAX_BYTES)
+      const buffer = Buffer.alloc(length)
+      fs.readSync(handle, buffer, 0, length, size - length)
+      let text = buffer.toString('utf8')
+      if (length < size && text.includes('\n')) {
+        // 头部截断：丢掉窗口里第一个不完整的行（可能还劈开了多字节字符）。
+        text = text.slice(text.indexOf('\n') + 1)
+      }
+      return tailText(text, lines)
+    } finally {
+      fs.closeSync(handle)
+    }
+  } catch {
+    // 读取失败（含文件不存在）按无内容处理，服务退出后仍能安全查看。
+    return ''
+  }
 }

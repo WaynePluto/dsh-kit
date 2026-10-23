@@ -96,12 +96,22 @@ snapshot/start/logs 触达时惰性并入全局并删除（v1 记录补 root 字
 两个窗口同时以同名启动时，写入方在锁内复核发现撞名后杀掉自己刚拉起的进程。
 以 pid 和创建时间识别，避免复用 pid 时误杀。
 
+身份探针的性能契约（2026-10-23）：Windows 读创建时间要 spawn 一个 PowerShell
+（实测 ~0.4s/次），因此对账按批进行——`identifyBatch` 逐条 signal 0 现查存活（微秒级、
+绝不缓存），存活 pid 的创建时间一次子进程全取（与记录数无关）；每条记录只判定一次，
+判定结果随条目透传。展示路径（snapshot 轮询）允许 20 秒缓存窗口（`SNAPSHOT_IDENTITY_CACHE_MS`），
+窗口内零 spawn；**stop/restart/start 的身份判定始终现查**——缓存命中无法排除 pid 回收窗口，
+终止决策不能建立在缓存上。读日志（`logsOf`）只查注册表与 pid 存活，不做全量对账；
+日志尾读取有 256KB 窗口（首个不完整行丢弃），长跑服务的大日志不拖慢读取。
+
 直接 node:child_process.spawn 不经过沙箱，所以 service_start/restart 必须读取**调用方会话**的 sandbox mode。
 danger-full-access 不额外提问；受限模式需 ctx.approval 且仅 allowed-once 放行——跨工作区发起
 也不会绕过调用方自己的批准。缺会话或批准能力时 fail closed；面板不提供创建服务入口。
 权限预设只写 mode/policy，不替自行 spawn 的插件做逐工具沙箱隔离。
 `service_list` 默认本项目，`scope:"all"` 返回全部工作区（当前工作区排前）；
-面板 list 恒为全局。stop/restart/logs 按全局唯一名称寻址，不要求会话有项目目录。
+面板 list 恒为全局（面板是侧边栏「服务」全局面板，`main` keyed 槽 + `sidebar.panellist` 行，
+见 [插件机制](plugins.md) 的「全局面板」；其 RPC `sessionId` 可选，作排序锚点与 restart 门控归属，
+缺省时 Host 不排序、门控 fail closed）。stop/restart/logs 按全局唯一名称寻址，不要求会话有项目目录。
 
 ### PowerShell
 

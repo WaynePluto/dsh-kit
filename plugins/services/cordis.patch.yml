@@ -4,9 +4,10 @@
 # 形态与兄弟双面插件相同：`./` insert 名字由 dsh 锚定到本文件目录再转成 file:// URL，
 # 所以这里只写相对路径（铁律 D17）。
 #
-# 宿主半 `dist/index.js` 注册 services 的 tools/RPC；浏览器半 `dist/client.js` 向
-# `conversation.input.dock` list 槽添加条目。**dist/client.js 缺失会让 dsh 启动失败**。
-# 顺序无关：宿主半只注册工具和通道，浏览器半的条目位置由 `register` 的 `order` 决定。
+# 宿主半 `dist/index.js` 注册 services 的 tools/RPC；浏览器半 `dist/client.js` 注册
+# 「服务」全局面板（`main` keyed 主列页面 + `sidebar.panellist` 侧边栏行，order 20）。
+# **dist/client.js 缺失会让 dsh 启动失败**。顺序无关：宿主半只注册工具和通道，
+# 浏览器半的侧边栏行位置由 `register` 的 `order` 决定。
 - insert:
     - id: services
       name: './dist/index.js'

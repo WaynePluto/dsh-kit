@@ -1,6 +1,8 @@
 /**
- * services panel 的 DOM/CSS 样式与日志 dialog 的浏览器辅助。
- * 样式 token 保持与 dsh todo dock 一致；状态和组件不在这里实现。
+ * services 页面的 DOM/CSS 样式与日志 dialog 的浏览器辅助。
+ * 页面框架样式翻译自官方一级页面（`ui-schedule/src/client/TaskManagerPage.module.css` 的
+ * `.page/.pageScroll/.pageContent/.pageHeading`，0.2.1-rc.2）：960px 内容列、
+ * clamp(24-48px) 内边距、28px 标题上距与 darwin 顶栏补偿，与插件/自动化任务页同一版式。
  */
 
 import type { CSSProperties } from 'react'
@@ -17,6 +19,37 @@ import {
   SECONDARY as DOCK_SECONDARY,
   TERTIARY as DOCK_TERTIARY,
 } from '@dsh-kit/plugin-ui'
+
+/** 页面框架规则的 class 前缀。 */
+const PAGE_CLASS = 'dsh-services-page'
+
+/**
+ * 生成「服务」全局面板的页面框架 stylesheet 文本。
+ * @returns 拼接好的 CSS 规则串。
+ */
+export function pageRule(): string {
+  return [
+    `.${PAGE_CLASS}{display:flex;flex-direction:column;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);font-size:14px;line-height:1.6}`,
+    `.${PAGE_CLASS}-scroll{flex:1;min-height:0;overflow:auto;scrollbar-gutter:stable;--dsh-scrollbar-width:9px;--dsh-scrollbar-thumb-border:2px}`,
+    `.${PAGE_CLASS}-content{max-width:960px;margin:0 auto;padding:0 clamp(24px,4vw,48px) 48px}`,
+    `.${PAGE_CLASS}-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding-top:28px;margin-bottom:12px}`,
+    // macOS hiddenInset 标题栏：官方一级页面的 head 在自身 28px 之上再抬 frame 顶部净空，两页合计 76px。
+    `[data-platform='darwin'] .${PAGE_CLASS}-heading{padding-top:calc(28px + var(--dsh-frame-top-clearance,0px))}`,
+    `.${PAGE_CLASS}-title{flex:0 1 auto;min-width:0;max-width:100%;margin:0;font-size:20px;line-height:28px;font-weight:500}`,
+    `.${PAGE_CLASS}-subline{margin:0 0 20px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}`,
+  ].join('')
+}
+
+/** 安装页面框架 stylesheet（日志 dialog 的规则仍由 {@link installLogDialogStyles} 负责）。 */
+export function installPageStyles(): () => void {
+  const element = document.createElement('style')
+  element.dataset['dshServicesPage'] = ''
+  element.textContent = pageRule()
+  document.head.append(element)
+  return () => {
+    element.remove()
+  }
+}
 
 /** 安装日志 dialog stylesheet；每个 panel 实例只安装一份。 */
 export function installLogDialogStyles(): () => void {
@@ -38,20 +71,10 @@ export function publishWidth(width: number): void {
   )
 }
 
-export {
-  chevronStyle,
-  headerStyle,
-  leadStyle,
-  rootStyle,
-  summaryStyle,
-  summaryTextStyle,
-  titleStyle,
-} from '@dsh-kit/plugin-ui'
-
 export const listStyle: CSSProperties = {
   listStyle: 'none',
   margin: 0,
-  padding: '0 12px 8px',
+  padding: '0 0 8px',
   display: 'flex',
   flexDirection: 'column',
   gap: '8px',

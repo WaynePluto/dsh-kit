@@ -149,11 +149,20 @@ describe('dispatch — channel contract', () => {
     if (!result.ok) expect(result.error.code).toBe(UNKNOWN_ENDPOINT_CODE)
   })
 
-  it('rejects a payload with no session id', async () => {
+  it('rejects a payload whose session id is not a non-empty string', async () => {
+    const home = project()
+    for (const sessionId of [5, '', null]) {
+      const result = await dispatch(fakeCtx().ctx, 'list', { sessionId }, ON, home)
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.error.code).toBe(BAD_PAYLOAD_CODE)
+    }
+  })
+
+  it('answers list without a session id — the global page has no session binding', async () => {
     const home = project()
     const result = await dispatch(fakeCtx().ctx, 'list', {}, ON, home)
-    expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.error.code).toBe(BAD_PAYLOAD_CODE)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect((result.value as ServicesSnapshot).cwd).toBeNull()
   })
 
   it('rejects a named endpoint with no service name', async () => {

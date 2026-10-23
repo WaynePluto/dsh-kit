@@ -70,6 +70,20 @@ describe('refresh', () => {
     expect(refresh(home, { identify: verdicts({ web: 'ours' }) })).toHaveLength(1)
     expect(readRegistry(home).services).toHaveLength(1)
   })
+
+  it('identifies each record exactly once — every extra ask is a child-process probe', () => {
+    const home = project()
+    const a = project()
+    writeRegistry(home, {
+      version: 2,
+      services: [record(a, { name: 'web' }), record(a, { name: 'api' })],
+      roots: [a],
+    })
+    let calls = 0
+    refresh(home, { identify: row => { calls += 1; return verdicts({ web: 'ours', api: 'ours' })(row) } })
+    // 曾经的实现在这里判两遍（reconcile 一遍 + 结果 map 一遍）；这是性能回归的守卫。
+    expect(calls).toBe(2)
+  })
 })
 
 describe('snapshot — cross-workspace visibility', () => {
@@ -257,6 +271,35 @@ describe('logsOf', () => {
     homeLog(home, 'api', Array.from({ length: 2000 }, (_, i) => `l${String(i)}`).join('\n'))
     const result = logsOf(home, null, 'api', 10_000, { identify: verdicts({}) })
     expect(result.tail.split('\n')).toHaveLength(500)
+  })
+
+  it('reads a running service log without reconciling the registry', () => {
+    const home = project()
+    const a = project()
+    // pid 已死：读日志只做 signal 0 存活检查，不做全量对账——
+    // 失效记录原样留在注册表里（由下一次 snapshot 清理），running 如实报告 false。
+    writeRegistry(home, {
+      version: 2,
+      services: [record(a, { name: 'web', pid: 4_242_424, logFile: join(home, 'dsh-kit', 'logs', 'web.log') })],
+      roots: [a],
+    })
+    homeLog(home, 'web', 'last line')
+    const result = logsOf(home, null, 'web')
+    expect(result.running).toBe(false)
+    expect(result.tail).toBe('last line')
+    expect(readRegistry(home).services.map(row => row.name)).toEqual(['web'])
+  })
+
+  it('reports running for a recorded service whose pid is still alive', () => {
+    const home = project()
+    const a = project()
+    writeRegistry(home, {
+      version: 2,
+      services: [record(a, { name: 'web', pid: process.pid, logFile: join(home, 'dsh-kit', 'logs', 'web.log') })],
+      roots: [a],
+    })
+    homeLog(home, 'web', 'alive line')
+    expect(logsOf(home, null, 'web').running).toBe(true)
   })
 })
 

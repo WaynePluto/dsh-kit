@@ -34,7 +34,7 @@
 | [工具状态](plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
 | [技能状态](plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
 | [文件浏览](plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览与目录右键菜单 |
-| [常驻服务](plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务 |
+| [常驻服务](plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
 | [固定 YOLO](plugins/yolo-mode/README.md) | 插件 → 固定 YOLO 行开关 | 默认停用；打开并重启后固定全权限并自动允许权限请求，用户提问仍需回答 |
 | [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |

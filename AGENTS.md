@@ -102,7 +102,7 @@ CI 固定 10.17.0。TypeScript + ESM + pnpm workspace，构建 tsdown，开发 t
 0.5px border-l1、12px 圆角、13px 标题、原生 outline 图标、整行 button 与 aria-expanded、共享宽度轴。
 表头嵌套 flex，图标必要时 translateY(0.115em)，摘要省略号在内层 span。
 箭头收起用 IconChevronUpOutlineMedium，展开用 IconChevronDownOutlineMedium（dsh 0.1.7 起数字后缀改为 Medium/Regular），不用文本箭头。
-services 与 terminal 共用 IconApiOutlineMedium。
+terminal dock 用 IconApiOutlineMedium；services 侧边栏「服务」行用 IconApiOutlineRegular（官方面板行的 16/18px 字形族，order 20 排在插件、自动化任务之后）。
 
 深浅主题都验收；border-l1 的 l 是字母，浅色 bg-layer-1/2/3 都为白，font-mono 要完整 fallback 栈。
 

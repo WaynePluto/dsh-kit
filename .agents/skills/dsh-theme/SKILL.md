@@ -393,10 +393,32 @@ dsh 0.2.0 首启开发 home 的欢迎说明/API Key 向导会挡住面板交互�
 `ui-settings-general`（welcomeNoticeVersion）、`ui-settings-account`（step: done）与
 `ui-settings-models`（credentialOnboarding: false）三行（实例见 dev-suite 的 profile）。
 
-services 面板只在活跃会话渲染（`conversation.input.dock` scope=session，欢迎页 hero 不出），
-面板又只在 `services.length > 0` 时出现；用 `service_start` 起测试服务、把 registry 放到会话
-workspace 目录即可让 Host 认领。**页面 `visibilityState=hidden` 时面板按契约停止轮询**，
-真实页面验收前先激活标签页。
+services 面板（2026-10-23 起）是侧边栏「服务」全局面板：root 域常驻、不随会话切换，
+点侧边栏行即达，无服务时显示空态而不是消失。用 `service_start` 起测试服务即可让页面出现；
+**页面 `visibilityState=hidden` 时按契约停止轮询**，真实页面验收前先激活标签页。
+
+### 全局面板（侧边栏行 + main keyed 页面，0.2.1-rc.2 核实）
+
+给插件加一个与「插件」「自动化任务」并列的一级入口走官方双注册，不需要 DOM 注入：
+
+- `sidebar.panellist`（root 域 list 槽）注册行：`{ id, order, label: () => t(key) }` + 图标组件。
+  ui-sidebar 拥有按钮/标签/选中态，行按 order 升序（插件 0、自动化任务 10）；label 是 thunk，
+  语言切换时 sidebar 重算。图标组件收到 `{ size, active }`，展开 16px / rail 18px——官方行都用
+  `*OutlineRegular` 字形族（如 `IconApiOutlineRegular`），`*Medium`（1.3px 描边）是 14px dock 字形族。
+- `main`（root 域 keyed 槽）注册页面：`key` = 面板 id，必须与行的 `id` 同串；先注册页面再注册行
+  （`layout.selectPanel` 对未注册 key 抛错）。第三方 id 带包名前缀避免撞官方 key（plugins/schedules）。
+  页面 props 组合 `PropsRuntime<'main'> & InjectFace<T> & PropsLocale<ns>`；store 可选。
+- **选中面板时会话列卸载**（AppFrame `renderSlot('main', {}, { entryKey })` 是 keyed 换页），
+  但 mainView 保留由工作区导航层持有，`ctx.uiSession.adapter.current` 仍解析到当前会话——
+  页面要「当前工作区优先」类锚点时每次轮询/操作前现取，不要在 inject 工厂里缓存。
+- 一级页面版式（`ui-schedule/src/client/TaskManagerPage.module.css`）：根节点 100% 填满主列 +
+  `bg-base`；滚动区 `scrollbar-gutter:stable; --dsh-scrollbar-width:9px; --dsh-scrollbar-thumb-border:2px`；
+  内容列 `max-width:960px; margin:0 auto; padding:0 clamp(24px,4vw,48px) 48px`；标题行
+  `padding-top:28px`（darwin 加 `--dsh-frame-top-clearance`）、h1 `20px/28px/500`、右侧动作钮
+  `Button size="sm"`。页面不能像 dock 卡那样「无数据即 return null」——给空态文案。
+- 组件停用后行随槽注销消失；该面板正被选中时 layout store 自动把 activePanelId 回落 null。
+- 实例：`plugins/services/src/client/{index.tsx,ServicesPage.tsx,ServicesPanelIcon.tsx}`；
+  契约细节在仓库根 `docs/dsh/plugins.md` 的「全局面板」一节。
 
 ## 验证闭环
 

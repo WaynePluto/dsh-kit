@@ -10,15 +10,15 @@ import { baseNameOf, midEllipsis } from '../shared.js'
 import type { ServiceView } from '../shared.js'
 import type { ServicesKey } from './locales.js'
 import { factsStyle, nameSizerStyle, nameStyle, nameTextStyle, rowActionsStyle, rowStyle, warnStyle } from './styles.js'
-import type { Busy, ServicesDockInjected } from './types.js'
+import type { Busy, ServicesActions } from './types.js'
 
 /** 单行渲染所需的输入。 */
 export interface ServiceRowProps {
   service: ServiceView
-  /** 发起面板的会话项目目录；非本工作区的服务带来源徽标。 */
+  /** 排序锚点会话的项目目录；非本工作区的服务带来源徽标。 */
   sessionCwd: string | null
   busy: Busy
-  actions?: Partial<ServicesDockInjected> | undefined
+  actions?: Partial<ServicesActions> | undefined
   translate: (key: ServicesKey) => string
   elapsed: (service: ServiceView) => string
   onShowLog: (name: string) => void

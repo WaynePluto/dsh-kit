@@ -31,7 +31,7 @@
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
 | [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移、目录右键菜单与文件右键「查看 Git 变更」面板 |
-| [常驻服务](../plugins/services/README.md) | 模型工具；输入框上方 | 管理有名字、可跨会话存活的服务；注册表在 DSH_HOME，跨工作区可见可停 |
+| [常驻服务](../plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务；注册表在 DSH_HOME，跨工作区可见可停 |
 | [交互终端](../plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
 
 ## 运行环境
