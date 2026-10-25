@@ -34,18 +34,18 @@ export const inject = ['slots', 'locale', 'connection', 'remote', 'configForms']
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export class ProxyChannelError extends Error {}
 
+/** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
+const test = async (url: string): Promise<ProxyTestResult> => {
+  const result = await callKitChannel(CHANNEL, 'test', { url })
+  if (!result.ok) throw new ProxyChannelError(result.error.message)
+  return result.value as ProxyTestResult
+}
+
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'proxy: copy dictionaries')
   const t = ctx.locale.bind(NS)
   const form = ctx.configForms.get<ProxySettings>(ENTRY_ID)
-
-  /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
-  const test = async (url: string): Promise<ProxyTestResult> => {
-    const result = await callKitChannel(CHANNEL, 'test', { url })
-    if (!result.ok) throw new ProxyChannelError(result.error.message)
-    return result.value as ProxyTestResult
-  }
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',

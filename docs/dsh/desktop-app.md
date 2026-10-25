@@ -60,7 +60,8 @@
   `AttachThreadInput` 等规避技巧；该缺陷影响所有 Windows 热启动唤起场景，
   修复需官方调整（dsh-kit 不改 dsh 源码）。
   本节复核于 `dsh-v0.2.1-rc.2`（git `687f282e86`，行号 1219/1235/1236/1343），
-  与 0.2.0-rc.2 相比聚焦链路逐字未变，main.ts 差异都在 settings/update 相关文件。
+  与 0.2.0-rc.2 相比聚焦链路逐字未变，main.ts 差异都在 settings/update 相关文件；
+  0.2.1-rc.3（git `1f81c047fc`）该链路同样零变更，行号继续有效。
 
 ## 对插件开发的结论
 

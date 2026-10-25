@@ -32,19 +32,19 @@ export const inject = ['slots', 'locale', 'connection']
 /** 宿主返回错误时本插件报告的故障。 */
 export class CopilotChannelError extends Error {}
 
+/** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
+const call = async (endpoint: string): Promise<CopilotStatusView> => {
+  // 提供该服务但不在 Context 上声明（dsh 自己的
+  // API Gateway client 也这样做），上面的 `inject`
+  // 保证该服务存在。
+  const result = await callKitChannel(CHANNEL, endpoint, {})
+  if (!result.ok) throw new CopilotChannelError(result.error.message)
+  return result.value as CopilotStatusView
+}
+
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'copilot-auth: copy dictionaries')
-
-  /** 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。 */
-  const call = async (endpoint: string): Promise<CopilotStatusView> => {
-    // 提供该服务但不在 Context 上声明（dsh 自己的
-    // API Gateway client 也这样做），上面的 `inject`
-    // 保证该服务存在。
-    const result = await callKitChannel(CHANNEL, endpoint, {})
-    if (!result.ok) throw new CopilotChannelError(result.error.message)
-    return result.value as CopilotStatusView
-  }
 
   ctx.slots.inject('settings.models.provider-card', () => ctx.slots.register({
     name: 'settings.models.provider-card',

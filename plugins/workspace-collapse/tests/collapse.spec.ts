@@ -18,7 +18,11 @@ async function flush(): Promise<void> {
 
 /** 等多轮宏任务：覆盖展开动作的若干轮「点击 → 落 DOM → 再探」周期。 */
 async function settle(rounds = 8): Promise<void> {
-  for (let index = 0; index < rounds; index += 1) await flush()
+  // 顺序等待是刻意的：每轮宏任务要让出事件循环后 DOM 才落定，不能并发。
+  for (let index = 0; index < rounds; index += 1) {
+    // eslint-disable-next-line no-await-in-loop -- 逐轮让出事件循环
+    await flush()
+  }
 }
 
 /** 造一个工作区分组行；点击行为记录到传入的日志。 */

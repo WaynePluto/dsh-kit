@@ -1,7 +1,8 @@
 # 02 · dsh 源码依据
 
-当前插件适配基线：`@deepseek-ai/dsh@0.2.1-rc.2`（git `687f282e86`），套件静态验证在该版本
-通过（2026-10-20；官方桌面实机验证与本版本检查表待跑）。本项目不内置 dsh 运行时；
+当前插件适配基线：`@deepseek-ai/dsh@0.2.1-rc.3`（git `1f81c047fc`），套件静态验证与开发栈
+冒烟（装载层启停、模型三查、turn-retry、workspace-collapse、官方开关）在该版本通过
+（2026-10-25；官方桌面实机验证与本版本完整检查表待跑）。本项目不内置 dsh 运行时；
 基线 = 类型与开发栈钉住的 `@deepseek-ai` 版本 + 实机验证过的官方宿主版本，机器侧三处
 （根 `pnpm.overrides`、`scripts/dev-suite.mjs` 的 `DSH_VERSION`、各插件 devDependencies）
 随基线同步。跟进新版本按 `.agents/skills/dsh-upgrade/SKILL.md` 执行，完成后回写本段。

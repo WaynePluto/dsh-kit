@@ -204,10 +204,10 @@ function inspectClientBundle() {
 async function verifySkillPath() {
   const paths = [join(ROOT, 'packages', 'launcher')]
   const { default: SkillRegistry } = await import(
-    pathToFileURL(require_(paths, '@deepseek-ai/dsh-skill')).href)
+    pathToFileURL(resolvePackageEntry(paths, '@deepseek-ai/dsh-skill')).href)
   const filesystem = await import(
-    pathToFileURL(require_(paths, '@deepseek-ai/dsh-skill-filesystem')).href)
-  const { Context } = await import(pathToFileURL(require_(paths, '@deepseek-ai/cordis')).href)
+    pathToFileURL(resolvePackageEntry(paths, '@deepseek-ai/dsh-skill-filesystem')).href)
+  const { Context } = await import(pathToFileURL(resolvePackageEntry(paths, '@deepseek-ai/cordis')).href)
 
   const ctx = new Context()
   ctx.plugin(SkillRegistry, {})
@@ -225,12 +225,12 @@ async function verifySkillPath() {
 }
 
 /**
- * 从指定目录解析一个包的入口。
+ * 以仓库根为解析锚点，从指定目录解析一个包的入口。
  * @param {string[]} paths 解析基准目录。
  * @param {string} id 包名。
  * @returns {string} 入口绝对路径。
  */
-function require_(paths, id) {
+function resolvePackageEntry(paths, id) {
   return createRequire(join(ROOT, 'package.json')).resolve(id, { paths })
 }
 

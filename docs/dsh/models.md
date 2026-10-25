@@ -36,6 +36,13 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
 - schemastery 会物化空 models:[]，是否显式配置要判断数组且长度大于 0。
 - listConfigurableProviders 包含未配置供应商，已配置路由应从 settings.providers 取。
 - listModels/resolveModelInfo 返回生效后的目录，不能当纯净内置快照。
+- **官方 DeepSeek 路由跟随 `GET /models`（0.2.1-rc.3 起，API 密钥路由）**：llm-deepseek-api-key
+  仅在 origin 为 `https://api.deepseek.com` 且 `models` 等于内置目录时跟随官方列表（`x-api-key`
+  鉴权）；自定义 `models` 整份优先并停止列表请求；缓存按端点与 key 指纹存内存，过期后台刷新，
+  loader/volatile-update 监听使缓存失效。账号路由同机制（2026-09-24 起）。共享实现在
+  llm-deepseek 传输包（`src/listing*.ts`，新增 `isBuiltInCatalog` 等导出），`DEFAULT_MODELS`
+  的 contextWindow 已对齐官方列表 1_048_576。对插件的影响：给官方路由写自定义目录会停掉
+  原生跟随（见 models-catalog README）。
 
 pi-ai 的 providers/data/<provider>.json 按 api → modelId 分组，含 input、reasoning、cost、
 contextWindow、maxTokens、thinkingLevelMap 等；.manifest.json 记录生成时间。

@@ -51,22 +51,25 @@ export async function ensureDevelopmentRuntime({
   // 原 launcher package.json 的依赖清单（launcher 退役后内联于此）：
   // dsh 运行时家族 + 常用工具，外加以 file: 链接的 plugin-ui（浏览器插件内联源）。
   const runtimeDependencies = injectedRuntimeDependencies ?? {
-    '@deepseek-ai/dsh': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-home-paths': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-llm': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-plugin-manager': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-sandbox-policy': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-terminal': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-terminal-bash': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-tool-terminal': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-tools': '0.2.1-rc.2',
-    '@deepseek-ai/dsh-user-approval': '0.2.1-rc.2',
+    '@deepseek-ai/dsh': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-home-paths': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-llm': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-plugin-manager': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-sandbox-policy': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-terminal': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-terminal-bash': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-tool-terminal': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-tools': '0.2.1-rc.3',
+    '@deepseek-ai/dsh-user-approval': '0.2.1-rc.3',
     '@deepseek-ai/schemastery': '3.18.5',
     '@dsh-kit/plugin-ui': `file:${join(root, 'packages', 'plugin-ui')}`,
     '@earendil-works/pi-ai': '1.1.0',
     commander: '15.0.0',
     immer: '10.2.0',
-    pnpm: '10.17.0',
+    // 运行时自带的 pnpm 供 dsh plugin add 在 profile 内安装使用（dev-suite 会把
+    // runtime/node_modules/.bin 前置到 PATH）。不随仓库 CI 钉 10.17.0：该版本在
+    // Windows 把 link:<盘符绝对路径> 当相对路径生成坏符号链接，12.x 已修复。
+    pnpm: '12.11.2',
     undici: '8.11.2',
     yaml: '2.9.1',
     zod: '4.4.3',
@@ -85,7 +88,12 @@ export async function ensureDevelopmentRuntime({
   const runtime = join(dirname(root), `.${basename(root)}-runtime`, fingerprint)
   const dshBin = join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   const installAnchor = join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
-  const pnpmCli = join(runtime, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
+  // pnpm ≥11 的包内入口是 bin/pnpm.mjs（原生二进制布局，需配合 dev-suite.mjs 的
+  // shim 使用）；10.x 仍是 bin/pnpm.cjs。探测存在的那个。
+  const pnpmBin = join(runtime, 'node_modules', 'pnpm', 'bin')
+  const pnpmCli = existsSync(join(pnpmBin, 'pnpm.mjs'))
+    ? join(pnpmBin, 'pnpm.mjs')
+    : join(pnpmBin, 'pnpm.cjs')
   if (!existsSync(dshBin) || !existsSync(installAnchor) || !existsSync(pnpmCli)) {
     const temporary = `${runtime}.${process.pid}.tmp`
     rmSync(temporary, { recursive: true, force: true })

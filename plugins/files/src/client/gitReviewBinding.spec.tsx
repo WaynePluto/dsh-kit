@@ -29,9 +29,11 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 
 import { GitReviewData, type GitReviewSource, type GitSummaryState } from './gitReviewTab.js'
 
+const noop = (): void => {}
+
 describe('hooks observable × useSyncExternalStoreWithSelector', () => {
   it('状态发布驱动重渲染：loading → summary', async () => {
-    let release: () => void = () => {}
+    let release: () => void = noop
     const gate = new Promise<void>(resolve => { release = resolve })
     let gated = true
     const data = new GitReviewData(async <T,>(endpoint: 'review' | 'diff'): Promise<T> => {

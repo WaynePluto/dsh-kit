@@ -34,25 +34,25 @@ export const inject = ['slots', 'locale', 'connection']
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export class AgentsMdChannelError extends Error {}
 
+/** 传输契约：经官方 /api 共享桥 POST `/api/agents-md`（kit 信封，D16）。 */
+const call = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
+  const result = await callKitChannel(CHANNEL, endpoint, payload)
+  if (!result.ok) throw new AgentsMdChannelError(result.error.message)
+  return result.value as T
+}
+
+/** 实现说明：此处记录相关接口、边界和生命周期约束。 */
+const load = async (): Promise<AgentsMdDocument> =>
+  await call<AgentsMdDocument>(LOAD_ENDPOINT, {})
+
+/** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
+const save = async (content: string): Promise<AgentsMdDocument> =>
+  (await call<AgentsMdSaveResult>(SAVE_ENDPOINT, { content })).document
+
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'agents-md: copy dictionaries')
   const t = ctx.locale.bind(NS)
-
-  /** 传输契约：经官方 /api 共享桥 POST `/api/agents-md`（kit 信封，D16）。 */
-  const call = async <T,>(endpoint: string, payload: unknown): Promise<T> => {
-    const result = await callKitChannel(CHANNEL, endpoint, payload)
-    if (!result.ok) throw new AgentsMdChannelError(result.error.message)
-    return result.value as T
-  }
-
-  /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
-  const load = async (): Promise<AgentsMdDocument> =>
-    await call<AgentsMdDocument>(LOAD_ENDPOINT, {})
-
-  /** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
-  const save = async (content: string): Promise<AgentsMdDocument> =>
-    (await call<AgentsMdSaveResult>(SAVE_ENDPOINT, { content })).document
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',

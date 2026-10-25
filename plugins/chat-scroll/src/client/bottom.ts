@@ -28,6 +28,10 @@ export function installBottomNavigation({ mount, reducedMotion }: BottomNavigati
 
   const onReaderInput = (): void => { cancel() }
 
+  // 三个事件共用同一转发函数：注册与移除按 (type, callback, capture) 匹配，
+  // 同一引用跨事件类型复用安全，且不再在每次 start 内重建。
+  const forwardReaderInput = (): void => { onReaderInput() }
+
   const start = (original: HTMLButtonElement): void => {
     cancel()
     const initialTarget = handoffTarget(scrollport)
@@ -50,16 +54,13 @@ export function installBottomNavigation({ mount, reducedMotion }: BottomNavigati
         replayNativeBottom(original, scrollport, () => { replaying = true }, () => { replaying = false })
       }
     }
-    const onPointerDown = (): void => { onReaderInput() }
-    const onWheel = (): void => { onReaderInput() }
-    const onKeyDown = (): void => { onReaderInput() }
-    scrollport.addEventListener('pointerdown', onPointerDown, { capture: true, passive: true })
-    scrollport.addEventListener('wheel', onWheel, { capture: true, passive: true })
-    scrollport.addEventListener('keydown', onKeyDown, { capture: true })
+    scrollport.addEventListener('pointerdown', forwardReaderInput, { capture: true, passive: true })
+    scrollport.addEventListener('wheel', forwardReaderInput, { capture: true, passive: true })
+    scrollport.addEventListener('keydown', forwardReaderInput, { capture: true })
     removeInputListeners = () => {
-      scrollport.removeEventListener('pointerdown', onPointerDown, true)
-      scrollport.removeEventListener('wheel', onWheel, true)
-      scrollport.removeEventListener('keydown', onKeyDown, true)
+      scrollport.removeEventListener('pointerdown', forwardReaderInput, true)
+      scrollport.removeEventListener('wheel', forwardReaderInput, true)
+      scrollport.removeEventListener('keydown', forwardReaderInput, true)
     }
     animationStop = startScrollAnimation({
       scrollport,

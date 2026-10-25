@@ -2,6 +2,30 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { apply, assertServiceable, Config } from '../src/index.js'
 
+/** 记录事件监听器与 fiber 的伪 ctx；dsh 0.1.7 起宿主半经 internal/config 钩子校验候选写入。 */
+function mount() {
+  const listeners = new Map<string, Array<(first: unknown, next: () => unknown) => unknown>>()
+  const fiber = {}
+  const ctx = {
+    on: vi.fn((event: string, listener: (first: unknown, next: () => unknown) => unknown) => {
+      const list = listeners.get(event) ?? []
+      list.push(listener)
+      listeners.set(event, list)
+      return () => {}
+    }),
+    fiber,
+  } as unknown as Context
+  return { ctx, fiber }
+}
+
+/** 取出 apply 注册的 internal/config 钩子。 */
+function configHook(ctx: Context): (this: unknown, first: unknown, next: () => unknown) => unknown {
+  const hook = (ctx as unknown as { on: ReturnType<typeof vi.fn> }).on.mock.calls
+    .find(call => call[0] === 'internal/config')?.[1] as (this: unknown, first: unknown, next: () => unknown) => unknown
+  expect(hook).toBeDefined()
+  return hook
+}
+
 describe('favorite-models Host half', () => {
   it('accepts empty settings and valid provider/model pairs', () => {
     expect(() => assertServiceable({ favorites: [] })).not.toThrow()
@@ -25,30 +49,6 @@ describe('favorite-models Host half', () => {
   })
 
   describe('mounting', () => {
-    /** 记录事件监听器与 fiber 的伪 ctx；dsh 0.1.7 起宿主半经 internal/config 钩子校验候选写入。 */
-    function mount() {
-      const listeners = new Map<string, Array<(first: unknown, next: () => unknown) => unknown>>()
-      const fiber = {}
-      const ctx = {
-        on: vi.fn((event: string, listener: (first: unknown, next: () => unknown) => unknown) => {
-          const list = listeners.get(event) ?? []
-          list.push(listener)
-          listeners.set(event, list)
-          return () => {}
-        }),
-        fiber,
-      } as unknown as Context
-      return { ctx, fiber }
-    }
-
-    /** 取出 apply 注册的 internal/config 钩子。 */
-    function configHook(ctx: Context): (this: unknown, first: unknown, next: () => unknown) => unknown {
-      const hook = (ctx as unknown as { on: ReturnType<typeof vi.fn> }).on.mock.calls
-        .find(call => call[0] === 'internal/config')?.[1] as (this: unknown, first: unknown, next: () => unknown) => unknown
-      expect(hook).toBeDefined()
-      return hook
-    }
-
     it('accepts a prospective write of valid pairs and returns the candidate unchanged', () => {
       const mounted = mount()
       apply(mounted.ctx)

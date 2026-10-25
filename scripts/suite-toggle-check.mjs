@@ -189,11 +189,13 @@ async function waitFor(context, cookie, predicate, timeoutMs) {
   let last
   while (Date.now() < deadline) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- 轮询：每轮依赖上一轮结果与间隔
       last = await callEntries(context, cookie)
       if (predicate(last)) return last
     } catch {
       // 重组合进行中，继续轮询
     }
+    // eslint-disable-next-line no-await-in-loop -- 轮询间隔本身
     await new Promise(resolve => setTimeout(resolve, 500))
   }
   if (last === undefined) throw new Error('等待重组合超时：entries RPC 一直不可用')

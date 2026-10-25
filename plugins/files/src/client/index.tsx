@@ -32,17 +32,19 @@ class FilesChannelError extends Error {
 
 export const inject = ['slots', 'locale', 'connection', 'sidebarRight', 'sidebarRightTabs']
 
+const call = async <T,>(endpoint: FilesEndpoint, payload: object): Promise<T> => {
+  const result = await callKitChannel('/files', endpoint, payload)
+  if (!result.ok) throw new FilesChannelError(result.error.message)
+  return result.value as T
+}
+
+const loadGit = async (sessionId: SessionId, _signal: AbortSignal): Promise<FilesSnapshot> =>
+  await call<FilesSnapshot>('snapshot', { sessionId: String(sessionId) })
+
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'files: copy dictionaries')
   ctx.effect(installStyles, 'files: view styles')
   const t = ctx.locale.bind(NS)
-  const call = async <T,>(endpoint: FilesEndpoint, payload: object): Promise<T> => {
-    const result = await callKitChannel('/files', endpoint, payload)
-    if (!result.ok) throw new FilesChannelError(result.error.message)
-    return result.value as T
-  }
-  const loadGit = async (sessionId: SessionId, _signal: AbortSignal): Promise<FilesSnapshot> =>
-    await call<FilesSnapshot>('snapshot', { sessionId: String(sessionId) })
   const previewTabs = new PreviewTabs()
   const imageStates = new ImageZoomStore()
   // Git review 面板：私有通道的 review/diff 端点 + 右键菜单到页签的导航。

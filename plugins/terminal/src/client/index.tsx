@@ -67,24 +67,24 @@ export function TerminalDock({ sessionId, onList, onRead, onSend, onInterrupt, t
 /** 所需 service：`connection` 承载 channel，`slots` 是 seat，`locale` 提供 panel 文案。 */
 export const inject = ['slots', 'locale', 'connection']
 
-/** 注册 panel。
- * @param ctx - client root context。
- */
-export function apply(ctx: Context): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'terminal: copy dictionaries')
-
-  /**
+/**
  * 调用本插件 kit 通道的一个 endpoint；经官方 /api 共享桥 POST `/api/terminal`（kit 信封，D16）。
  * @param endpoint - channel-relative endpoint。
  * @param payload - endpoint payload。
  * @returns 解码后的值。
  * @throws 没有 connection 或 Host 失败时抛出 TerminalChannelError。
  */
-  const call = async (endpoint: string, payload: object): Promise<unknown> => {
-    const result = await callKitChannel(CHANNEL, endpoint, payload)
-    if (!result.ok) throw new TerminalChannelError(result.error.message)
-    return result.value
-  }
+const call = async (endpoint: string, payload: object): Promise<unknown> => {
+  const result = await callKitChannel(CHANNEL, endpoint, payload)
+  if (!result.ok) throw new TerminalChannelError(result.error.message)
+  return result.value
+}
+
+/** 注册 panel。
+ * @param ctx - client root context。
+ */
+export function apply(ctx: Context): void {
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'terminal: copy dictionaries')
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',

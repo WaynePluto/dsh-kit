@@ -6,7 +6,7 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ensureDevelopmentRuntime } from './dev-runtime.mjs'
 
@@ -15,15 +15,30 @@ const DSH_HOME = join(homedir(), '.dsh-dev')
 const PROFILE = 'dsh-kit-dev'
 const DSH_PORT = 3180
 const SUITE_DIRECTORY = join(ROOT, 'plugins', 'suite')
-const DSH_VERSION = '0.2.1-rc.2'
+const DSH_VERSION = '0.2.1-rc.3'
 const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
 
 const runtime = await ensureDevelopmentRuntime()
-const dshEnv = { ...process.env, DSH_HOME }
+// dsh 调用的 pnpm 固定用运行时自带的版本（见 dev-runtime.mjs 的版本注释）：
+// `pnpm dev` 会给脚本 PATH 前置其自身的 node 安装目录，那里的 pnpm 10.17.0 在
+// Windows 把 link:<盘符绝对路径> 当相对路径生成坏符号链接，套件 junction 会指向
+// 不存在路径，add 的 reconcile 随即失败。pnpm ≥11 的包内 bin 改为原生二进制布局，
+// runtime 以 --ignore-scripts 安装后其自带 .bin shim 不可用，这里生成指向
+// pnpm.mjs 入口的稳定 shim 并前置到 PATH；dsh 在 profile 目录下调用（无
+// packageManager 祖先），不会触发 pnpm 的版本自切换。
+const shimDirectory = join(ROOT, '.dev', 'pnpm-shim')
+mkdirSync(shimDirectory, { recursive: true })
+writeFileSync(join(shimDirectory, 'pnpm.cmd'), `@"${process.execPath}" "${runtime.pnpmCli}" %*\r\n`)
+writeFileSync(join(shimDirectory, 'pnpm'), `#!/bin/sh\nexec '${process.execPath}' '${runtime.pnpmCli}' "$@"\n`)
+const dshEnv = {
+  ...process.env,
+  DSH_HOME,
+  PATH: `${shimDirectory}${process.env.PATH ? `${delimiter}${process.env.PATH}` : ''}`,
+}
 
 function runDshCli(args) {
   const result = spawnSync(process.execPath, [runtime.dshBin, 'plugin', `--profile=${PROFILE}`, ...args], {
-    cwd: ROOT, env: dshEnv, encoding: 'utf8',
+    cwd: DSH_HOME, env: dshEnv, encoding: 'utf8',
   })
   if (result.status !== 0) {
     throw new Error(`dsh plugin ${args.join(' ')} 失败：${result.stdout ?? ''}${result.stderr ?? ''}`)

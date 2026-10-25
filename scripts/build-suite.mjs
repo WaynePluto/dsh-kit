@@ -23,20 +23,18 @@ const COMBO_PACKAGES = new Set([
   'suite',
 ])
 // 代理必须先于模型组件生效（见 plugin-catalog 顺序约定）。
-const FIRST = ['proxy']
+const FIRST = new Set(['proxy'])
+const rank = name => (FIRST.has(name) ? 0 : 1)
 
 // 无自身 patch 的引用包：只物化进套件 node_modules、不迭代出顶层行。
-const DISPLAY_PACKAGE_DIRS = []
+const DISPLAY_PACKAGE_DIRS = new Set()
 
 function componentDirectories() {
   return readdirSync(PLUGINS, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .map(entry => entry.name)
-    .filter(name => !COMBO_PACKAGES.has(name) && !DISPLAY_PACKAGE_DIRS.includes(name))
-    .sort((a, b) => {
-      const rank = name => (FIRST.includes(name) ? 0 : 1)
-      return rank(a) - rank(b) || a.localeCompare(b)
-    })
+    .filter(name => !COMBO_PACKAGES.has(name) && !DISPLAY_PACKAGE_DIRS.has(name))
+    .toSorted((a, b) => rank(a) - rank(b) || a.localeCompare(b))
 }
 
 /** 拆出组件 patch 的顶层条目块；丢弃文件头注释，块内注释保留。 */
@@ -274,17 +272,17 @@ function verifySuiteDependencies(componentDirs) {
 verifySuiteDependencies(componentDirectories())
 
 /** 按组件包 files 字段复制发布内容；workspace: 版本引用还原为裸版本。 */
-function copySelfContainedPackage(source, target) {
+function copySelfContainedPackage(source, destination) {
   const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
   const dependencies = Object.fromEntries(Object.entries(manifest.dependencies ?? {}).map(([name, version]) => [
     name,
     typeof version === 'string' && version.startsWith('workspace:') ? version.slice('workspace:'.length) : version,
   ]))
   const normalized = { ...manifest, ...Object.keys(dependencies).length === 0 ? {} : { dependencies } }
-  mkdirSync(target, { recursive: true })
-  writeFileSync(join(target, 'package.json'), `${JSON.stringify(normalized, undefined, 2)}\n`)
+  mkdirSync(destination, { recursive: true })
+  writeFileSync(join(destination, 'package.json'), `${JSON.stringify(normalized, undefined, 2)}\n`)
   for (const entry of [...manifest.files ?? [], 'README.md']) {
-    if (existsSync(join(source, entry))) cpSync(join(source, entry), join(target, entry), { recursive: true })
+    if (existsSync(join(source, entry))) cpSync(join(source, entry), join(destination, entry), { recursive: true })
   }
   return normalized
 }

@@ -202,8 +202,9 @@ config-editor 行从 profile 的 hoisted node_modules 解析出第二份 app-boo
 官方桌面不受影响：运行时树整体打进 app.asar 单实例解析。`packages/boot/plugin-manager` 的
 `reload()` 有 `hmr === undefined → return []` 守卫，config-editor 没有——这是上游两处不对称。
 探针实测：真实 dsh 进程内 `reconcileProfilePatches(ctx.root)` 在 boot 实例上 WeakMap 命中、
-在 profile 解析实例上 miss。CLI 冒烟（scripts/notify-check.mjs 的「开关能被写入」项）因此被阻塞，
-升级 dsh 时复核该缺陷是否修复；官方桌面里的设置页不受此影响。
+在 profile 解析实例上 miss。CLI 冒烟（scripts/notify-check.mjs 的「开关能被写入」项）按精确
+签名豁免该缺陷（桌面宿主正常），其余写入失败仍响亮报错。0.2.1-rc.2 与 0.2.1-rc.3 复核均未
+修复；官方桌面 rc.3 实测设置持久化正常（profile patch 2026-10-25 有写入），升级 dsh 时复核。
 
 ## 槽位与导航
 
@@ -264,6 +265,13 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
   `--dsh-scrollbar-width:9px; --dsh-scrollbar-thumb-border:2px`。
 - 组件停用后面板行随槽注销消失；正被选中时 layout store 把 activePanelId 回落 null
   （`stores.ts` 的 selectPanel 清理），不留孤儿视图。
+- 入口自定义（0.2.1-rc.3 起）：用户可原生收起侧栏面板行、会话头部 View 标签与右侧栏起始页
+  卡片，收起 id 持久在 localStorage `dsh.slot.manual-order.<list slot key>.v1`；三个新 root 域
+  list 槽 `sidebar.panellist.actions`、`conversation.session.header.views.actions`、
+  `sidebar.right.tab.guide.actions` 渲染各区域「更多」菜单行（owner props 为
+  entries/onOpen/onPinnedChange/onDismiss），官方 `ui-entry-customization` 包注册默认菜单内容。
+  套件的面板行与 View 标签可被用户收起，属预期行为不是装载故障；「更多」按钮只在对应
+  actions 槽有注册项时出现。
 - 实例：`plugins/services/src/client/{index.tsx,ServicesPage.tsx,ServicesPanelIcon.tsx}`（order 20）。
 
 ### 右侧 Sidebar 页面类型

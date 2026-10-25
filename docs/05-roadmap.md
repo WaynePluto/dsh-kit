@@ -238,6 +238,27 @@
 
 ## 后续任务
 
+- [ ] 0.2.1-rc.3 适配遗留（2026-10-25）：① 官方桌面实机验证待跑（重启桌面 →
+  `node scripts/verify-suite-client.mjs --token <宿主打印的 token>` → 按 02-dsh-facts
+  检查表点检，含 rc.3 新「更多」菜单与入口收起场景、深浅主题）；
+  ② **已修复**：pnpm 10.17.0 在 Windows 把 `link:<盘符绝对路径>` 当相对路径生成坏符号
+  链接——dev 栈改为 dsh 固定使用运行时自带的 pnpm（dev-runtime 钉 12.11.2，dev-suite
+  生成 .dev/pnpm-shim 前置到 PATH；pnpm ≥11 包内是原生二进制布局，--ignore-scripts
+  安装后须走自建 shim）；`pnpm dev` 包装层前置的 node 目录里恰是 10.17.0，是其绕不开
+  的原因。官方桌面安装不受影响（GUI 环境无此 PATH 前置），仅 pnpm ≤10.17 的 Windows
+  用户经「添加插件」装本地路径套件时可能命中，待上游 pnpm/dsh 修复；
+  ③ **已修复**：suite-first-enable-check 的守卫断言改为「要么守卫延迟、要么完整装载」，
+  排除中间/失败态（组件包从套件自身 node_modules 解析时立即装载属合法结局）；
+  ④ CLI web 宿主 `settings/mutate` 持久化缺陷（dual app-boot 实例致 bootstrapIncludes
+  miss，0.2.0-rc.2 起已知，见 docs/dsh/plugins.md）：rc.2/rc.3 复核均未修复，桌面 rc.3
+  实测正常；notify-check 按精确签名豁免，上游修复后移除豁免并复核。
+- [ ] files-check 修复（2026-10-25，随 rc.3 适配发现并已修复）：宿主 mock 从 D16 前的
+  `connection.rpc.handle` 对齐为 `connection.fetch.register` 精确路由，未认证断言改打
+  同一 `/api/files` 路由（401 契约在 rc.3 完好）。
+- [ ] models-catalog 与官方 0.2.1-rc.3「DeepSeek 官方端点跟随 GET /models」部分重叠：
+  官方端点、未自定义 models 的用户不再需要本组件发现 DeepSeek 新模型；自定义目录后
+  停止跟随、非官方端点/其他路由仍是本组件独有价值（详见 README 三条硬规则）。保留
+  待用户决策是否精简文案或补 `isBuiltInCatalog` 对齐清理逻辑。
 - [ ] 插件性能整改实机验收：长会话流式输出期间主线程占用下降（chat-scroll/
   workspace-collapse/stats-hours/agent-md 四个常驻观察器组件）；models-catalog 打开
   模型设置页在大路由（openrouter）下的首屏不再数百 ms 卡顿；files 图片预览滚动/缩放

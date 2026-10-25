@@ -57,16 +57,16 @@ export function RetryDock({ useProjection, session, onRetry, t }: RetryDockProps
 /** 所需 service：connection、slots 和 locale。 */
 export const inject = ['slots', 'locale', 'connection']
 
+/** 调用 private retry endpoint。 */
+const retry = async (sessionId: string): Promise<RetryResult> => {
+  const result = await callKitChannel(CHANNEL, 'retry', { sessionId })
+  if (!result.ok) throw new RetryChannelError(result.error.message)
+  return result.value as RetryResult
+}
+
 /** 注册文案和 retry dock slot。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'turn-retry: copy dictionaries')
-
-  /** 调用 private retry endpoint。 */
-  const retry = async (sessionId: string): Promise<RetryResult> => {
-    const result = await callKitChannel(CHANNEL, 'retry', { sessionId })
-    if (!result.ok) throw new RetryChannelError(result.error.message)
-    return result.value as RetryResult
-  }
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',

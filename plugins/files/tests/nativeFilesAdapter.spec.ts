@@ -20,6 +20,19 @@ const snapshot = (overlays: Partial<FilesSnapshot['git']> = {}): FilesSnapshot =
   git: { available: true, truncated: false, entries: [{ path: 'a.md', status: 'modified' }], ...overlays },
 })
 
+/** 两行 Git 状态的快照工厂。 */
+const twoEntries = (): FilesSnapshot => ({
+  workspacePath: 'C:\\work',
+  git: {
+    available: true,
+    truncated: false,
+    entries: [
+      { path: 'a.md', status: 'modified' },
+      { path: 'b.md', status: 'added' },
+    ],
+  },
+})
+
 type SidebarFake = {
   mounted: { getSnapshot: () => string | undefined; subscribe: (fn: () => void) => () => void }
   openResource: ReturnType<typeof vi.fn>
@@ -109,17 +122,6 @@ describe('installNativeFilesEnhancement（DOM 级）', () => {
   })
 
   it('树内新增行经合并装饰；无关 body 变更不做发现扫描', async () => {
-    const twoEntries = (): FilesSnapshot => ({
-      workspacePath: 'C:\\work',
-      git: {
-        available: true,
-        truncated: false,
-        entries: [
-          { path: 'a.md', status: 'modified' },
-          { path: 'b.md', status: 'added' },
-        ],
-      },
-    })
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => twoEntries())
     dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
     await flush()

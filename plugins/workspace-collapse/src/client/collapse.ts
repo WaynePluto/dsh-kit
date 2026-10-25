@@ -164,6 +164,7 @@ export async function expandCollapsedRows(root: ParentNode): Promise<number> {
       ;(row as HTMLElement).click()
       count += 1
     }
+    // eslint-disable-next-line no-await-in-loop -- 逐轮让出事件循环，等本轮点击落 DOM 后再探
     await new Promise<void>(resolve => { setTimeout(resolve, 0) })
   }
   return count

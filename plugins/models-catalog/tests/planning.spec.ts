@@ -212,23 +212,23 @@ describe('adding models', () => {
   })
 })
 
-describe('handing models back to dsh', () => {
-  /** 模型目录契约：此处说明 provider、协议、目录覆盖和用户条目保留。 */
-  function managed(installedIds: readonly string[]): RouteFacts {
-    return facts({
-      hasModelsList: true,
-      managed: true,
-      ownedIds: ['new-1', 'new-2'],
-      configuredEntries: [
-        { id: 'old-1' },
-        { id: 'old-2' },
-        { id: 'new-1', name: 'guessed', contextWindow: 1000 },
-        { id: 'new-2', name: 'guessed', contextWindow: 1000 },
-      ],
-      installedIds,
-    })
-  }
+/** 模型目录契约：此处说明 provider、协议、目录覆盖和用户条目保留。 */
+function managed(installedIds: readonly string[]): RouteFacts {
+  return facts({
+    hasModelsList: true,
+    managed: true,
+    ownedIds: ['new-1', 'new-2'],
+    configuredEntries: [
+      { id: 'old-1' },
+      { id: 'old-2' },
+      { id: 'new-1', name: 'guessed', contextWindow: 1000 },
+      { id: 'new-2', name: 'guessed', contextWindow: 1000 },
+    ],
+    installedIds,
+  })
+}
 
+describe('handing models back to dsh', () => {
   it('strips our fields from a model dsh now ships, and stops owning it', () => {
     const plan = planRoute(managed(['old-1', 'old-2', 'new-1']), undefined)
     expect(plan.preview.reclaimed).toEqual(['new-1'])

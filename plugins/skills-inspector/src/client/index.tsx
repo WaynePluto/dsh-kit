@@ -64,6 +64,20 @@ class ChannelError extends Error {
 export const inject = ['slots', 'locale', 'connection', 'remote', 'remote.session']
 
 /**
+ * 调用本插件私有通道；endpoint 是路径段，实际请求为
+ * `/skills-inspector/<endpoint>`，只发送 channel 本身会 404（docs/dsh/transport.md）。
+ * `.tsx` 中泛型写 `<T,>`，避免 `<T>` 被解析为 JSX。
+ * @param endpoint - 端点名。
+ * @param payload - 载荷。
+ * @returns 宿主返回的值。
+ */
+const call = async <T,>(endpoint: string, payload: object): Promise<T> => {
+  const result = await callKitChannel(CHANNEL, endpoint, payload)
+  if (!result.ok) throw new ChannelError(result.error.message)
+  return result.value as T
+}
+
+/**
  * 注册「技能」tab。
  * @param ctx - 浏览器根上下文。
  */
@@ -72,20 +86,6 @@ export function apply(ctx: Context): void {
 
   // 注册期文案通过绑定后的 translate 以 thunk 形式读取，随语言切换而变，无需重新注册。
   const t = ctx.locale.bind(NS)
-
-  /**
-   * 调用本插件私有通道；endpoint 是路径段，实际请求为
-   * `/skills-inspector/<endpoint>`，只发送 channel 本身会 404（docs/dsh/transport.md）。
-   * `.tsx` 中泛型写 `<T,>`，避免 `<T>` 被解析为 JSX。
-   * @param endpoint - 端点名。
-   * @param payload - 载荷。
-   * @returns 宿主返回的值。
-   */
-  const call = async <T,>(endpoint: string, payload: object): Promise<T> => {
-    const result = await callKitChannel(CHANNEL, endpoint, payload)
-    if (!result.ok) throw new ChannelError(result.error.message)
-    return result.value as T
-  }
 
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
     name: 'conversation.view',

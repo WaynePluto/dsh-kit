@@ -212,27 +212,27 @@ describe('reverting', () => {
   })
 })
 
-describe('the channel', () => {
-  /** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
-  function service(): InstanceType<typeof CatalogService> {
-    return mount({ 'llm-pi-ai': { providers: { anthropic: {} } }, 'models-catalog': { overlays: {} } })
-  }
+/** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
+function channelService(): InstanceType<typeof CatalogService> {
+  return mount({ 'llm-pi-ai': { providers: { anthropic: {} } }, 'models-catalog': { overlays: {} } })
+}
 
+describe('the channel', () => {
   it('refuses an endpoint it does not serve', async () => {
-    const result = await dispatch(service(), 'nope', {})
+    const result = await dispatch(channelService(), 'nope', {})
     expect(result.ok).toBe(false)
     expect(result.ok ? undefined : result.error.code).toBe(UNKNOWN_ENDPOINT_CODE)
   })
 
   it('refuses a write with no route list', async () => {
-    const result = await dispatch(service(), 'apply', {})
+    const result = await dispatch(channelService(), 'apply', {})
     expect(result.ok).toBe(false)
     expect(result.ok ? undefined : result.error.code).toBe(BAD_PAYLOAD_CODE)
   })
 
   it('reports a failed source read as a field on the view, not as a channel failure', async () => {
     responseBody = () => { throw new Error('TLS said no') }
-    const result = await dispatch(service(), 'preview', {})
+    const result = await dispatch(channelService(), 'preview', {})
     expect(result.ok).toBe(true)
     expect(result.ok ? result.value.error : undefined).toContain('TLS said no')
   })

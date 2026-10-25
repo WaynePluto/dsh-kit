@@ -44,7 +44,8 @@ async function inspectHostBundle() {
     entry: HOST_ENTRY,
     createContext: ({ cleanup }) => {
       const ctx = {
-        connection: { rpc: { handle: channel => { channels.push(channel); return noop } } },
+        // plugin-rpc 走 D16 后的 /api 精确 Fetch 路由（connection.fetch.register）。
+        connection: { fetch: { register: route => { channels.push(route.path.slice('/api'.length) || '/'); return noop } } },
         agents: { get: () => undefined },
         effect: run => {
           const dispose = run()
@@ -153,7 +154,7 @@ async function main() {
       check(legacyRead.status === 200 && legacyRead.body?.result?.ok === false && legacyRead.body.result.error?.code === "files/unknown-endpoint", "旧 read 端点已移除", JSON.stringify(legacyRead.body).slice(0, 180))
       const unknown = await context.callChannel("write", { sessionId: "x" }, cookie)
       check(unknown.status === 200 && unknown.body?.result?.error?.code === "files/unknown-endpoint", "通道没有写入端点", JSON.stringify(unknown.body).slice(0, 180))
-      const unauthenticated = await fetch(`${context.base}/${CHANNEL}/snapshot`, { method: "POST", headers: { host: context.authority, "content-type": "application/json" }, body: JSON.stringify({ type: "client-request", rpcId: "files-check", method: "snapshot", payload: { sessionId: "x" } }) })
+      const unauthenticated = await fetch(`${context.base}/api/${CHANNEL}`, { method: "POST", headers: { host: context.authority, "content-type": "application/json" }, body: JSON.stringify({ endpoint: "snapshot", payload: { sessionId: "x" } }) })
       check(unauthenticated.status === 401, "没有 dsh cookie 的 RPC 被挡在认证层", `status ${unauthenticated.status}`)
     },
   })

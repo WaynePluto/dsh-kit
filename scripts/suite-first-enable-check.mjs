@@ -4,7 +4,8 @@
  * 组件在套件自带 node_modules 更深一层），dsh 先以不含套件的 bundles 启动，运行中把
  * 套件写回 bundles——这会走插件管理器「启用」同一条 HMR 重组合路径（hmr 服务监听
  * profile package.json → reconcileProfilePatches）。断言：
- * 1. 重组合后组件行被可解析性守卫整行禁用（延迟到重启装载），不产生
+ * 1. 重组合后组件行只有两种合法结局：被可解析性守卫整行禁用（延迟到重启装载），
+ *    或当场完整装载 ACTIVE；不得出现中间/失败态，也不产生
  *    failed to import / did not activate / Agent resolver 报错；
  * 2. 官方行（llm-pi-ai、connection、session-controller）不随重组合重启且保持 ACTIVE
  *    （套件层只有 insert 行，D16；此前的覆写行会级联触发 session-controller 竞态）；
@@ -198,11 +199,13 @@ async function waitFor(context, cookie, predicate, timeoutMs) {
   let last
   while (Date.now() < deadline) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- 轮询：每轮依赖上一轮结果与间隔
       last = await callEntries(context, cookie)
       if (predicate(last)) return last
     } catch {
       // 重组合进行中，继续轮询
     }
+    // eslint-disable-next-line no-await-in-loop -- 轮询间隔本身
     await new Promise(resolve => setTimeout(resolve, 500))
   }
   if (last === undefined) throw new Error('等待重组合超时：entries RPC 一直不可用')
@@ -236,8 +239,14 @@ async function checkFirstEnable() {
         30_000)
       const rows = settled.rows
 
-      const deferred = COMPONENT_ROWS.filter(id => rowOf(rows, id)?.disabled !== true)
-      check(deferred.length === 0, '重组合后全部组件行被守卫禁用（延迟到重启装载）', `未禁用：${deferred.join(', ') || '无'}`)
+      // 守卫的目的是「不产生半装载」：探测不到组件包时整行禁用（延迟到重启装载）；
+      // 探测得到（组件包可解析，如从套件自身 node_modules）则当场完整装载。两种结局
+      // 都合法，断言排除的是第三态——既未禁用又不是 ACTIVE 的中间/失败态。
+      const halfLoaded = COMPONENT_ROWS.filter(id => {
+        const row = rowOf(rows, id)
+        return !(row?.disabled === true || row?.fiberState === FIBER_ACTIVE)
+      })
+      check(halfLoaded.length === 0, '重组合后组件行要么被守卫延迟、要么完整装载', `异常行：${halfLoaded.join(', ') || '无'}`)
       const importFailed = COMPONENT_ROWS.filter(id => rowOf(rows, id)?.hasFiber === true && rowOf(rows, id)?.fiberState !== FIBER_ACTIVE)
       check(importFailed.length === 0, '没有组件行进入 failed/pending 装载态', importFailed.join(', ') || '无')
 

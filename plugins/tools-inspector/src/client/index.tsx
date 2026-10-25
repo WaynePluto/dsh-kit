@@ -53,6 +53,20 @@ class ChannelError extends Error {
 export const inject = ['slots', 'locale', 'connection']
 
 /**
+ * 调用本插件私有通道。
+ *
+ * ⚠️ 端点是**路径段**：这里实际 POST 到 `/tools-inspector/snapshot`，
+ * 只打 `/tools-inspector` 一律 404（docs/dsh/transport.md）。
+ * @param sessionId - 当前会话。
+ * @returns 宿主合成的快照。
+ */
+const snapshotOf = async (sessionId: SessionId): Promise<ToolsSnapshot> => {
+  const result = await callKitChannel(CHANNEL, 'snapshot', { sessionId: String(sessionId) })
+  if (!result.ok) throw new ChannelError(result.error.message)
+  return result.value as ToolsSnapshot
+}
+
+/**
  * 注册「工具」tab。
  * @param ctx - 浏览器根上下文。
  */
@@ -61,20 +75,6 @@ export function apply(ctx: Context): void {
 
   // 注册期文案通过绑定后的 translate 以 thunk 形式读取，随语言切换而变，无需重新注册。
   const t = ctx.locale.bind(NS)
-
-  /**
-   * 调用本插件私有通道。
-   *
-   * ⚠️ 端点是**路径段**：这里实际 POST 到 `/tools-inspector/snapshot`，
-   * 只打 `/tools-inspector` 一律 404（docs/dsh/transport.md）。
-   * @param sessionId - 当前会话。
-   * @returns 宿主合成的快照。
-   */
-  const snapshotOf = async (sessionId: SessionId): Promise<ToolsSnapshot> => {
-    const result = await callKitChannel(CHANNEL, 'snapshot', { sessionId: String(sessionId) })
-    if (!result.ok) throw new ChannelError(result.error.message)
-    return result.value as ToolsSnapshot
-  }
 
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
     name: 'conversation.view',

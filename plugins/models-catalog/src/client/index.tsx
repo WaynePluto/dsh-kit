@@ -29,16 +29,16 @@ export const inject = ['slots', 'locale', 'connection']
 /** RPC channel 错误。 */
 export class CatalogChannelError extends Error {}
 
+/** 调用 catalog RPC endpoint，并将 Host 错误转换为 CatalogChannelError。 */
+const call = async (endpoint: string, payload?: unknown): Promise<CatalogStatusView> => {
+  const result = await callKitChannel(CHANNEL, endpoint, payload ?? {})
+  if (!result.ok) throw new CatalogChannelError(result.error.message)
+  return result.value as CatalogStatusView
+}
+
 /** 注册文案和 settings footer slot。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'models-catalog: copy dictionaries')
-
-  /** 调用 catalog RPC endpoint，并将 Host 错误转换为 CatalogChannelError。 */
-  const call = async (endpoint: string, payload?: unknown): Promise<CatalogStatusView> => {
-    const result = await callKitChannel(CHANNEL, endpoint, payload ?? {})
-    if (!result.ok) throw new CatalogChannelError(result.error.message)
-    return result.value as CatalogStatusView
-  }
 
   ctx.slots.inject('settings.models.footer', () => ctx.slots.register({
     name: 'settings.models.footer',
