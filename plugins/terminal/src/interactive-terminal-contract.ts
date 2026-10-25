@@ -22,7 +22,8 @@ export const INTERACTIVE_TERMINAL_GUIDANCE =
   + 'for those, with run_in_background when needed. If a command can be made non-interactive with flags, use pwsh or bash. '
   + 'Use interactive_terminal for every Linux sudo command, even when the cache might suppress the prompt. Explain the exact command '
   + 'and its impact first; the user types the password in the visible panel, and the same terminal may reuse the system sudo '
-  + 'credential cache for later explicit commands in that task. Do not run '
+  + 'credential cache for later explicit commands in that task. Send follow-up commands to that same terminal with write '
+   + '(submit=false types without pressing Enter) instead of opening a new one. Do not run '
   + 'sudo -i, sudo su, su root, or an equivalent persistent root shell, and do not modify sudoers or create a root control channel. '
   + 'The user supplies sensitive input through the visible terminal panel; do not put secrets in tool arguments.'
 
