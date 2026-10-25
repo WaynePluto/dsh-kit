@@ -225,7 +225,9 @@ function facadeService(service: object, property: string, replacement: (...args:
   })
 }
 
-/** 宿主未提供 workingDirectory（dsh < 0.2.1）时上游 terminal_open 的兜底：解析为宿主进程 cwd。 */
+/** workingDirectory 是会话级服务（terminal-controller："Session execution environment
+ *  requires a working-directory provider"；dsh 生产代码不全局 provide，只在会话作用域提供），
+ *  组合工具挂在套件全局作用域拿不到它——兜底解析为宿主进程 cwd。 */
 const workingDirectoryFallback = {
   ensure: async () => process.cwd(),
 }
@@ -251,8 +253,9 @@ export function captureUpstreamTerminalContract(
     get(target, key) {
       if (key === 'tools') return toolFacade
       if (key === 'systemPrompt') return promptFacade
-      // 上游 0.2.1 的 terminal_open 经 ctx.workingDirectory.ensure 解析会话目录；
-      // 组合工具常被直接 apply 在未声明该 inject 的宿主 ctx 上，旧宿主也没有该服务——兜底进程 cwd。
+      // 上游 terminal_open 经 ctx.workingDirectory.ensure 解析会话目录；该服务由会话执行
+      // 环境提供（官方 terminal 工具挂载在会话作用域），组合工具挂在套件作用域拿不到——
+      // 兜底进程 cwd；ctx 所在链路上确有该服务时原样透传。
       if (key === 'workingDirectory') {
         const container = target as unknown as { get?: (name: string) => unknown }
         const existing = typeof container.get === 'function' ? container.get('workingDirectory') : undefined

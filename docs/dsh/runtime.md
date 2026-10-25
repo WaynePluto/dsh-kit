@@ -109,8 +109,9 @@ dsh 提供 PTY registry、bash/pwsh 后端、node-pty 和六个 terminal_* 实�
 缺少、重复或未知注册均整组失败；模型只看见 interactive_terminal 的 start/write/read/list/interrupt/close。
 start 合并创建与前台发送，write 向既有会话续发输入（submit=false 表示只敲字符不回车），
 interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。
-上游 0.2.1 的 terminal_open 经 workingDirectory.ensure 解析会话目录；wrapper 的捕获 facade 在
-宿主未提供该服务（旧版 dsh）时兜底进程 cwd，宿主有该服务时原样透传。
+上游 terminal_open 经 workingDirectory.ensure 解析会话目录；该服务由会话执行环境按会话提供
+（dsh 生产代码不全局 provide），套件全局作用域拿不到——wrapper 的捕获 facade 在 ctx 链上
+没有该服务时兜底进程 cwd，有则原样透传。
 
 严格用于预期必须让用户在可见终端直接输入的命令。普通命令、构建、Git、测试、长任务与持久 shell 状态
 均使用 pwsh/bash；可改非交互的优先改非交互。持续服务使用 services。
