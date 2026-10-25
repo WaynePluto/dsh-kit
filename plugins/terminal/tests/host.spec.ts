@@ -471,7 +471,7 @@ describe('interactive terminal tool wrapper', () => {
     }
     expect(parameters.type).toBe('object')
     expect(parameters.required).toStrictEqual(['action'])
-    expect(Object.keys(parameters.properties ?? {})).toStrictEqual(['action', 'command', 'terminalId', 'name', 'cwd', 'offset', 'count'])
+    expect(Object.keys(parameters.properties ?? {})).toStrictEqual(['action', 'command', 'text', 'submit', 'terminalId', 'name', 'cwd', 'offset', 'count'])
     for (const node of Object.values(parameters.properties ?? {})) {
       // 裸注册时 parameters 不再经过 defineTool 编译：属性级 required 简写必须已在构造期消失
       expect(typeof node.type).toBe('string')
@@ -522,6 +522,91 @@ describe('interactive terminal tool wrapper', () => {
     const tool = tools[0] as { execute: (args: unknown, exec: unknown) => Promise<unknown> }
     await expect(tool.execute({ action: 'start', command: '   ' }, { agent: {} })).rejects.toThrow('non-empty')
     expect(calls).toHaveLength(0)
+  })
+  it('maps write to terminal_send with explicit, default, and bare-Enter submits', async () => {
+    const { ctx, tools } = recordingContext()
+    const calls: { name: string, args: unknown }[] = []
+    applyInteractiveTerminalTools(ctx, {}, upstreamFor(calls))
+    const tool = tools[0] as { execute: (args: unknown, exec: unknown) => Promise<Record<string, unknown>> }
+    const exec = { agent: {}, signal: new AbortController().signal }
+    const typed = await tool.execute({ action: 'write', terminalId: 'pty-1', text: 'y' }, exec)
+    expect(typed).toMatchObject({ action: 'write', sessionId: 'pty-1' })
+    const enter = await tool.execute({ action: 'write', terminalId: 'pty-1', text: '', submit: true }, exec)
+    expect(enter).toMatchObject({ action: 'write', sessionId: 'pty-1' })
+    await tool.execute({ action: 'write', terminalId: 'pty-1', text: 'partial', submit: false }, exec)
+    await tool.execute({ action: 'write', terminalId: 'pty-1' }, exec)
+    expect(calls).toStrictEqual([
+      { name: 'terminal_send', args: { sessionId: 'pty-1', text: 'y', submit: true } },
+      { name: 'terminal_send', args: { sessionId: 'pty-1', text: '', submit: true } },
+      { name: 'terminal_send', args: { sessionId: 'pty-1', text: 'partial', submit: false } },
+      { name: 'terminal_send', args: { sessionId: 'pty-1', text: '', submit: true } },
+    ])
+  })
+  it('rejects a write that would neither type nor submit', async () => {
+    const { ctx, tools } = recordingContext()
+    const calls: { name: string, args: unknown }[] = []
+    applyInteractiveTerminalTools(ctx, {}, upstreamFor(calls))
+    const tool = tools[0] as { execute: (args: unknown, exec: unknown) => Promise<unknown> }
+    await expect(tool.execute({ action: 'write', terminalId: 'pty-1', text: '', submit: false }, { agent: {} }))
+      .rejects.toThrow('requires text or submit')
+    await expect(tool.execute({ action: 'write', terminalId: 'pty-1', text: '   ', submit: false }, { agent: {} }))
+      .rejects.toThrow('requires text or submit')
+    expect(calls).toHaveLength(0)
+  })
+  it('falls back to the host cwd when the upstream reads an absent workingDirectory service', async () => {
+    const { ctx, tools } = recordingContext()
+    const seen: unknown[] = []
+    const upstream = (facade: Context) => {
+      (facade as unknown as { systemPrompt: { section: (value: unknown) => void } }).systemPrompt.section({ name: 'tool:pty', order: 10, text: 'upstream' })
+      for (const name of UPSTREAM_TERMINAL_TOOL_NAMES) {
+        (facade as unknown as { tools: { register: (value: unknown) => void } }).tools.register({
+          name,
+          output: { schema: { type: 'object' }, render: () => [{ type: 'text', text: name }] },
+          execute: name === 'terminal_open'
+            ? async () => {
+              const working = (facade as unknown as { workingDirectory: { ensure(): Promise<string> } }).workingDirectory
+              seen.push(await working.ensure())
+              return { sessionId: 'pty-1' }
+            }
+            : async () => [],
+        } as never)
+      }
+    }
+    applyInteractiveTerminalTools(ctx, {}, upstream)
+    const tool = tools[0] as { execute: (args: unknown, exec: unknown) => Promise<unknown> }
+    await tool.execute({ action: 'start', command: 'whoami' }, { agent: {} })
+    expect(seen).toStrictEqual([process.cwd()])
+  })
+  it('passes an existing workingDirectory service through untouched', async () => {
+    const service = { ensure: async () => '/real/session/cwd' }
+    const tools: Record<string, unknown>[] = []
+    const sections: { name: string, text: string }[] = []
+    const ctx = {
+      get: (name: string) => name === 'workingDirectory' ? service : undefined,
+      tools: { register: (tool: Record<string, unknown>) => { tools.push(tool) } },
+      systemPrompt: { getSectionOrder: () => 10, section: (section: { name: string, text: string }) => { sections.push(section) } },
+    } as unknown as Context
+    const seen: unknown[] = []
+    const upstream = (facade: Context) => {
+      (facade as unknown as { systemPrompt: { section: (value: unknown) => void } }).systemPrompt.section({ name: 'tool:pty', order: 10, text: 'upstream' })
+      for (const name of UPSTREAM_TERMINAL_TOOL_NAMES) {
+        (facade as unknown as { tools: { register: (value: unknown) => void } }).tools.register({
+          name,
+          output: { schema: { type: 'object' }, render: () => [{ type: 'text', text: name }] },
+          execute: name === 'terminal_open'
+            ? async () => {
+              const working = (facade as unknown as { workingDirectory: { ensure(): Promise<string> } }).workingDirectory
+              seen.push(await working.ensure())
+              return { sessionId: 'pty-1' }
+            }
+            : async () => [],
+        } as never)
+      }
+    }
+    applyInteractiveTerminalTools(ctx, {}, upstream)
+    const tool = tools[0] as { execute: (args: unknown, exec: unknown) => Promise<unknown> }
+    await tool.execute({ action: 'start', command: 'whoami' }, { agent: {} })
+    expect(seen).toStrictEqual(['/real/session/cwd'])
   })
   it.each([
     ['missing', UPSTREAM_TERMINAL_TOOL_NAMES.slice(0, -1)],

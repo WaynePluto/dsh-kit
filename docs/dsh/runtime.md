@@ -106,8 +106,11 @@ L1 退出后 L2 不再能从 dsh 的存活子树枚举；L2 为 pwsh 保持需�
 
 dsh 提供 PTY registry、bash/pwsh 后端、node-pty 和六个 terminal_* 实现，但标准 Web Bundle 不挂这些工具。
 项目插件直接实例化 TerminalSessionService，backend 用 ctx.plugin，wrapper 捕获上游 apply 的六次注册。
-缺少、重复或未知注册均整组失败；模型只看见 interactive_terminal 的 start/read/list/interrupt/close。
-start 合并创建与前台发送，interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。
+缺少、重复或未知注册均整组失败；模型只看见 interactive_terminal 的 start/write/read/list/interrupt/close。
+start 合并创建与前台发送，write 向既有会话续发输入（submit=false 表示只敲字符不回车），
+interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。
+上游 0.2.1 的 terminal_open 经 workingDirectory.ensure 解析会话目录；wrapper 的捕获 facade 在
+宿主未提供该服务（旧版 dsh）时兜底进程 cwd，宿主有该服务时原样透传。
 
 严格用于预期必须让用户在可见终端直接输入的命令。普通命令、构建、Git、测试、长任务与持久 shell 状态
 均使用 pwsh/bash；可改非交互的优先改非交互。持续服务使用 services。

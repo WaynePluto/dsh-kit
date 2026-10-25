@@ -2,7 +2,7 @@ import type {
   CapturedPresentResult, CapturedTerminalTools, SchemaNode, ValidCapturedTool,
 } from './interactive-terminal-contract.js'
 import {
-  actionOf, argumentRecord, capturedRender, isRecord, optionalString, requiredString,
+  actionOf, argumentRecord, capturedRender, isRecord, optionalBoolean, optionalString, requiredString,
   textBlock, INTERACTIVE_TERMINAL_ACTIONS,
 } from './interactive-terminal-contract.js'
 
@@ -69,6 +69,12 @@ export function renderCompositeResult(
       }
       return [prefix, ...sendContent]
     }
+    case 'write': {
+      const id = requiredString(output, 'sessionId')
+      const text = optionalString(input, 'text') ?? ''
+      const submit = optionalBoolean(input, 'submit') ?? true
+      return capturedRender(send, { sessionId: id, text, submit }, result)
+    }
     case 'read':
       return capturedRender(read, { sessionId: requiredString(input, 'terminalId') }, result)
     case 'list':
@@ -86,8 +92,10 @@ export function compositePresentationCall(args: unknown): unknown {
   const action = actionOf(input)
   const terminalId = optionalString(input, 'terminalId')
   const command = optionalString(input, 'command')
+  const text = optionalString(input, 'text')
   switch (action) {
     case 'start': return { card: 'generic', title: 'Start interactive terminal', kind: 'execute', ...command === undefined ? {} : { rawInput: command } }
+    case 'write': return { card: 'generic', title: `Type into terminal ${terminalId ?? ''}`, kind: 'execute', ...text === undefined ? {} : { rawInput: text } }
     case 'read': return { card: 'generic', title: `Read terminal ${terminalId ?? ''}`, kind: 'read' }
     case 'list': return { card: 'generic', title: 'List interactive terminals', kind: 'read' }
     case 'interrupt': return { card: 'generic', title: `Interrupt terminal ${terminalId ?? ''}`, kind: 'execute' }
@@ -95,20 +103,22 @@ export function compositePresentationCall(args: unknown): unknown {
   }
 }
 
-/** 只有 start action 需要沿用 terminal_send 的原生结果展示器。 */
+/** start 与 write action 沿用 terminal_send 的原生结果展示器。 */
 export function compositePresentationResult(
   send: ValidCapturedTool,
   args: unknown,
   value: unknown,
 ): unknown {
   const input = argumentRecord(args)
-  if (actionOf(input) !== 'start') return undefined
+  const action = actionOf(input)
+  if (action !== 'start' && action !== 'write') return undefined
   const output = resultOf(value)
   const presentResult = send.presentResult
   if (typeof presentResult !== 'function') return undefined
   const sessionId = requiredString(output, 'sessionId')
-  const command = requiredString(input, 'command')
-  return (presentResult as CapturedPresentResult)({ sessionId, text: command, submit: true }, output.result)
+  const text = action === 'start' ? requiredString(input, 'command') : optionalString(input, 'text') ?? ''
+  const submit = action === 'start' ? true : optionalBoolean(input, 'submit') ?? true
+  return (presentResult as CapturedPresentResult)({ sessionId, text, submit }, output.result)
 }
 
 /** 将上游 finalizer 的多个文本块折叠成单块，避免组合结果改变原有展示边界。 */

@@ -10,7 +10,7 @@ import {
   compositeOutputSchema, compositePresentationCall, compositePresentationResult,
   normalizeFinalizerResult, renderCompositeResult,
 } from './interactive-terminal-presentation.js'
-import { requiredString, optionalNumber, optionalString } from './interactive-terminal-contract.js'
+import { requiredString, optionalNumber, optionalString, optionalBoolean } from './interactive-terminal-contract.js'
 
 /** 捕获上游 terminal contract 后只注册一个组合工具。 */
 export function applyInteractiveTerminalTools(
@@ -63,6 +63,16 @@ export function applyInteractiveTerminalTools(
           }
           const result = await capturedExecute(upstream.send, { sessionId, text: command, submit: true }, exec)
           return { action: 'start', sessionId, created: session !== null, session, result }
+        }
+        case 'write': {
+          const sessionId = requiredString(input, 'terminalId')
+          const text = optionalString(input, 'text') ?? ''
+          const submit = optionalBoolean(input, 'submit') ?? true
+          if (text.trim().length === 0 && !submit) {
+            throw new Error('interactive_terminal write requires text or submit=true (a bare Enter)')
+          }
+          const result = await capturedExecute(upstream.send, { sessionId, text, submit }, exec)
+          return { action: 'write', sessionId, result }
         }
         case 'read': {
           const readArgs: Record<string, unknown> = { sessionId: requiredString(input, 'terminalId') }

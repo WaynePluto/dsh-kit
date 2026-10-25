@@ -10,8 +10,8 @@ export const UPSTREAM_TERMINAL_TOOL_NAMES = [
 /** 对模型公开的组合工具名称。 */
 export const INTERACTIVE_TERMINAL_TOOL_NAME = 'interactive_terminal'
 
-/** 组合工具允许的五个 action。 */
-export const INTERACTIVE_TERMINAL_ACTIONS = ['start', 'read', 'list', 'interrupt', 'close'] as const
+/** 组合工具允许的六个 action。 */
+export const INTERACTIVE_TERMINAL_ACTIONS = ['start', 'write', 'read', 'list', 'interrupt', 'close'] as const
 export type InteractiveTerminalAction = typeof INTERACTIVE_TERMINAL_ACTIONS[number]
 
 /** 提供给模型的 interactive_terminal 使用边界；英文内容是 model-facing 文案，保持不翻译。 */
@@ -29,13 +29,14 @@ export const INTERACTIVE_TERMINAL_GUIDANCE =
 /** interactive_terminal 的完整说明；英文内容是 model-facing 文案，保持不翻译。 */
 export const INTERACTIVE_TERMINAL_DESCRIPTION =
   'Run a command in a visible, owner-isolated interactive terminal only when the command is expected to require direct human input. '
-  + 'The user can type into the terminal panel while the command runs. Use action start to run the command, read to collect '
-  + 'later output, list to inspect sessions, interrupt to send Ctrl-C, and close to end a session. Do not use this for ordinary '
-  + 'one-shot commands, Git, builds, tests, scripts, persistent shell state, continuous output, or merely long-running work; '
-  + 'use pwsh or bash instead, with run_in_background when needed. If flags can make the command non-interactive, use pwsh or bash. '
-  + 'Use the interactive terminal for sudo even if the cache may avoid a prompt. State the exact command and impact before asking '
-  + 'the user to type a password; a task may reuse the system cache in the same terminal, but do not start sudo -i, sudo su, '
-  + 'su root, or another persistent root shell.'
+  + 'The user can type into the terminal panel while the command runs. Use action start to run the command, write to type text or send '
+  + 'Enter into a running session, read to collect later output, list to inspect sessions, interrupt to send Ctrl-C, and close to end '
+  + 'a session. Do not use this for ordinary one-shot commands, Git, builds, tests, scripts, persistent shell state, continuous output, '
+  + 'or merely long-running work; use pwsh or bash instead, with run_in_background when needed. If flags can make the command '
+  + 'non-interactive, use pwsh or bash. Use the interactive terminal for sudo even if the cache may avoid a prompt. State the exact '
+  + 'command and impact before asking the user to type a password; a task may reuse the system cache in the same terminal. Once such a '
+  + 'session exists, prefer write over start for follow-up commands in the same terminal instead of opening a new one; do not start '
+  + 'sudo -i, sudo su, su root, or another persistent root shell.'
 
 /** 已废弃别名；使用 {@link INTERACTIVE_TERMINAL_DESCRIPTION}。 */
 export const INTERACTIVE_TERMINAL_OPEN_DESCRIPTION = INTERACTIVE_TERMINAL_DESCRIPTION
@@ -49,15 +50,23 @@ export const INTERACTIVE_TERMINAL_PARAMETERS = {
   properties: {
     action: {
       type: 'string', enum: [...INTERACTIVE_TERMINAL_ACTIONS],
-      description: 'start: run a command expected to need human input; read: get later output; list: show sessions; interrupt: send Ctrl-C; close: end a session.',
+      description: 'start: run a command expected to need human input; write: type text or send Enter into a running session; read: get later output; list: show sessions; interrupt: send Ctrl-C; close: end a session.',
     },
     command: {
       type: 'string',
       description: 'Command for start. Required for start. Use pwsh or bash when the command does not need direct human input.',
     },
+    text: {
+      type: 'string',
+      description: 'Text to type for write; empty string with submit true presses only Enter.',
+    },
+    submit: {
+      type: 'boolean',
+      description: 'write only: press Enter after text (default true); set false to type partial input without submitting.',
+    },
     terminalId: {
       type: 'string',
-      description: 'Terminal session id. Required for read, interrupt, and close; optional for start to reuse a session from list.',
+      description: 'Terminal session id. Required for write, read, interrupt, and close; optional for start to reuse a session from list.',
     },
     name: { type: 'string', description: 'Optional owner-local name for a new session in start.' },
     cwd: { type: 'string', description: 'Optional initial working directory for a new session in start.' },
@@ -180,6 +189,14 @@ export function optionalNumber(args: Record<string, unknown>, key: string): numb
   return value
 }
 
+/** 读取可选布尔参数并拒绝错误类型。 */
+export function optionalBoolean(args: Record<string, unknown>, key: string): boolean | undefined {
+  const value = args[key]
+  if (value === undefined) return undefined
+  if (typeof value !== 'boolean') throw new Error(`interactive_terminal ${key} must be a boolean`)
+  return value
+}
+
 /** 透传上游工具执行，保留其 owner/approval execution context。 */
 export async function capturedExecute(tool: ValidCapturedTool, args: unknown, exec: unknown): Promise<unknown> {
   return await tool.execute(args, exec)
@@ -208,6 +225,11 @@ function facadeService(service: object, property: string, replacement: (...args:
   })
 }
 
+/** 宿主未提供 workingDirectory（dsh < 0.2.1）时上游 terminal_open 的兜底：解析为宿主进程 cwd。 */
+const workingDirectoryFallback = {
+  ensure: async () => process.cwd(),
+}
+
 /** 捕获并完整校验上游六个 terminal tool 与唯一 prompt section。 */
 export function captureUpstreamTerminalContract(
   ctx: Context,
@@ -229,6 +251,13 @@ export function captureUpstreamTerminalContract(
     get(target, key) {
       if (key === 'tools') return toolFacade
       if (key === 'systemPrompt') return promptFacade
+      // 上游 0.2.1 的 terminal_open 经 ctx.workingDirectory.ensure 解析会话目录；
+      // 组合工具常被直接 apply 在未声明该 inject 的宿主 ctx 上，旧宿主也没有该服务——兜底进程 cwd。
+      if (key === 'workingDirectory') {
+        const container = target as unknown as { get?: (name: string) => unknown }
+        const existing = typeof container.get === 'function' ? container.get('workingDirectory') : undefined
+        return existing === undefined ? workingDirectoryFallback : existing
+      }
       const value = Reflect.get(target, key, target) as unknown
       return typeof value === 'function' ? value.bind(target) : value
     },

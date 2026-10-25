@@ -8,9 +8,10 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 1. 需要密码、MFA、确认或交互向导时，模型通过 interactive_terminal 的 start 启动命令。
 2. 展开“交互终端”面板，在提示出现后自己输入并回车；输入框默认密码遮罩，输入不作为模型工具参数发送。
 3. Linux 管理任务的每条 sudo 命令都通过交互终端执行，即使缓存可能跳过密码提示；先说明明确的命令和影响，同一终端可以按系统策略复用 sudo 凭据缓存，但不启动 `sudo -i`、`sudo su`、`su root` 或等价的 root shell。
-4. 需要停止前台命令时使用中断，发送固定 SIGINT。
+4. 同一会话内的后续命令用 write 续发（submit=false 表示只敲字符不回车），不为它们另开终端。
+5. 需要停止前台命令时使用中断，发送固定 SIGINT。
 
-模型工具只有 start/read/list/interrupt/close；页面只能查看、发送输入和中断，不能创建或关闭终端。
+模型工具有 start/write/read/list/interrupt/close；页面只能查看、发送输入和中断，不能创建或关闭终端。
 未创建终端时不显示面板。
 
 ## 使用边界
