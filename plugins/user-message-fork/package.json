@@ -34,6 +34,7 @@
     "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/dsh-api-session-controller": "0.2.1-rc.3",
     "@deepseek-ai/dsh-api-workspace-controller": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-attachment": "0.2.1-rc.3",
     "@deepseek-ai/dsh-client-locale": "0.2.1-rc.3",
     "@deepseek-ai/dsh-client-ui-chat": "0.2.1-rc.3",
     "@deepseek-ai/dsh-client-ui-conversation": "0.2.1-rc.3",
