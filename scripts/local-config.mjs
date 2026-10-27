@@ -53,10 +53,21 @@ const runtimeDescriptor = existsSync(runtimeDescriptorPath)
   : undefined
 // 解析锚点用根 package.json：工作区 hoisted node_modules 里同样有 @deepseek-ai/dsh 与 pnpm。
 const sourceRequire = createRequire(join(ROOT, 'package.json'))
-export const DSH_BIN = runtimeDescriptor?.dshBin ?? fileURLToPath(pathToFileURL(
-  sourceRequire.resolve('@deepseek-ai/dsh/lib/bin.js'),
-))
-export const DSH_INSTALL_ANCHOR = runtimeDescriptor?.installAnchor ?? sourceRequire.resolve('@deepseek-ai/dsh/package.json')
+// dsh 本体不是 workspace 依赖（发布打包等脚本不需要它）：解析不到时返回 undefined，
+// 让真正需要启动 dsh 的脚本在使用处报错，而不是任何 import local-config 的脚本在
+// 模块加载期就失败（如 tag 检出下的 pack-suite）。
+function resolveDshModule(subpath) {
+  try {
+    return sourceRequire.resolve(subpath)
+  } catch {
+    return undefined
+  }
+}
+export const DSH_BIN = runtimeDescriptor?.dshBin
+  ?? (resolveDshModule('@deepseek-ai/dsh/lib/bin.js') === undefined
+    ? undefined
+    : fileURLToPath(pathToFileURL(resolveDshModule('@deepseek-ai/dsh/lib/bin.js'))))
+export const DSH_INSTALL_ANCHOR = runtimeDescriptor?.installAnchor ?? resolveDshModule('@deepseek-ai/dsh/package.json')
 export const PNPM_CLI = runtimeDescriptor?.pnpmCli ?? join(dirname(sourceRequire.resolve('pnpm')), 'bin', 'pnpm.cjs')
 
 /** 所有 dsh-kit 插件所在的位置。 */
