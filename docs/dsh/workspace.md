@@ -167,16 +167,32 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   自动展开——自动展开只在 `groupExpansion` 无该 key 条目时触发，显式写入的 `false` 保留。
 - 树形模式下祖先行在前、后代行在后；折叠祖先会卸载后代行 DOM。对该行合成 click 走
   React 委托监听，与用户点击完全同路径。
+- **行的 DOM 归属结构（0.2.1-rc.3 核实）**：每个分组是 `div.groupSection`（CSS module
+  哈希类），直接子节点依次为 HoverCard 包装 span（内含分组头行）、可选的
+  `div[role=group]`（装子分组 section）、自己的会话行（各行也有 HoverCard 包装 span）、
+  溢出/展开更多区。会话行到所属分组、分组到自有会话的 DOM 判定都以
+  「行向上两级 = section 根 + `div[role=group]` 边界」为据；包装层变化时判定需退化为
+  无操作。
+- **会话行状态点**：会话行状态由 `sessionStatuses` 决定（`Rows.tsx`），主状态经
+  `SessionStatusDots` 渲染为原生 `StateDot`，DOM 信号是行内 `[data-state]`（行内唯一）：
+  `ongoing` = 运行中（含子代理）、`warning` = 待用户操作（审批/计划确认/提问）、
+  `done` = 完成未读（打开会话清除）；`idle` 不渲染状态点（leading 槽让给插件）。行尾
+  时间格在有待操作时改显紧凑文案（`trailingLabel`）。归档行状态点槽保持空白。
 - workspace-collapse 组件的注入契约：从任一工作区行向上找第一个带 sectionHeader 直接
   子节点的祖先（浏览器根），按钮容器插在 `searchSlot` 之前。头部动作簇 `headerActions`
   是 max-width 60px 的定宽簇（装不下第三个按钮），不能内插；**searchSlot 自带
   `margin-left:auto`**，flex:1 被 max-width 钳住后由 auto margin 吸收剩余空间（优先级高于
   justify-content），会把注入项顶到标题旁——容器需同样 `margin-left:auto` 接住剩余空间，
   并以 `~ [class*="searchSlot"]` 兄弟选择器把该 auto margin 归零（组件移除后覆写随之失效）。
+  容器装两枚按钮（收起/展开 + 聚焦提醒），max-width 按钮数预留、`gap: 2px`。
   按钮显隐由「是否存在工作区行」驱动（flat 列表、搜索结果、空状态、rail 收起态都无工作区
   行）；搜索展开时原生给动作簇挂 `headerActionsHidden` 类，注入按钮经 CSS `:has(~ …)` 随其
   同节奏退场。构建产物 CSS module 类名是 `<hash>_<原名>`，定位用后缀匹配，哈希前缀变化会
   静默失效，升级需复核。
+- 聚焦提醒动作（2026-10-27）：先按文档顺序多轮点开「自有会话带提醒状态点」的收起分组
+  （父分组展开后新挂载的子分组下一轮补点），再按文档逆序收起「section 子树无提醒点」的
+  展开分组；子树含提醒的祖先链保留展开。收起中分组的后代不可见（未渲染），DOM 判定
+  看不到藏在里面的提醒，不会为其展开祖先——这是 DOM 注入形态的已知边界。
 
 ## 项目 files 增强层
 

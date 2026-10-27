@@ -15,8 +15,6 @@ import type { Busy, ServicesActions } from './types.js'
 /** 单行渲染所需的输入。 */
 export interface ServiceRowProps {
   service: ServiceView
-  /** 排序锚点会话的项目目录；非本工作区的服务带来源徽标。 */
-  sessionCwd: string | null
   busy: Busy
   actions?: Partial<ServicesActions> | undefined
   translate: (key: ServicesKey) => string
@@ -67,13 +65,13 @@ function useNameGlyphCapacity(name: string): NameMeasure {
 }
 
 /** 渲染一个运行中服务的名称、事实和操作按钮。 */
-export function ServiceRow({ service, sessionCwd, busy, actions, translate, elapsed, onShowLog, onAction }: ServiceRowProps) {
+export function ServiceRow({ service, busy, actions, translate, elapsed, onShowLog, onAction }: ServiceRowProps) {
   const { capacity, boxRef, sizerRef } = useNameGlyphCapacity(service.name)
   // capacity 为 null（未测量）时显示原文，避免首帧闪现省略号。
   const visibleName = capacity === null ? service.name : midEllipsis(service.name, capacity)
-  // 其他工作区的服务以项目目录末段打头，宿主已把当前工作区排在最前；悬停可见完整来源路径。
-  const foreign = sessionCwd !== null && service.root !== sessionCwd
-  const origin = foreign ? `[${baseNameOf(service.root)}]` : undefined
+  // 来源徽标恒显示：面板是全局视图，行首项目目录末段是唯一的一眼来源标识
+  // （无当前会话锚点时排序仍由宿主完成，但锚点缺失不该让徽标整列消失）。
+  const origin = `[${baseNameOf(service.root)}]`
   // 每个服务只占一行；命令等 facts 超长时在中间省略，完整内容通过 title 提供。
   const facts = [
     origin,
@@ -82,7 +80,7 @@ export function ServiceRow({ service, sessionCwd, busy, actions, translate, elap
     elapsed(service),
     service.command,
   ].filter(Boolean).join('  ')
-  const factsTitle = foreign ? `${service.root}  ${facts}` : facts
+  const factsTitle = `${service.root}  ${facts}`
   return (
     <li style={{ minWidth: 0 }}>
       <div style={rowStyle}>

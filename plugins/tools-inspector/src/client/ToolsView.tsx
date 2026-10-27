@@ -5,18 +5,21 @@
  * {@link GROUPS} 是未来 active-set API 增加第三档的唯一分组入口。
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import {
   INSPECTOR_MONO, INSPECTOR_PRIMARY, INSPECTOR_SECONDARY, INSPECTOR_TERTIARY,
   inspectorGroupHeadingStyle, inspectorStyles, useInspectorPolling,
 } from '@dsh-kit/plugin-ui'
-import { Input } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import { filterEntries, type ToolEntry, type ToolStatus, type ToolsSnapshot } from '../shared.js'
 import type { ToolsKey } from './locales.js'
 
 /** 轮询间隔。宿主侧只是读两张内存表，5 秒足够跟上，也不至于打扰。 */
 export const POLL_MS = 5000
+
+/** 复制成功后「已复制」停留的时长。 */
+export const COPIED_RESET_MS = 1500
 
 /**
  * 分组顺序与其标题 key。
@@ -132,7 +135,7 @@ export interface ToolsViewProps extends ToolsViewInjected {
 /**
  * 渲染一行工具。
  * @param props - 条目、展开态、切换回调与翻译函数。
- * @returns 一行（可能带展开的描述与参数）。
+ * @returns 一行（可能带展开的描述、参数与复制工具名）。
  */
 function ToolRow({ entry, expanded, onToggle, t }: {
   entry: ToolEntry
@@ -140,6 +143,19 @@ function ToolRow({ entry, expanded, onToggle, t }: {
   onToggle: () => void
   t: ToolsViewProps['t']
 }): ReactElement {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => { clearTimeout(timer.current) }, [])
+  const copyName = (): void => {
+    void writeClipboard(entry.name).then(ok => {
+      if (ok) {
+        setCopied(true)
+        clearTimeout(timer.current)
+        timer.current = setTimeout(() => { setCopied(false) }, COPIED_RESET_MS)
+      }
+      return ok
+    })
+  }
   return (
     <div>
       <button type="button" style={rowStyle} onClick={onToggle} aria-expanded={expanded}>
@@ -165,6 +181,15 @@ function ToolRow({ entry, expanded, onToggle, t }: {
       {expanded
         ? (
             <div style={detailStyle}>
+              {/* 工具名要拿去 prompt/配置里引用，展开区第一行就给复制入口；
+                  整行是切换展开的按钮，复制只能放行外。 */}
+              <div style={detailRowStyle}>
+                <span style={detailLabelStyle}>{t('nameLabel')}:</span>
+                <span style={{ ...detailTextStyle, fontFamily: MONO }}>{entry.name}</span>
+                <Button type="button" variant="outline" size="sm" onClick={copyName}>
+                  {copied ? t('copied') : t('copyName')}
+                </Button>
+              </div>
               <div style={detailRowStyle}>
                 <span style={detailLabelStyle}>{t('descriptionLabel')}:</span>
                 <span style={detailTextStyle}>{entry.fullDescription || t('noDescription')}</span>

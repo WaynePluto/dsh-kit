@@ -1,5 +1,5 @@
 /**
- * 侧栏「工作区」头部的一键收起/展开按钮：注入编排与折叠动作。
+ * 侧栏「工作区」头部的两枚注入按钮：一键收起/展开与聚焦提醒。
  *
  * dsh 的 section header（标题 + 搜索 + 视图选项 + 新增工作区）是 ui-workspace
  * 私有界面，没有插件槽位（上游 `packages/client/ui-workspace/src/client/rows/
@@ -19,6 +19,10 @@
  *   展开时渲染子分组行，父行展开后新挂载的子行（各自持持久化的收起态）才进
  *   文档，所以按「点击一批 → 等 React 落 DOM → 再探下一轮」循环到没有未点过的
  *   收起行；每行只点一次，行数有限故必然终止。
+ * - 聚焦提醒：展开全部自有会话带提醒状态点的分组（运行中/待用户操作/完成未读，
+ *   见 {@link REMINDER_DOT_SELECTOR}），收起子树无提醒的分组；会话行归属用
+ *   renderGroup 的 section 结构（`div.groupSection > HoverCard span > 行` +
+ *   `div[role=group]` 包子分组）判定，见 {@link sectionOfHeader}。
  * 点击都走原生 onToggle 路径写回 store 并持久化，与用户逐个点击分组头完全同路径。
  *
  * @module @dsh-kit/dsh-plugin-workspace-collapse/client/collapse
@@ -32,6 +36,17 @@ export const EXPANDED_ROW_SELECTOR = '[data-row-key^="workspace:"][aria-expanded
 
 /** 收起中的工作区分组行。 */
 export const COLLAPSED_ROW_SELECTOR = '[data-row-key^="workspace:"][aria-expanded="false"]'
+
+/** 会话行；归属判定与状态点扫描都以它为边界。 */
+export const SESSION_ROW_SELECTOR = '[data-row-key^="session:"]'
+
+/**
+ * 会话行内的「提醒」状态点（原生 `StateDot` 的 `data-state`，会话行内唯一）：
+ * `ongoing` = 运行中（含子代理）、`warning` = 待用户操作（审批/计划确认/提问）、
+ * `done` = 完成未读（打开会话才清除）。`idle` 不渲染状态点，天然不是提醒。
+ * 出处：`ui-workspace/src/client/rows/Rows.tsx` 的 sessionStatuses + `SessionStatusDots`。
+ */
+export const REMINDER_DOT_SELECTOR = '[data-state="ongoing"], [data-state="warning"], [data-state="done"]'
 
 /** 注入标记，挂在按钮容器与样式元素上。 */
 export const BUTTON_ATTR = 'data-dsh-ws-collapse'
@@ -53,7 +68,8 @@ export type CollapseMode = 'collapse' | 'expand'
  * `rows/WorkspaceBrowser.module.css`：容器镜像 headerActions 的 max-width/
  * opacity/transform 退场动画（同一组 token 与 `--ds-ease-in-out` 节奏），通过
  * `:has(~ …)` 认领后续兄弟上的 `headerActionsHidden` 类；按钮本体复刻
- * iconButton 的 28px 契约（含 inset 焦点圈）。
+ * iconButton 的 28px 契约（含 inset 焦点圈）。容器装两枚按钮
+ * （收起/展开 + 聚焦提醒），max-width 按两钮加 2px 间隙预留。
  *
  * 水平定位：searchSlot 自带 `margin-left:auto`，会在 flex:1 被 max-width 钳住后
  * 吸收剩余空间、把注入项顶到标题旁（优先级高于 justify-content）；容器同样用
@@ -66,7 +82,8 @@ export const COLLAPSE_STYLE = `
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 28px;
+  gap: 2px;
+  max-width: 58px;
   overflow: hidden;
   box-sizing: border-box;
   margin-left: auto;
@@ -187,14 +204,96 @@ export function sectionHeaderOf(row: Element): Element | null {
   return null
 }
 
-/** 按钮的挂载参数。 */
+/**
+ * 分组行的 section 根。上游 renderGroup 的结构固定为
+ * `div.groupSection > HoverCard span > 行 div`，行向上两级即 section——自己的
+ * 会话行（HoverCard span）与子分组容器（`div[role=group]`）都是它的直接子节点，
+ * 据此把一个分组行和它的会话行、后代分组关联起来，不依赖哈希类名。
+ * 结构守卫：包装层的直接子节点只应有本行，section 的直接子节点只应有包装 span
+ * 与子分组容器；出现裸行元素说明包装层变了（HoverCard 摘掉等），此时判定
+ * 退化为无操作，升级需复核。
+ * @param header - 工作区分组行。
+ * @returns section 根元素；结构不符时为 null。
+ */
+function sectionOfHeader(header: Element): Element | null {
+  const wrapper = header.parentElement
+  const section = wrapper?.parentElement ?? null
+  if (wrapper === null || section === null) return null
+  if (wrapper.querySelector(`:scope > ${SESSION_ROW_SELECTOR}`) !== null) return null
+  if (section.querySelector(`:scope > ${SESSION_ROW_SELECTOR}, :scope > ${WORKSPACE_ROW_SELECTOR}`) !== null) {
+    return null
+  }
+  return section
+}
+
+/**
+ * 判定分组行自己（不含子分组）是否拥有带提醒状态点的会话行。
+ * 自有会话行 = section 子树里不被 `div[role=group]` 直接子容器包含的那些。
+ */
+function ownsReminderSession(header: Element): boolean {
+  const section = sectionOfHeader(header)
+  if (section === null) return false
+  const childGroups = Array.from(section.querySelectorAll(':scope > [role="group"]'))
+  return Array.from(section.querySelectorAll(SESSION_ROW_SELECTOR)).some(row =>
+    childGroups.every(group => !group.contains(row))
+    && row.querySelector(REMINDER_DOT_SELECTOR) !== null)
+}
+
+/**
+ * 「聚焦提醒」动作：展开全部有提醒会话（运行中、待用户操作、完成未读）的工作区，
+ * 收起其余没有提醒的工作区。两个阶段：
+ * - 展开（多轮）：点击收起中且自有会话带提醒的分组行；父行展开后新挂载的子分组
+ *   行进入文档，再探下一轮（每行只点一次，与 {@link expandCollapsedRows} 同款终止）。
+ *   局限：收起中分组的后代里若藏着提醒（该子分组行未渲染），DOM 判定看不到，
+ *   不会为它展开祖先。
+ * - 收起（单轮逆序）：点击展开中但 section 子树完全无提醒的分组行；子树含提醒的
+ *   祖先链保留展开，避免把刚展开的提醒分组重新藏起来。逆序保证先子后父，
+ *   已被摘除的行跳过。
+ * 点击都走原生 onToggle 写回 store 并持久化。
+ * @param root - 查询与派发点击的文档。
+ * @returns 本次点击的分组行数。
+ */
+export async function focusReminderRows(root: ParentNode): Promise<number> {
+  let count = 0
+  const expanded = new WeakSet<Element>()
+  for (;;) {
+    const rows = Array.from(root.querySelectorAll(COLLAPSED_ROW_SELECTOR))
+      .filter(row => !expanded.has(row) && ownsReminderSession(row))
+    if (rows.length === 0) break
+    for (const row of rows) {
+      expanded.add(row)
+      ;(row as HTMLElement).click()
+      count += 1
+    }
+    // eslint-disable-next-line no-await-in-loop -- 逐轮让出事件循环，等本轮点击落 DOM 后再探
+    await new Promise<void>(resolve => { setTimeout(resolve, 0) })
+  }
+  const rows = Array.from(root.querySelectorAll(EXPANDED_ROW_SELECTOR))
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index] as HTMLElement
+    const section = sectionOfHeader(row)
+    // 结构不符时跳过（宁可少收，不误收）；子树含提醒的祖先链保留展开，
+    // 避免把刚展开的提醒分组重新藏起来。
+    if (section === null || !row.isConnected
+      || section.querySelector(REMINDER_DOT_SELECTOR) !== null) continue
+    row.click()
+    count += 1
+  }
+  return count
+}
+
+/** 按钮的挂载参数（容器里两枚按钮共用一份）。 */
 export interface CollapseButtonOptions {
-  /** Tooltip 与 aria-label 文案。 */
+  /** 收起/展开按钮的 Tooltip 与 aria-label 文案。 */
   label: string
   /** 当前指向的动作，决定字形方向。 */
   mode: CollapseMode
   /** 点击回调：按 mode 收起或展开全部分组。 */
   onActivate: () => void
+  /** 聚焦按钮的 Tooltip 与 aria-label 文案（静态字形，无方向）。 */
+  focusLabel: string
+  /** 聚焦按钮点击回调：展开有提醒的工作区、收起其余。 */
+  onFocus: () => void
 }
 
 /** 按钮句柄：模式变化时就地更新，卸载时释放。 */
@@ -210,8 +309,8 @@ export interface CollapseDeps {
   document: Document
   /** 在注入容器里挂按钮内容；返回更新与卸载句柄。 */
   mount: (container: HTMLElement, options: CollapseButtonOptions) => CollapseButtonHandle
-  /** 两个动作方向的 Tooltip 与 aria-label 文案。 */
-  labels: { collapse: string; expand: string }
+  /** 两个动作方向与聚焦按钮的 Tooltip/aria-label 文案。 */
+  labels: { collapse: string; expand: string; focus: string }
 }
 
 /**
@@ -240,8 +339,9 @@ function affectsButton(records: readonly MutationRecord[]): boolean {
 }
 
 /**
- * 安装工作区头部的一键收起/展开按钮：注入样式、跟随列表出现/消失挂载与移除按钮，
- * 并跟随行内 `aria-expanded` 变化在收起/展开两个动作间切换。
+ * 安装工作区头部的两枚注入按钮（收起/展开 + 聚焦提醒）：注入样式、跟随列表
+ * 出现/消失挂载与移除按钮容器，并跟随行内 `aria-expanded` 变化在收起/展开
+ * 两个动作间切换。
  * @param deps - 外部依赖。
  * @returns 卸载函数：断开观察、移除按钮容器与样式。
  */
@@ -265,10 +365,16 @@ export function installWorkspaceCollapse(deps: CollapseDeps): () => void {
     else collapseExpandedRows(doc)
   }
 
+  const activateFocus = (): void => {
+    void focusReminderRows(doc)
+  }
+
   const optionsFor = (next: CollapseMode): CollapseButtonOptions => ({
     label: deps.labels[next],
     mode: next,
     onActivate: activate,
+    focusLabel: deps.labels.focus,
+    onFocus: activateFocus,
   })
 
   const evaluate = (): void => {

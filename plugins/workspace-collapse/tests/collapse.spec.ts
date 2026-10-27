@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-/** 工作区头部一键收起/展开的 DOM 编排测试：折叠与展开选择、注入位置、模式跟随与卸载。 */
+/** 工作区头部注入按钮的 DOM 编排测试：折叠与展开选择、聚焦提醒归属、注入位置、模式跟随与卸载。 */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   BUTTON_ATTR, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
-  WORKSPACE_ROW_SELECTOR,
-  collapseExpandedRows, expandCollapsedRows, installWorkspaceCollapse, sectionHeaderOf,
+  REMINDER_DOT_SELECTOR, WORKSPACE_ROW_SELECTOR,
+  collapseExpandedRows, expandCollapsedRows, focusReminderRows, installWorkspaceCollapse,
+  sectionHeaderOf,
 } from '../src/client/collapse.js'
 import type {
   CollapseButtonOptions, CollapseDeps,
@@ -34,12 +35,75 @@ function groupRow(key: string, expanded: boolean, clicks: string[]): HTMLElement
   return row
 }
 
-/** 造一个会话行（不应被收起动作命中）。 */
-function sessionRow(id: string, clicks: string[]): HTMLElement {
+/** 造一个会话行（不应被收起动作命中）；state 非空时带上对应的状态点。 */
+function sessionRow(id: string, clicks: string[], state?: 'ongoing' | 'warning' | 'done'): HTMLElement {
   const row = document.createElement('div')
   row.setAttribute('data-row-key', `session:${id}`)
   row.addEventListener('click', () => { clicks.push(id) })
+  if (state !== undefined) {
+    const slot = document.createElement('span')
+    const dot = document.createElement('span')
+    dot.setAttribute('data-state', state)
+    slot.appendChild(dot)
+    row.appendChild(slot)
+  }
   return row
+}
+
+/** 断言 selector 命中字符串里的状态点形态（防手滑改坏提醒口径）。 */
+describe('REMINDER_DOT_SELECTOR', () => {
+  it('只认运行中、待用户操作与完成未读三种状态', () => {
+    expect(REMINDER_DOT_SELECTOR).toContain('"ongoing"')
+    expect(REMINDER_DOT_SELECTOR).toContain('"warning"')
+    expect(REMINDER_DOT_SELECTOR).toContain('"done"')
+  })
+})
+
+/**
+ * 造上游 renderGroup 的 section 结构：
+ * `groupSection > span > 分组行` + `div[role=group] > 子 section` + `span > 会话行`。
+ */
+function section(options: {
+  key: string
+  expanded: boolean
+  clicks: string[]
+  /** 点击翻转 aria-expanded（模拟原生 onToggle）。 */
+  flip?: boolean
+  /** 自有会话行（自动包 HoverCard span）。 */
+  sessions?: HTMLElement[]
+  /** 子 section 根（自动包进 role=group）。 */
+  children?: HTMLElement[]
+}): HTMLElement {
+  const sectionEl = document.createElement('div')
+  const headerSpan = document.createElement('span')
+  const header = groupRow(options.key, options.expanded, options.clicks)
+  if (options.flip === true) {
+    header.addEventListener('click', () => {
+      header.setAttribute('aria-expanded', String(header.getAttribute('aria-expanded') !== 'true'))
+    })
+  }
+  headerSpan.appendChild(header)
+  sectionEl.appendChild(headerSpan)
+  if ((options.children ?? []).length > 0) {
+    const group = document.createElement('div')
+    group.setAttribute('role', 'group')
+    for (const child of options.children ?? []) group.appendChild(child)
+    sectionEl.appendChild(group)
+  }
+  for (const session of options.sessions ?? []) {
+    const sessionSpan = document.createElement('span')
+    sessionSpan.appendChild(session)
+    sectionEl.appendChild(sessionSpan)
+  }
+  return sectionEl
+}
+
+/** 把 section 根挂到列表容器（原生 AnimatedRows list）。 */
+function listElement(sections: HTMLElement[]): HTMLElement {
+  const list = document.createElement('div')
+  for (const item of sections) list.appendChild(item)
+  document.body.appendChild(list)
+  return list
 }
 
 /** 造原生浏览器形态：sectionHeader（label + searchSlot + headerActions）+ listArea。 */
@@ -68,7 +132,9 @@ function nativeBrowser(): {
 }
 
 /** 记录挂载/更新/卸载的假依赖。 */
-function harness(labels = { collapse: '收起全部工作区', expand: '展开全部工作区' }) {
+function harness(labels = {
+  collapse: '收起全部工作区', expand: '展开全部工作区', focus: '聚焦有提醒的工作区',
+}) {
   const mounted: { container: HTMLElement; options: CollapseButtonOptions }[] = []
   const updates: CollapseButtonOptions[] = []
   const unmounted: number[] = []
@@ -168,6 +234,94 @@ describe('expandCollapsedRows', () => {
     list.appendChild(groupRow('ws-a', true, clicks))
     document.body.appendChild(list)
     expect(await expandCollapsedRows(document)).toBe(0)
+    expect(clicks).toEqual([])
+  })
+})
+
+describe('focusReminderRows', () => {
+  it('展开有提醒会话的收起分组，收起无提醒的展开分组', async () => {
+    const clicks: string[] = []
+    listElement([
+      section({ key: 'ws-run', expanded: false, clicks, flip: true, sessions: [sessionRow('s1', clicks, 'ongoing')] }),
+      section({ key: 'ws-quiet', expanded: true, clicks, flip: true, sessions: [sessionRow('s2', clicks)] }),
+      section({ key: 'ws-unread', expanded: true, clicks, flip: true, sessions: [sessionRow('s3', clicks, 'done')] }),
+      section({ key: 'ws-wait', expanded: false, clicks, flip: true, sessions: [sessionRow('s4', clicks, 'warning')] }),
+    ])
+
+    // 展开阶段按文档顺序点 ws-run 与 ws-wait；收起阶段逆序只点无提醒的 ws-quiet。
+    expect(await focusReminderRows(document)).toBe(3)
+    expect(clicks).toEqual(['ws-run', 'ws-wait', 'ws-quiet'])
+  })
+
+  it('嵌套分组：子分组的提醒保留整条祖先链展开', async () => {
+    const clicks: string[] = []
+    listElement([
+      section({
+        key: 'ws-parent',
+        expanded: true,
+        clicks,
+        flip: true,
+        sessions: [sessionRow('s0', clicks)],
+        children: [section({
+          key: 'ws-child',
+          expanded: false,
+          clicks,
+          flip: true,
+          sessions: [sessionRow('s1', clicks, 'ongoing')],
+        })],
+      }),
+    ])
+
+    // 展开阶段点开子分组；收起阶段父分组子树含提醒、子分组自有提醒，都不收。
+    expect(await focusReminderRows(document)).toBe(1)
+    expect(clicks).toEqual(['ws-child'])
+  })
+
+  it('父分组展开后新挂载的提醒子分组在下一轮补点', async () => {
+    const clicks: string[] = []
+    // 子分组先建好但不在文档中：上游收起的父分组不渲染子分组行。
+    const childSection = section({
+      key: 'ws-child',
+      expanded: false,
+      clicks,
+      flip: true,
+      sessions: [sessionRow('s1', clicks, 'warning')],
+    })
+    const parentSection = section({
+      key: 'ws-parent',
+      expanded: false,
+      clicks,
+      flip: true,
+      sessions: [sessionRow('s0', clicks, 'ongoing')],
+    })
+    const parentHeader = parentSection.querySelector('[data-row-key="workspace:ws-parent"]')!
+    parentHeader.addEventListener('click', () => {
+      if (parentHeader.getAttribute('aria-expanded') === 'true') {
+        const group = document.createElement('div')
+        group.setAttribute('role', 'group')
+        group.appendChild(childSection)
+        parentSection.appendChild(group)
+      }
+    })
+    listElement([parentSection])
+
+    // 第一轮父分组自有提醒（运行中）被点开并挂载子分组；第二轮补点子分组的提醒。
+    expect(await focusReminderRows(document)).toBe(2)
+    expect(clicks).toEqual(['ws-parent', 'ws-child'])
+  })
+
+  it('结构不符（无 HoverCard span 包装）时判定退化为无操作', async () => {
+    const clicks: string[] = []
+    // 旧式平铺 fixture：行与会话行是 list 的直接子节点，section 守卫应拒绝归属判定。
+    const list = document.createElement('div')
+    list.append(
+      groupRow('ws-a', true, clicks),
+      sessionRow('s1', clicks, 'ongoing'),
+    )
+    document.body.appendChild(list)
+
+    // 展开阶段没有命中（守卫返回 null），收起阶段子树判定同样为 null → 不收。
+    expect(await focusReminderRows(document)).toBe(0)
     expect(clicks).toEqual([])
   })
 })

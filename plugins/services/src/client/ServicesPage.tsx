@@ -78,7 +78,6 @@ export function ServicesPage({ onList, onStop, onRestart, onLogs, currentSession
               <ServiceRow
                 key={service.name}
                 service={service}
-                sessionCwd={snapshot?.cwd ?? null}
                 busy={busy[service.name]}
                 actions={actions}
                 translate={translate}

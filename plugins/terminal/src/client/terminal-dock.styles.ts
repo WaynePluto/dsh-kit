@@ -52,7 +52,8 @@ export const screenStyle: CSSProperties = {
   border: `1px solid ${DOCK_BORDER}`,
   background: 'rgba(128,128,128,0.1)',
   fontFamily: DOCK_MONO,
-  fontSize: '11px',
+  // 终端是整块 dock 的阅读主体，取 dsh 正文字号（13px）；11px 实机反馈看不清。
+  fontSize: '13px',
   lineHeight: 1.45,
   whiteSpace: 'pre',
   minWidth: 0,
@@ -83,7 +84,8 @@ export const inputStyles = `
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-family: ${DOCK_MONO};
-  font-size: 12px;
+  /* 与终端画面同字号：输入内容与回显逐字符对齐读。 */
+  font-size: 13px;
   line-height: 1.5;
 }
 .${inputClass}:focus {
