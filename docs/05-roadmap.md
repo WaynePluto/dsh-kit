@@ -6,6 +6,16 @@
 
 ## 已实现
 
+- [x] 会话工作区显示（session-workspace，2026-10-27，D19）：输入框下方统计栏（原生
+  StatsPills）最左新增工作区 pill——文件夹图标 + 当前会话 cwd 的末级目录名，悬停 title
+  显示完整路径，点击复制完整路径并短暂显示「已复制」（剪贴板被拒时不变标签，title 常在）。
+  走官方 `conversation.composer.dock` list 槽位（session 作用域，原生注释明示插件可按 id
+  新增 pill），`order: -1` 排在原生 activity/usage 之前，不覆写官方行；cwd 取浏览器半
+  sessions 标准服务 `byId[sessionId].cwd`（与原生工作区悬停卡同源），无 cwd 不渲染、切会话
+  随槽位作用域刷新。样式逐条复刻原生 pill 契约（12px 次级字号、1px 8px 圆角、tertiary
+  静息色、hover interactive-bg-hover）。纯浏览器半、无宿主服务（组件总数 23，全部带
+  浏览器半，计数口径与 plugin-catalog.json 对齐）；随 conversation-enhancements 组合包
+  分发。显示形态与「新建组件不并入既有组件」均为用户当次确认。
 - [x] 插件性能整改·第二轮（2026-10-23，services 修复后的全套件审查）：修复 11 个组件
   的 13 项确证性能问题（3 高 6 中 4 低），核心病灶是浏览器半「常驻无过滤全量」——
   与 services 当初的宿主半同步探针同性质，只是发生在 DOM 层：
@@ -265,7 +275,31 @@
   与 Git 面板交互流畅；其余小项随日常使用回归。
 - [ ] 组件停用/启用后的浏览器半回归：每个组件的行开关在真实宿主里生效，
   且不影响其他组件的槽位与服务。
-- [ ] 仓库公开后实测「添加插件」用 Git 地址安装（`file:` 相对依赖在 git 依赖语境的解析基准）。
+- [x] 「添加插件」Git 地址安装实测（2026-10-27）：不可行，三层原因——
+  1. 仓库根包 `dsh-kit-root` 带 `prepare: husky`，pnpm 11+ 对 git 宿主包的生命周期脚本是
+     致命门禁（`ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED`，需消费方工作区 allowBuilds 放行），
+     dsh 非交互安装直接失败；且根包没有 `dsh` 插件声明，放行也装不出插件。
+  2. 子目录形态 `https://<host>/<repo>#path:plugins/suite` 能绕过门禁（套件无生命周期脚本），
+     但套件的 `file:../<组件>` 依赖被 pnpm 按**消费方工作区目录**解析而非 git 检出树
+     （pnpm 12 实测报 `Could not install from "<cwd>/../agents-md"`），解析必然失败。
+  3. 即便解析可过，git 提交树不含 `dist/` 与套件物化 `node_modules/`（.gitignore 排除），
+     装上也没有可装载产物。
+  结论：Git 直装要成立，必须把套件做成自包含远程产物（组件 dist 与依赖闭包进包、
+  依赖不指向包外，配 release 分支或 tarball 资产）；这属新的分发决策，待用户确认。
+  上游可改进项：dsh plugin-manager 的失败分类器（`packages/boot/plugin-manager/src/install-failure.ts`）
+  未覆盖 `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED`，该错误显示为原始文案。
+  现行分发仍是本地绝对路径（clone 后装 `plugins/suite` 不受影响）。
+- [x] 远程分发实施（2026-10-27，D20）：套件改为自包含产物——package.json 零
+  dependencies、23 个组件声明为 peerDependencies（精确版本，`build-suite.mjs` 校验
+  覆盖与版本一致），依赖闭包照旧物化在套件内 `node_modules/`；安装地址三形态统一
+  （本地目录 link:、本地 tarball、GitHub Release 资产 `…/releases/latest/download/dsh-kit.tar.gz`
+  latest 永久链接）。裸仓库地址不可用的实测结论保留在上方条目（pnpm 对 git 形态 URL
+  走 npm-packlist 剥 node_modules + prepare 门禁）；普通 tarball 不做 packlist 不跑
+  prepare，包内物化内容原样落地。发布走 `release.yml`（push v* 标签 CI 自动构建打包
+  上传固定资产名），本地 `pnpm suite:pack` 同路径打包。守护：`suite-tarball-check.mjs`
+  （不可达 registry 安装 tarball + 真实 dsh 冷启动，断言 23 组件行 ACTIVE、客户端图
+  23/23、零 registry 解析）与 suite-toggle / first-enable（junction 形态）三检查在
+  peers 形态下全部通过。待办：推仓库、打首版标签、真实 Release URL 实机验收。
 - [ ] 按 [dsh-upgrade skill](../.agents/skills/dsh-upgrade/SKILL.md) 跟进官方 dsh 新版本，
   完成后回写 [源码依据](02-dsh-facts.md) 的适配基线。
 - [ ] 新增插件前先更新 [决策](01-decisions.md) 与 `plugin-catalog.json`，并在

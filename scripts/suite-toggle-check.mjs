@@ -12,7 +12,7 @@
  * 运行：node scripts/suite-toggle-check.mjs [--port 3106]。
  */
 
-import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
@@ -34,11 +34,9 @@ const PORT = (() => {
 const PROBE_DIRECTORY = join(DEV_DIRECTORY, 'suite-toggle-probe')
 const PROBE_OVERLAY = join(PROBE_DIRECTORY, 'dsh-overlay.yml')
 const PROBE_MODULE = join(PROBE_DIRECTORY, 'probe.mjs')
-const COMPONENT_ROWS = [
-  'proxy', 'agents-md', 'chat-scroll', 'copilot-auth', 'favorite-models',
-  'files', 'model-capabilities', 'models-catalog', 'notify', 'services', 'skills-inspector',
-  'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch',
-]
+// 组件行清单从 plugin-catalog.json 派生（套件包含全部分发组件），组件增减时自动同步。
+const COMPONENT_ROWS = JSON.parse(readFileSync(join(ROOT, 'plugin-catalog.json'), 'utf8'))
+  .distributions.flatMap(distribution => distribution.components.map(component => component.rowId))
 // PENDING=0、ACTIVE=2、FAILED=3（cordis FiberState 值镜像，见 dsh app-boot）。
 const FIBER_ACTIVE = 2
 const CORE_ROWS = ['llm-pi-ai', 'connection', 'file-upload', 'session-controller']

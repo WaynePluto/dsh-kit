@@ -41,4 +41,8 @@ ignoredOptionalDependencies:
   - "*linux-arm64*"
   - "*musl*"
   - "*win32-arm64*"
+# 套件包把组件声明为 peerDependencies（自包含物化，D20）：关闭自动安装 peers，
+# 避免 pnpm install 把 workspace 组件链进套件 node_modules 覆盖 build-suite 的物化
+# 产物；与 dsh profile 工作区同款配置（缺的 peers 由宿主 runtime resolution 补）。
+autoInstallPeers: false
 # 覆盖版本只维护在根 package.json 的 pnpm.overrides，避免开发运行时混装 dsh 子包。

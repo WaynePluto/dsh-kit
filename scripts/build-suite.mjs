@@ -250,21 +250,46 @@ function packageNameOf(source) {
 }
 
 /**
- * 套件 package.json 的 dependencies 是 loader 解析组件行的依赖闭包入口：
- * 缺登组件时 patch 行仍在，但 runtime resolution 表解析不到裸包名，浏览器半
- * 整行从 __DSH_BOOT__ 图消失（静默丢失）。在这里响亮失败而不是留给 dsh。
+ * 套件 package.json 的 peerDependencies 是 dsh runtime resolution 表的组件闭包入口
+ * （dsh 按「选中 bundle 的 deps+peers 闭包」从套件锚物理探测进套件自带的物化
+ * node_modules，D20）：缺登组件时 patch 行仍在，但 runtime resolution 表解析不到
+ * 裸包名，浏览器半整行从 __DSH_BOOT__ 图消失（静默丢失）。不能声明为 dependencies：
+ * tarball 安装时 pnpm 会按名字从 registry 解析 dependencies，而组件不发布到 npm
+ * （peerDependencies 不触发安装，只进宿主的闭包 BFS）。版本必须与组件包一致，
+ * 物化副本的版本由 copySelfContainedPackage 归一，漂移即响亮失败。
  */
 function verifySuiteDependencies(componentDirs) {
   const manifest = JSON.parse(readFileSync(join(SUITE_DIR, 'package.json'), 'utf8'))
-  const declared = new Set(Object.keys(manifest.dependencies ?? {}))
-  const missing = componentDirs
-    .map(dir => packageNameOf(join(PLUGINS, dir)))
-    .filter(name => !declared.has(name))
+  const peers = manifest.peerDependencies ?? {}
+  const declared = new Set(Object.keys(peers))
+  const names = componentDirs.map(dir => packageNameOf(join(PLUGINS, dir)))
+  const missing = names.filter(name => !declared.has(name))
   if (missing.length > 0) {
     throw new Error(
-      `plugins/suite/package.json 的 dependencies 缺少以下组件（loader 闭包无法解析，浏览器行会静默消失）：\n` +
+      `plugins/suite/package.json 的 peerDependencies 缺少以下组件（loader 闭包无法解析，浏览器行会静默消失）：\n` +
       missing.map(name => `  ${name}`).join('\n') +
-      `\n修复：按其余组件的形态补登 "file:../<目录>"。`,
+      `\n修复：按其余组件的形态补登精确版本号。`,
+    )
+  }
+  const extraneous = [...declared].filter(name => !names.includes(name))
+  if (extraneous.length > 0) {
+    throw new Error(
+      `plugins/suite/package.json 的 peerDependencies 登记了不是组件的包：\n` +
+      extraneous.map(name => `  ${name}`).join('\n') +
+      `\n修复：删除多余条目。`,
+    )
+  }
+  const drifted = componentDirs
+    .map(dir => {
+      const component = JSON.parse(readFileSync(join(PLUGINS, dir, 'package.json'), 'utf8'))
+      return { name: component.name, version: component.version }
+    })
+    .filter(({ name, version }) => peers[name] !== version)
+  if (drifted.length > 0) {
+    throw new Error(
+      `plugins/suite/package.json 的 peerDependencies 版本与组件包不一致：\n` +
+      drifted.map(({ name, version }) => `  ${name}:套件声明 ${peers[name]}，组件实际 ${version}`).join('\n') +
+      `\n修复：同步为组件 package.json 的精确版本号。`,
     )
   }
 }

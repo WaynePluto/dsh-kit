@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Session workspace",
+    "description": "Shows the current session's workspace at the left of the composer stats bar; click to copy the full path"
+  }
+}

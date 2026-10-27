@@ -88,6 +88,12 @@
       disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-session-rename/package.json") } catch { return true } return false } return true })()'
       name: '@dsh-kit/dsh-plugin-session-rename'
 
+# ── @dsh-kit/dsh-plugin-session-workspace ──
+- insert:
+    - id: session-workspace
+      disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-session-workspace/package.json") } catch { return true } return false } return true })()'
+      name: '@dsh-kit/dsh-plugin-session-workspace'
+
 # ── @dsh-kit/dsh-plugin-skills-inspector ──
 - insert:
     - id: skills-inspector

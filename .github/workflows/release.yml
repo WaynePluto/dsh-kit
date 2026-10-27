@@ -1,0 +1,43 @@
+# 发布：推送 v* 标签 → 构建两半产物与套件 → 打自包含 tarball → 创建 GitHub Release。
+# 资产固定名 dsh-kit.tar.gz：「添加插件」永久使用
+#   https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
+#（latest/download 恒指最新 Release；升级 = 卸载后重装同一地址，D20）。
+# 环境与 ci.yml 保持同版本（pnpm 10.17.0 + Node 22），产物可复现。
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm plugins:build
+      - run: pnpm suite:build
+      - run: pnpm test
+      # 标签与套件版本一致才产资产（pack-suite 校验 v<version>）。
+      - run: node scripts/pack-suite.mjs "${GITHUB_REF_NAME}"
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: 创建 Release 并上传资产
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes release/dsh-kit.tar.gz

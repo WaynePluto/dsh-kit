@@ -2,10 +2,10 @@
 
 **简体中文** | [English](README.en.md)
 
-对应官方 dsh：`0.2.0-rc.2`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
+对应官方 dsh：`0.2.1-rc.3`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
-个人体验增强，共 22 个组件，通过官方「添加插件」输入**一条路径**即可安装或升级全部内容。
+个人体验增强，共 23 个组件，通过官方「添加插件」输入**一个地址**即可安装或升级全部内容。
 
 - 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
 - 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
@@ -28,6 +28,7 @@
 | [会话统计小时档](plugins/stats-hours/README.md) | 输入框上方 → 会话统计 | 模型用时、工具调用用时超过一小时时按小时显示 |
 | [用户消息分叉](plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填 |
 | [会话重命名](plugins/session-rename/README.md) | 顶栏 → 双击会话标题 | 双击当前会话标题弹窗重命名（原生入口只在侧栏） |
+| [会话工作区显示](plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
 | [复制工作区路径](plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制工作区完整目录路径 |
 | [收起全部工作区](plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 一键收起下方所有工作区分组 |
 | [任务通知](plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
@@ -42,20 +43,39 @@
 
 ## 安装
 
-1. 安装官方 dsh 桌面版（或在服务器上运行官方 dsh web）。
-2. 克隆本仓库并构建：
-   ```powershell
-   pnpm install
-   pnpm plugins:build
-   pnpm suite:build      # 生成套件 patch 并物化依赖闭包
-   ```
-3. dsh → 插件 → 添加插件 → 输入 `plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
-   重启是生效的必要步骤：在安装前就启动的 dsh 里点「启用」，组件行会整包延迟到重启
-   装载（可解析性守卫，不会报 failed to import）；个别机器上首次启用还可能报一条
-   session-controller 的重挂载竞态（dsh 上游已知，见 [roadmap](docs/05-roadmap.md)），
-   同样重启即恢复。
-   升级：重新构建后卸载再安装（官方桌面暂不支持插件自动更新）。
-   用一条 GitHub 仓库地址安装的结构已就绪（`file:` 相对依赖），待仓库公开后实测收口。
+dsh → 插件 → 添加插件 → 输入下面**两种地址之一** → 安装 → 启用 → 重启 dsh。
+两种地址装的是同一个自包含套件包，随时可以互换（先卸载再装另一种）。
+
+**方式一：GitHub 安装（推荐，无需克隆仓库）**
+
+```text
+https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
+```
+
+`latest/download` 恒指最新 Release。升级 = 卸载后重装**同一地址**（官方桌面暂不支持
+插件自动更新）。注意：裸仓库地址（`https://github.com/WaynePluto/dsh-kit`）不可用——
+pnpm 会把它当 git 依赖重打包，剥掉套件自带的依赖闭包；只认上面的 Release 资产地址。
+
+**方式二：本地目录安装（开发/离线）**
+
+```powershell
+git clone https://github.com/WaynePluto/dsh-kit.git
+cd dsh-kit
+pnpm install
+pnpm plugins:build
+pnpm suite:build      # 生成套件 patch 并物化依赖闭包
+```
+
+然后在「添加插件」里输入 `plugins/suite` 目录的**绝对路径**（例如
+`D:\Documents\ai-dev\dsh-kit\plugins\suite`）。
+
+**通用说明**
+
+- 重启是生效的必要步骤：在安装前就启动的 dsh 里点「启用」，组件行会整包延迟到重启
+  装载（可解析性守卫，不会报 failed to import）；个别机器上首次启用还可能报一条
+  session-controller 的重挂载竞态（dsh 上游已知，见 [roadmap](docs/05-roadmap.md)），
+  同样重启即恢复。
+- 套件不经过 npm：组件不发布 registry，GitHub 安装全程只从本仓库的 Release 下载。
 
 装完之后套件就是一个普通第三方 Bundle：插件页可以停用整个套件，也可以在套件详情里
 单独停用某个组件；卸载后不会自动补回，重新安装同样走「添加插件」。

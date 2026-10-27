@@ -18,6 +18,7 @@ data/
 !.agents/skills/
 
 .vscode/
+.zcode/
 
 # build-suite 物化时的旧 node_modules 重命名残留（Windows 文件锁延迟删除）
 node_modules.obsolete-*/

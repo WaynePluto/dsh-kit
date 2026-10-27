@@ -28,6 +28,7 @@
 | [复制工作区路径](../plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制该工作区的完整目录路径 |
 | [收起/展开全部工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增动作按钮：有分组展开时一键收起全部，全部收起后一键展开 |
 | [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
+| [会话工作区显示](../plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
 | [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移、目录右键菜单与文件右键「查看 Git 变更」面板 |
@@ -42,14 +43,14 @@
 
 ## 分发组合
 
-22 个功能组件以 7 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+23 个功能组件以 7 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
 | 分发包 | 类型 | 包含组件或功能 |
 |---|---|---|
 | model-enhancements | 组合包 | Copilot 登录、模型目录更新、模型能力与协议、常用模型、模型提供商、DeepSeek 官方 API 开关；模型目录和模型能力共享运行时目录服务，不可单独停用 |
-| conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、会话重命名、复制工作区路径、收起/展开全部工作区、任务通知 |
+| conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、会话重命名、复制工作区路径、收起/展开全部工作区、任务通知、会话工作区显示 |
 | development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
 | proxy | 独立包 | 出网代理 |
 | agents-md | 独立包 | 全局提示词 |
@@ -66,12 +67,18 @@
 
 ## 安装、升级与停用
 
-- 安装：官方 dsh → 插件 → 添加插件 → 输入 `plugins/suite` 的绝对路径 → 安装 → 启用 → 重启 dsh。
+- 安装：官方 dsh → 插件 → 添加插件 → 输入安装地址 → 安装 → 启用 → 重启 dsh。
+  三种地址装的是同一自包含产物（D20，见 [架构](03-architecture.md)）：
+  GitHub Release `https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz`
+  （latest 永久链接，升级 = 卸载后重装同一地址）、本地 tarball `release/dsh-kit.tar.gz`、
+  开发用本地目录 `plugins/suite` 绝对路径。Git 仓库地址（裸 github.com 仓库 URL）
+  不可用：pnpm 按 git 依赖重打包会剥掉物化 node_modules 并触发 prepare 门禁
+  （2026-10-27 实测，见 [roadmap](05-roadmap.md)）。
   重启是生效的必要步骤：运行中的 dsh 点「启用」时组件行会因可解析性守卫整包延迟到重启
   装载（不再报 failed to import；安装前启动的进程里裸包名解析不到组件，见
   [插件机制](dsh/plugins.md)）；个别机器上首次启用还可能报一条 session-controller 的
   file-upload 重挂载竞态（上游已知，见 [roadmap](05-roadmap.md)），同样重启即恢复。
-  升级：重新构建套件后卸载再安装。
+  升级：重新构建发布后卸载再安装。
 - 停用：套件是一个普通 Bundle。插件页的 Bundle 开关停用整个套件；套件详情里的
   组件开关停用单个组件的行。两者都写在 profile patch 的 `disabled` 或 `dsh.profile.bundles`，
   重启后保持。

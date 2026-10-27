@@ -225,7 +225,15 @@ config-editor 行从 profile 的 hoisted node_modules 解析出第二份 app-boo
   0.1.6 起 ISessions.list 不再携带 current（SessionListState 只是目录）；根作用域组件要当前会话，订阅 ctx.uiSession.adapter.current 并读快照的 key。
 - conversation.view 是 session-scoped list，label 必须是 thunk，才能随语言切换。
 - conversation.chat.node 是 keyed；新增消息行需要自己的 ConversationNodeDefinition 和新 key。
-- conversation.input.dock 是输入框上方的 list；conversation.composer.dock 在下方。
+- conversation.input.dock 是输入框上方的 list；conversation.composer.dock 在下方（统计栏），
+  也是 session 作用域 list：原生 StatsPills 按 id 各占一条（activity order 0、usage order 1），
+  `ui-chat/src/client/apply.ts` 注释明示插件可按 id 新增 pill。列表排序是纯数值升序、tie 保注册序
+  （`ui-slots/src/index.ts`），负 order 合法，可排到官方条目之前；条目收到 session 标准 kit
+  （`sessionId`）加 `useSessions`（ui-session 适配器并入 GlobalStandardProps），会话 cwd 直读
+  `useSessions(s => s.byId[sessionId]?.cwd)`，与原生工作区悬停卡同源、无需宿主半。
+  pill 视觉契约见 `ui-chat/src/client/chat/StatsPills.module.css`（anchor 12px 次级字号、
+  pill `1px 8px` 圆角 `--dsw-radius-sm`、tertiary 静息、hover interactive-bg-hover、svg 14px）。
+  实例：`plugins/session-workspace/src/client/{index.tsx,pill.tsx}`（order -1，2026-10-27）。
 - conversation.chat.turnTail 是 chain，不适合保证多个插件并列显示。
 
 settings.section 没有 icon 字段，导航 shell 按 id 选择图标，未知 id 为齿轮。

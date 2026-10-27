@@ -113,6 +113,12 @@ interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。
 （dsh 生产代码不全局 provide），套件全局作用域拿不到——wrapper 的捕获 facade 在 ctx 链上
 没有该服务时兜底进程 cwd，有则原样透传。
 
+Windows 上实际 spawn 的可执行文件由两段决定：插件 `shellDialect` 默认 `auto`（win32 → `pwsh`），
+插件只透传 `shellArgs` 不透传 `shellPath`；上游 `terminal-bash` 的 `resolveConfig` 对 pwsh dialect
+调 `packages/shell/pwsh-local/src/resolve.ts` 的 `resolvePwshPath`——`%ProgramFiles%\PowerShell\7\pwsh.exe`
+优先，其次 PATH 条目的 `pwsh.exe`（含 Store 安装），最后才兜底 Windows PowerShell 5.1 的
+`powershell.exe`。装有 PowerShell 7 的机器命中的第一条候选就是 PS7 的 pwsh.exe。
+
 严格用于预期必须让用户在可见终端直接输入的命令。普通命令、构建、Git、测试、长任务与持久 shell 状态
 均使用 pwsh/bash；可改非交互的优先改非交互。持续服务使用 services。
 

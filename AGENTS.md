@@ -14,8 +14,11 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
 ## 铁律
 
 - 不修改或 fork dsh 源码，扩展只能写插件。
-- 唯一分发路径是套件单包：`plugins/suite` 经官方「添加插件」安装/升级；不实现第二套插件管理器，
-  不做 launcher 式的外部安装、介质同步或进程编排。
+- 唯一分发路径是套件单包：`plugins/suite` 经官方「添加插件」安装/升级，安装地址三形态统一为
+  同一自包含产物（本地目录、本地 tarball、GitHub Release 资产 `dsh-kit.tar.gz` latest 永久链接；
+  D20）；套件 package.json 零 dependencies、组件声明为 peerDependencies（精确版本，依赖闭包
+  物化在套件内 node_modules），git 形态仓库 URL 因 pnpm 按 npm-packlist 重打包剥 node_modules
+  而不可用；不实现第二套插件管理器，不做 launcher 式的外部安装、介质同步或进程编排。
 - 插件一律是受管 Profile Bundle：包根 `cordis.patch.yml` 声明行，宿主入口 `./dist/index.js`，
   浏览器半声明 `dsh.client` 并产出 `dist/client.js`；`pnpm plugins:build` 与 `pnpm suite:build`
   都要检查两半产物，缺失即响亮失败。
@@ -68,7 +71,8 @@ CI 固定 10.17.0。TypeScript + ESM + pnpm workspace，构建 tsdown，开发 t
 [ARCHITECTURE.md](ARCHITECTURE.md)；修改模块结构后请更新该文件。
 
 常用检查：`pnpm check:dependencies`、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test`；
-插件产物与套件产物：`pnpm plugins:build`、`pnpm suite:build`。
+插件产物与套件产物：`pnpm plugins:build`、`pnpm suite:build`；发布打包：`pnpm suite:pack`
+（产物 `release/dsh-kit.tar.gz`，push `v*` 标签由 `release.yml` 自动发布同一资产名）。
 
 官方 dsh 新版本的插件适配检查加载 dsh-upgrade skill（适配基线记录在 docs/02-dsh-facts.md 开头）；
 其余依赖固定不动，升级另行决策。提交前钩子检查固定版本并清理 lockfile 内部镜像 tarball 地址。

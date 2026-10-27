@@ -78,6 +78,10 @@
         {
           "name": "@dsh-kit/dsh-plugin-notify",
           "rowId": "notify"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-session-workspace",
+          "rowId": "session-workspace"
         }
       ]
     },

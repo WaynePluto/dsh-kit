@@ -2,11 +2,11 @@
 
 [简体中文](README.md) | **English**
 
-Verified against official dsh: `0.2.0-rc.2` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
+Verified against official dsh: `0.2.1-rc.3` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
 
-A third-party **plugin suite** for the official DeepSeek Harness (dsh): 22 components
+A third-party **plugin suite** for the official DeepSeek Harness (dsh): 23 components
 that improve everyday model, conversation, workspace and runtime workflows. Install or
-upgrade everything by entering **one path** in the official dsh plugin manager
+upgrade everything by entering **one address** in the official dsh plugin manager
 ("+ Add plugin").
 
 - dsh is never forked or patched; all extensions ride the official plugin mechanism
@@ -20,31 +20,52 @@ upgrade everything by entering **one path** in the official dsh plugin manager
 
 Global prompt, egress proxy, Copilot login, model catalog, model capabilities,
 favorite models, model provider label, DeepSeek API switch, turn retry, chat scroll
-navigation, session-stats hours, user-message fork, session rename, copy workspace
-path, task notifications, tool status, skill status, file browsing, resident
-services, interactive terminal, web-search switch.
+navigation, session-stats hours, user-message fork, session rename, session
+workspace indicator, copy workspace path, task notifications, tool status, skill
+status, file browsing, resident services, interactive terminal, web-search switch.
 See the [plugin index](docs/plugins.md) and each package README (Chinese).
 
 ## Install
 
-1. Install the official dsh desktop app (or run official dsh web on a server).
-2. Clone and build this repository:
-   ```powershell
-   pnpm install
-   pnpm plugins:build
-   pnpm suite:build      # generates the suite patch and materializes dependencies
-   ```
-3. dsh → Plugins → Add plugin → enter the absolute path of `plugins/suite`
-   → Install → Enable → restart dsh. The restart is required for the suite to take
-   effect: when enabling from a dsh process that started before the install, every
-   component row defers loading until the restart (a resolvability guard prevents
-   `failed to import` errors); on some machines the first enable may additionally
-   report one session-controller remount race (a known upstream issue, see
-   [roadmap](docs/05-roadmap.md)) which also recovers after the restart.
-   To upgrade, rebuild, then uninstall and reinstall.
+dsh → Plugins → Add plugin → enter **one of the two addresses below** → Install →
+Enable → restart dsh. Both addresses deliver the same self-contained suite package;
+you can switch between them anytime (uninstall first, then install the other one).
 
-Installing from a single GitHub repository URL is structurally ready (`file:` relative
-dependencies) and will be verified once the repository is public.
+**Option 1: GitHub install (recommended, no clone needed)**
+
+```text
+https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
+```
+
+`latest/download` always points at the newest release. To upgrade, uninstall and
+reinstall **the same address** (the desktop app has no plugin auto-update yet).
+Note that the bare repository URL (`https://github.com/WaynePluto/dsh-kit`) does
+not work: pnpm treats it as a git dependency and strips the suite's bundled
+dependency closure — only the Release asset above is supported.
+
+**Option 2: local directory install (development / offline)**
+
+```powershell
+git clone https://github.com/WaynePluto/dsh-kit.git
+cd dsh-kit
+pnpm install
+pnpm plugins:build
+pnpm suite:build      # generates the suite patch and materializes dependencies
+```
+
+Then enter the **absolute path** of the `plugins/suite` directory in
+"Add plugin" (for example `D:\Documents\ai-dev\dsh-kit\plugins\suite`).
+
+**Notes**
+
+- The restart is required for the suite to take effect: when enabling from a dsh
+  process that started before the install, every component row defers loading until
+  the restart (a resolvability guard prevents `failed to import` errors); on some
+  machines the first enable may additionally report one session-controller remount
+  race (a known upstream issue, see [roadmap](docs/05-roadmap.md)) which also
+  recovers after the restart.
+- The suite never touches npm: components are not published to the registry, and the
+  GitHub install downloads only from this repository's releases.
 
 Once installed the suite is an ordinary third-party Bundle: disable the whole suite on
 the plugins page, or disable individual components inside it. Uninstalling never
