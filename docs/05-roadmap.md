@@ -310,6 +310,17 @@
   （不可达 registry 安装 tarball + 真实 dsh 冷启动，断言 23 组件行 ACTIVE、客户端图
   23/23、零 registry 解析）与 suite-toggle / first-enable（junction 形态）三检查在
   peers 形态下全部通过。待办：推仓库、打首版标签、真实 Release URL 实机验收。
+- [x] 版本名资产原地升级（2026-10-28，D21）：官方「添加插件」对已装包的拒绝只在
+  spec 能预先反查出包名时发生——固定 latest URL 重复输入命中拒绝（D20 的「升级 =
+  卸载重装」由此），输入**带版本号的新资产地址**则放行，pnpm 原地替换同包名依赖后
+  HMR 热装载（查证记录见 [插件机制](dsh/plugins.md)「覆盖安装与升级语义」；官方
+  「更新」按钮只给官方目录包，第三方无）。实施：`release.yml` 双资产上传（固定名 +
+  版本名）、`pack-suite.mjs` 两份产物同字节、README/文档升级指引更新。守护：
+  `suite-upgrade-check.mjs`（旧版 tarball 冷启动 23 行 ACTIVE → 在线 installBundle
+  新版本地址 → applied 热生效、23 行重新 ACTIVE、核心行稳定、依赖值换新、同 spec
+  重装被拒 already-installed），2026-10-28 本机全通过；CLI `dsh plugin --profile
+  desktop add <spec>`（裸 pnpm、无拒绝、重启生效）为兜底路径。待办：真实 Release
+  URL 升级实机验收（随首版发布一起）。
 - [ ] 按 [dsh-upgrade skill](../.agents/skills/dsh-upgrade/SKILL.md) 跟进官方 dsh 新版本，
   完成后回写 [源码依据](02-dsh-facts.md) 的适配基线。
 - [ ] 新增插件前先更新 [决策](01-decisions.md) 与 `plugin-catalog.json`，并在

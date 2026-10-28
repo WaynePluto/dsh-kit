@@ -52,9 +52,14 @@ dsh → 插件 → 添加插件 → 输入下面**两种地址之一** → 安�
 https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
 ```
 
-`latest/download` 恒指最新 Release。升级 = 卸载后重装**同一地址**（官方桌面暂不支持
-插件自动更新）。注意：裸仓库地址（`https://github.com/WaynePluto/dsh-kit`）不可用——
-pnpm 会把它当 git 依赖重打包，剥掉套件自带的依赖闭包；只认上面的 Release 资产地址。
+`latest/download` 恒指最新 Release，用于**首次安装**。**升级不需要卸载**：到
+[Releases](https://github.com/WaynePluto/dsh-kit/releases) 打开新版本，复制
+`dsh-kit-<版本>.tar.gz` 资产的地址（形如
+`https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit-0.0.1.tar.gz`），
+在「添加插件」里输入即原地替换旧版并在线热生效；同一地址重复输入会被官方管理器
+拒为 already-installed，所以升级地址必须带版本号。注意：裸仓库地址
+（`https://github.com/WaynePluto/dsh-kit`）不可用——pnpm 会把它当 git 依赖重打包，
+剥掉套件自带的依赖闭包；只认上面的 Release 资产地址。
 
 **方式二：本地目录安装（开发/离线）**
 

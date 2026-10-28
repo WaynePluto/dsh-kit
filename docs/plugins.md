@@ -68,17 +68,21 @@
 ## 安装、升级与停用
 
 - 安装：官方 dsh → 插件 → 添加插件 → 输入安装地址 → 安装 → 启用 → 重启 dsh。
-  三种地址装的是同一自包含产物（D20，见 [架构](03-architecture.md)）：
-  GitHub Release `https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz`
-  （latest 永久链接，升级 = 卸载后重装同一地址）、本地 tarball `release/dsh-kit.tar.gz`、
-  开发用本地目录 `plugins/suite` 绝对路径。Git 仓库地址（裸 github.com 仓库 URL）
-  不可用：pnpm 按 git 依赖重打包会剥掉物化 node_modules 并触发 prepare 门禁
-  （2026-10-27 实测，见 [roadmap](05-roadmap.md)）。
-  重启是生效的必要步骤：运行中的 dsh 点「启用」时组件行会因可解析性守卫整包延迟到重启
-  装载（不再报 failed to import；安装前启动的进程里裸包名解析不到组件，见
+  三种地址装的是同一自包含产物（D20/D21，见 [架构](03-architecture.md)）：
+  GitHub Release 固定名 `https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz`
+  （latest 永久链接，首次安装用）、GitHub Release 版本名
+  `…/releases/download/v<版本>/dsh-kit-<版本>.tar.gz`（升级用）、本地 tarball
+  `release/dsh-kit-<版本>.tar.gz`、开发用本地目录 `plugins/suite` 绝对路径。
+  Git 仓库地址（裸 github.com 仓库 URL）不可用：pnpm 按 git 依赖重打包会剥掉物化
+  node_modules 并触发 prepare 门禁（2026-10-27 实测，见 [roadmap](05-roadmap.md)）。
+  首次安装的重启是生效的必要步骤：运行中的 dsh 点「启用」时组件行会因可解析性守卫整包
+  延迟到重启装载（不再报 failed to import；安装前启动的进程里裸包名解析不到组件，见
   [插件机制](dsh/plugins.md)）；个别机器上首次启用还可能报一条 session-controller 的
   file-upload 重挂载竞态（上游已知，见 [roadmap](05-roadmap.md)），同样重启即恢复。
-  升级：重新构建发布后卸载再安装。
+- 升级（D21）：到 Releases 打开新版本，复制 `dsh-kit-<版本>.tar.gz` 资产地址，
+  在「添加插件」输入即原地替换旧版并在线热生效，**无需先卸载**、无需重启
+  （`suite-upgrade-check.mjs` 实机守护）。同地址（固定 latest/download 名或已安装
+  spec）重复输入会被官方管理器拒为 already-installed，因此升级地址必须带版本号。
 - 停用：套件是一个普通 Bundle。插件页的 Bundle 开关停用整个套件；套件详情里的
   组件开关停用单个组件的行。两者都写在 profile patch 的 `disabled` 或 `dsh.profile.bundles`，
   重启后保持。

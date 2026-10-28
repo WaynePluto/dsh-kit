@@ -89,7 +89,7 @@ plugins/<组件>/
 |---|---|
 | `pnpm plugins:build` | 构建全部插件的两层产物（`packages/plugin-ui` + `plugins/**`） |
 | `pnpm suite:build` | 生成套件 patch 并物化依赖闭包到 `plugins/suite/node_modules/` |
-| `pnpm suite:pack` | 构建 + 物化后打成自包含 tarball（`release/dsh-kit.tar.gz`，发布产物） |
+| `pnpm suite:pack` | 构建 + 物化后打成自包含 tarball（`release/dsh-kit.tar.gz` 固定名 + `dsh-kit-<版本>.tar.gz` 版本名双资产，发布产物） |
 | `pnpm dev` | 隔离开发实例：DSH_HOME=`~/.dsh-dev`、profile `dsh-kit-dev`、端口 3180，启动前自动检查运行时并安装套件 |
 | `node scripts/<主题>-check.mjs` | 隔离 home + 真实 dsh 的冒烟断言，入口表见 [源码依据](02-dsh-facts.md) |
 | `node scripts/verify-suite-client.mjs --token <token>` | 校验运行中宿主首页的 `__DSH_BOOT__` 图含全部 23 个浏览器行 |

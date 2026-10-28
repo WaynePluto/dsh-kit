@@ -14,9 +14,11 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
 ## 铁律
 
 - 不修改或 fork dsh 源码，扩展只能写插件。
-- 唯一分发路径是套件单包：`plugins/suite` 经官方「添加插件」安装/升级，安装地址三形态统一为
-  同一自包含产物（本地目录、本地 tarball、GitHub Release 资产 `dsh-kit.tar.gz` latest 永久链接；
-  D20）；套件 package.json 零 dependencies、组件声明为 peerDependencies（精确版本，依赖闭包
+- 唯一分发路径是套件单包：`plugins/suite` 经官方「添加插件」安装/升级，安装地址统一为
+  同一自包含产物（本地目录、本地 tarball、GitHub Release 双资产——固定名 `dsh-kit.tar.gz`
+  latest 永久链接用于首次安装，版本名 `dsh-kit-<version>.tar.gz` 用于原地升级；
+  D20/D21）；升级 = 输入新版本资产地址在线热替换，不卸载不重启，同地址重复输入被官方
+  管理器拒为 already-installed；套件 package.json 零 dependencies、组件声明为 peerDependencies（精确版本，依赖闭包
   物化在套件内 node_modules），git 形态仓库 URL 因 pnpm 按 npm-packlist 重打包剥 node_modules
   而不可用；不实现第二套插件管理器，不做 launcher 式的外部安装、介质同步或进程编排。
 - 插件一律是受管 Profile Bundle：包根 `cordis.patch.yml` 声明行，宿主入口 `./dist/index.js`，

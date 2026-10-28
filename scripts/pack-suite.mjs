@@ -10,11 +10,12 @@
  * 内容（files 声明 + README + package.json）+ 物化 node_modules（排除 .obsolete-*
  * 残留）；tests 不随包分发。
  *
- * 产物两份同字节文件：
- * - release/dsh-kit.tar.gz        固定资产名，「添加插件」用
+ * 产物两份同字节文件（D21 双资产发布）：
+ * - release/dsh-kit.tar.gz        固定资产名，「添加插件」首次安装用永久链接
  *   https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
- *   （latest 永久链接，升级 = 卸载后重装同一地址）。
- * - release/dsh-kit-<version>.tar.gz  带版本号，本地归档用。
+ *   （同地址重复输入被官方管理器拒为 already-installed，不能用于升级）。
+ * - release/dsh-kit-<version>.tar.gz  带版本号，升级地址：「添加插件」输入新版本
+ *   资产 URL 即原地替换已装套件并在线热生效，无需先卸载。
  *
  * 用法：node scripts/pack-suite.mjs [v<期望标签>]（给出标签时核对与套件版本一致）。
  * 前置：pnpm suite:build（物化 + peerDependencies 契约校验）。
@@ -101,5 +102,6 @@ for (const name of outputs) {
 check(failures === 0, `内容：${manifest.name}@${manifest.version}，${String(peers.length)} 个 peerDependencies 组件，` +
   `${String(measured.files)} 个文件，物化内容 ${(measured.bytes / 1024 / 1024).toFixed(1)} MiB`)
 if (failures > 0) process.exit(1)
-console.log('发布：推送到 GitHub 后由 release 工作流上传 dsh-kit.tar.gz；「添加插件」填\n' +
-  '  https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz')
+console.log('发布：推送到 GitHub 后由 release 工作流上传两份资产（固定名 + 版本名）；\n' +
+  '首次安装填 https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz，\n' +
+  `升级填新版本资产地址 https://github.com/WaynePluto/dsh-kit/releases/download/v${manifest.version}/dsh-kit-${manifest.version}.tar.gz`)

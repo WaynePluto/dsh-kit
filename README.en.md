@@ -37,11 +37,17 @@ you can switch between them anytime (uninstall first, then install the other one
 https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
 ```
 
-`latest/download` always points at the newest release. To upgrade, uninstall and
-reinstall **the same address** (the desktop app has no plugin auto-update yet).
-Note that the bare repository URL (`https://github.com/WaynePluto/dsh-kit`) does
-not work: pnpm treats it as a git dependency and strips the suite's bundled
-dependency closure — only the Release asset above is supported.
+`latest/download` always points at the newest release — use it for the **first
+install**. **Upgrading needs no uninstall**: open the new release on
+[Releases](https://github.com/WaynePluto/dsh-kit/releases), copy the address of
+its `dsh-kit-<version>.tar.gz` asset (e.g.
+`https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit-0.0.1.tar.gz`)
+and enter it in "Add plugin" — the suite is replaced in place and hot-applied.
+Re-entering the same address is refused as already-installed, so the upgrade
+address must carry the version. Note that the bare repository URL
+(`https://github.com/WaynePluto/dsh-kit`) does not work: pnpm treats it as a git
+dependency and strips the suite's bundled dependency closure — only the Release
+assets above are supported.
 
 **Option 2: local directory install (development / offline)**
 

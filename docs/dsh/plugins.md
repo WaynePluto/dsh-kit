@@ -90,6 +90,30 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
   这会使任意 Bundle 开关被无关插件的 `failed to import` 阻断；磁盘选择已保存但旧 fiber 未卸载，
   随后的卸载又会得到 `bundle-in-use`。进程重启只会掩盖问题，不能以“重启后正常”代替稳定 ID。
 
+### 覆盖安装与升级语义（2026-10-28 查证，0.2.1-rc.3）
+
+出处：`packages/boot/plugin-manager/src/index.ts`（installBundle/removeBundle）、
+`install-spec.ts`（specPackageName）、`packages/client/ui-plugin-manager/src/client/`
+`{manager-store.ts,PluginManagerPage.tsx}`、`official-install-target.ts`。
+
+- Web 安装的 already-installed 拒绝只在「spec 能预先反查出包名」时发生：registry 名、本地目录
+  manifest、以及与已存依赖值逐字相同的 git/tarball spec。固定 URL（如 latest 永久链接）重复输入
+  即命中——依赖值就是 URL 本身。**内容不同的新 URL 反查不到包名，inspect（tarball 类不做该检查）
+  与 installBundle 都放行**，`pnpm add` 原地替换同包名依赖值，随后走 HMR
+  publishAndReload 热装载新版本（无 HMR 的 CLI 形态则替换后等重启，源码注释明示该流程）。
+- 官方「更新」按钮（`updateAvailable`）只对官方目录包出现：`installTarget` 仅
+  `OFFICIAL_ON_DEMAND_CATALOG` 条目派生（产品安装 = `name@dsh版本` registry spec），第三方包
+  永远没有。按钮语义本身是 removeBundle + install 的自动编排（manager-store 的 `update`）。
+- CLI `dsh plugin --profile desktop add <spec>` 不走 manager、无 already-installed 拒绝，
+  等价于带文件锁的裸 pnpm。桌面内置 pnpm 11.28.5（`~/.dsh/dsh-runtimes/…/dependencies/pnpm`）。
+- pnpm 实证（11.28.5，本地 HTTP 固定 URL 实验）：同 URL 重复 `add` 会重新下载并更新
+  node_modules；不同 URL 替换同包名依赖同样成功且更新依赖值。「同 URL 重装拿不到新内容」
+  不成立，升级障碍只在 dsh 的 already-installed 拒绝。
+- 实机验证（2026-10-28，`suite-upgrade-check.mjs` 全通过）：旧版 tarball 冷启动 23 行
+  ACTIVE 后，在线 installBundle 新版本地址 → ChangeResult `application=applied` 热生效、
+  23 行重新 ACTIVE、核心行稳定、依赖值换新；同 spec 重装被拒 already-installed 且行不受
+  扰动。dsh-kit 的升级机制以此为准（D21）。
+
 ### dsh-kit 分发约束
 
 - 根 `plugin-catalog.json` 将 21 个功能组件映射为 3 个组合包与 5 个独立包；
