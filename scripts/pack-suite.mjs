@@ -77,9 +77,11 @@ for (const entry of [...manifest.files ?? [], 'README.md']) {
 cpSync(join(SUITE, 'package.json'), join(STAGING, 'package', 'package.json'))
 cpSync(join(SUITE, 'node_modules'), join(STAGING, 'package', 'node_modules'), {
   recursive: true,
+  // .obsolete-* 是 pnpm 换代残留；.vite 是 vitest 测试缓存（release.yml 在
+  // pnpm test 之后打包，本地也可能带着上一次测试的缓存），都不属于发布产物。
   filter: source => !relative(SUITE, source)
     .split(/[\\/]/u)
-    .some(segment => segment.startsWith('.obsolete-')),
+    .some(segment => segment === '.vite' || segment.startsWith('.obsolete-')),
 })
 
 const outputs = ['dsh-kit.tar.gz', `dsh-kit-${manifest.version}.tar.gz`]
