@@ -1,6 +1,6 @@
 {
   "name": "@dsh-kit/dsh-plugin-suite",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "dsh-kit 全量套件：一个包安装全部功能组件。自包含产物（自带物化 node_modules），组件声明为 peerDependencies 供宿主 runtime resolution 物理解析，本地目录与 GitHub Release tarball 安装同一产物。",
   "license": "MIT",
   "private": true,
