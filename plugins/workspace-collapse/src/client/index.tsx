@@ -27,10 +27,11 @@ import { en, zh } from './locales.js'
 import type { WorkspaceCollapseKey } from './locales.js'
 
 /** 聚焦按钮的组合字形：三条工作区分组线 + 右侧上下 chevron（Medium 1.3px 描边，
- *  16 viewBox 与原生 outline 字形同规范；颜色走 currentColor 随按钮状态）。 */
+ *  16 viewBox 与原生 outline 字形同规范；显示尺寸 16px 与相邻原生头部图标一致，
+ *  颜色走 currentColor 随按钮状态）。 */
 function FocusRemindersGlyph(): ReactNode {
   return (
-    <svg width={12} height={12} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" strokeWidth={1.3}>
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" strokeWidth={1.3}>
       <path d="M2.5 4.2H9" stroke="currentColor" />
       <path d="M2.5 8H9" stroke="currentColor" />
       <path d="M2.5 11.8H9" stroke="currentColor" />
