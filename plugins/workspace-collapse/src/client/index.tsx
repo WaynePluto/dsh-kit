@@ -1,10 +1,10 @@
 /**
  * workspace-collapse 的 browser half：在侧栏「工作区」头部注入两枚按钮——
- * 一键收起/展开与聚焦提醒（展开有运行中/待操作/未读会话的工作区、收起其余）。
- * 注入编排见 `collapse.ts`；按钮内容用原生 `Tooltip`（external，样式由页面提供，
- * fixed 气泡不受 sectionHeader 的 overflow:hidden 裁剪，与原生头部按钮同参数）
- * 包裹原生字形（双 chevron 纵向叠放 / IconSlidersTwoOutlineMedium），在
- * 注入容器里挂独立 React 根；动作方向切换时就地重渲染，只换文案与字形顺序。
+ * 一键收起/展开与仅展开活动的工作区（有运行中/待操作/未读会话的分组保留展开，
+ * 收起其余）。注入编排见 `collapse.ts`；按钮内容用原生 `Tooltip`（external，
+ * 样式由页面提供，fixed 气泡不受 sectionHeader 的 overflow:hidden 裁剪，与原生
+ * 头部按钮同参数）包裹原生字形（双 chevron 纵向叠放 / 三线+上下 chevron 组合），
+ * 在注入容器里挂独立 React 根；动作方向切换时就地重渲染，只换文案与字形顺序。
  *
  * @module @dsh-kit/dsh-plugin-workspace-collapse/client
  */
@@ -44,9 +44,9 @@ function FocusRemindersGlyph(): ReactNode {
 export { en, zh } from './locales.js'
 export type { WorkspaceCollapseKey } from './locales.js'
 export {
-  BUTTON_ATTR, BUTTON_CLASS, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
-  EXPANDED_ROW_SELECTOR, REMINDER_DOT_SELECTOR, SESSION_ROW_SELECTOR,
-  WORKSPACE_ROW_SELECTOR, collapseExpandedRows, expandCollapsedRows, focusReminderRows,
+  ACTIVE_DOT_SELECTOR, BUTTON_ATTR, BUTTON_CLASS, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
+  EXPANDED_ROW_SELECTOR, SELECTED_SESSION_SELECTOR, SESSION_ROW_SELECTOR,
+  WORKSPACE_ROW_SELECTOR, collapseExpandedRows, expandCollapsedRows, focusActiveRows,
   installWorkspaceCollapse, sectionHeaderOf,
 } from './collapse.js'
 export type {
@@ -67,7 +67,7 @@ const NS = SELF_NAMESPACE
 export const inject = ['locale']
 
 /**
- * 在注入容器里渲染 Tooltip 包裹的两枚原生风格图标按钮（收起/展开 + 聚焦提醒）。
+ * 在注入容器里渲染 Tooltip 包裹的两枚原生风格图标按钮（收起/展开 + 仅展开活动）。
  * @param container - 注入编排提供的挂载点。
  * @param options - 两个动作的文案、方向与回调。
  * @returns 更新与卸载句柄。
@@ -111,8 +111,8 @@ function mountCollapseButton(container: HTMLElement, options: CollapseButtonOpti
             aria-label={opts.focusLabel}
             onClick={opts.onFocus}
           >
-            {/* 组合字形（三条分组线 + 上下 chevron）：聚焦动作仅展开有会话提醒
-                （运行中/待用户操作/完成未读）的工作区。 */}
+            {/* 组合字形（三条分组线 + 上下 chevron）：聚焦动作仅展开活动的工作区
+                （有运行中/待用户操作/完成未读会话的分组）。 */}
             <FocusRemindersGlyph />
           </button>
         </Tooltip>
@@ -126,7 +126,7 @@ function mountCollapseButton(container: HTMLElement, options: CollapseButtonOpti
   }
 }
 
-/** 注册文案并安装工作区头部的收起/展开与聚焦提醒按钮。 */
+/** 注册文案并安装工作区头部的收起/展开与「仅展开活动」按钮。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'workspace-collapse: dictionaries')
   if (typeof document === 'undefined') return

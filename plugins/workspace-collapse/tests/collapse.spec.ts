@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-/** 工作区头部注入按钮的 DOM 编排测试：折叠与展开选择、聚焦提醒归属、注入位置、模式跟随与卸载。 */
+/** 工作区头部注入按钮的 DOM 编排测试：折叠与展开选择、仅展开活动的归属、注入位置、模式跟随与卸载。 */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  BUTTON_ATTR, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
-  REMINDER_DOT_SELECTOR, WORKSPACE_ROW_SELECTOR,
-  collapseExpandedRows, expandCollapsedRows, focusReminderRows, installWorkspaceCollapse,
+  ACTIVE_DOT_SELECTOR, BUTTON_ATTR, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
+  WORKSPACE_ROW_SELECTOR,
+  collapseExpandedRows, expandCollapsedRows, focusActiveRows, installWorkspaceCollapse,
   sectionHeaderOf,
 } from '../src/client/collapse.js'
 import type {
@@ -50,12 +50,12 @@ function sessionRow(id: string, clicks: string[], state?: 'ongoing' | 'warning' 
   return row
 }
 
-/** 断言 selector 命中字符串里的状态点形态（防手滑改坏提醒口径）。 */
-describe('REMINDER_DOT_SELECTOR', () => {
+/** 断言 selector 命中字符串里的状态点形态（防手滑改坏活动口径）。 */
+describe('ACTIVE_DOT_SELECTOR', () => {
   it('只认运行中、待用户操作与完成未读三种状态', () => {
-    expect(REMINDER_DOT_SELECTOR).toContain('"ongoing"')
-    expect(REMINDER_DOT_SELECTOR).toContain('"warning"')
-    expect(REMINDER_DOT_SELECTOR).toContain('"done"')
+    expect(ACTIVE_DOT_SELECTOR).toContain('"ongoing"')
+    expect(ACTIVE_DOT_SELECTOR).toContain('"warning"')
+    expect(ACTIVE_DOT_SELECTOR).toContain('"done"')
   })
 })
 
@@ -133,7 +133,7 @@ function nativeBrowser(): {
 
 /** 记录挂载/更新/卸载的假依赖。 */
 function harness(labels = {
-  collapse: '收起全部工作区', expand: '展开全部工作区', focus: '聚焦有提醒的工作区',
+  collapse: '收起全部工作区', expand: '展开全部工作区', focus: '仅展开活动的工作区',
 }) {
   const mounted: { container: HTMLElement; options: CollapseButtonOptions }[] = []
   const updates: CollapseButtonOptions[] = []
@@ -238,8 +238,8 @@ describe('expandCollapsedRows', () => {
   })
 })
 
-describe('focusReminderRows', () => {
-  it('展开有提醒会话的收起分组，收起无提醒的展开分组', async () => {
+describe('focusActiveRows', () => {
+  it('先展开全部分组，再收起子树无活动会话的分组', async () => {
     const clicks: string[] = []
     listElement([
       section({ key: 'ws-run', expanded: false, clicks, flip: true, sessions: [sessionRow('s1', clicks, 'ongoing')] }),
@@ -248,12 +248,51 @@ describe('focusReminderRows', () => {
       section({ key: 'ws-wait', expanded: false, clicks, flip: true, sessions: [sessionRow('s4', clicks, 'warning')] }),
     ])
 
-    // 展开阶段按文档顺序点 ws-run 与 ws-wait；收起阶段逆序只点无提醒的 ws-quiet。
-    expect(await focusReminderRows(document)).toBe(3)
+    // 展开阶段全部点开（收起分组的会话行只在展开后才在 DOM，上游 deriveGroups
+    // 对收起分组输出空 sessions）；收起阶段逆序只点无活动的 ws-quiet。
+    expect(await focusActiveRows(document)).toBe(3)
     expect(clicks).toEqual(['ws-run', 'ws-wait', 'ws-quiet'])
   })
 
-  it('嵌套分组：子分组的提醒保留整条祖先链展开', async () => {
+  it('收起分组的会话行点击展开后才挂载：运行中会话的工作区保留展开（回归）', async () => {
+    const clicks: string[] = []
+    // 模拟上游真实行为：收起分组不渲染会话行，点击头行展开时才挂载。
+    const runSection = section({ key: 'ws-run', expanded: false, clicks, flip: true })
+    const quietSection = section({ key: 'ws-quiet', expanded: false, clicks, flip: true })
+    for (const [sectionEl, id] of [[runSection, 's1'], [quietSection, 's2']] as const) {
+      const header = sectionEl.querySelector('[data-row-key^="workspace:"]')!
+      header.addEventListener('click', () => {
+        if (header.getAttribute('aria-expanded') === 'true') {
+          const sessionSpan = document.createElement('span')
+          // 只有 ws-run 的会话带运行中状态点。
+          sessionSpan.appendChild(sessionRow(id, clicks, id === 's1' ? 'ongoing' : undefined))
+          sectionEl.appendChild(sessionSpan)
+        }
+      })
+    }
+    listElement([runSection, quietSection])
+
+    // 两分组都展开（2 次点击）；收起阶段 ws-run 有运行中保留、ws-quiet 无活动收起（第 3 次）。
+    expect(await focusActiveRows(document)).toBe(3)
+    expect(clicks).toEqual(['ws-run', 'ws-quiet', 'ws-quiet'])
+    expect(quietSection.querySelector('[data-row-key^="workspace:"]')!.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('当前选中会话所在的分组保留展开，即使没有任何活动状态点', async () => {
+    const clicks: string[] = []
+    const currentRow = sessionRow('s-cur', clicks)
+    currentRow.setAttribute('aria-selected', 'true')
+    listElement([
+      section({ key: 'ws-current', expanded: true, clicks, flip: true, sessions: [currentRow] }),
+      section({ key: 'ws-idle', expanded: true, clicks, flip: true, sessions: [sessionRow('s2', clicks)] }),
+    ])
+
+    // ws-current 无状态点但含当前选中会话，不收；ws-idle 收起。
+    expect(await focusActiveRows(document)).toBe(1)
+    expect(clicks).toEqual(['ws-idle'])
+  })
+
+  it('嵌套分组：子分组的活动保留整条祖先链展开', async () => {
     const clicks: string[] = []
     listElement([
       section({
@@ -272,57 +311,25 @@ describe('focusReminderRows', () => {
       }),
     ])
 
-    // 展开阶段点开子分组；收起阶段父分组子树含提醒、子分组自有提醒，都不收。
-    expect(await focusReminderRows(document)).toBe(1)
+    // 展开阶段点开子分组；收起阶段父分组子树含活动、子分组自有活动，都不收。
+    expect(await focusActiveRows(document)).toBe(1)
     expect(clicks).toEqual(['ws-child'])
   })
 
-  it('父分组展开后新挂载的提醒子分组在下一轮补点', async () => {
-    const clicks: string[] = []
-    // 子分组先建好但不在文档中：上游收起的父分组不渲染子分组行。
-    const childSection = section({
-      key: 'ws-child',
-      expanded: false,
-      clicks,
-      flip: true,
-      sessions: [sessionRow('s1', clicks, 'warning')],
-    })
-    const parentSection = section({
-      key: 'ws-parent',
-      expanded: false,
-      clicks,
-      flip: true,
-      sessions: [sessionRow('s0', clicks, 'ongoing')],
-    })
-    const parentHeader = parentSection.querySelector('[data-row-key="workspace:ws-parent"]')!
-    parentHeader.addEventListener('click', () => {
-      if (parentHeader.getAttribute('aria-expanded') === 'true') {
-        const group = document.createElement('div')
-        group.setAttribute('role', 'group')
-        group.appendChild(childSection)
-        parentSection.appendChild(group)
-      }
-    })
-    listElement([parentSection])
-
-    // 第一轮父分组自有提醒（运行中）被点开并挂载子分组；第二轮补点子分组的提醒。
-    expect(await focusReminderRows(document)).toBe(2)
-    expect(clicks).toEqual(['ws-parent', 'ws-child'])
-  })
-
-  it('结构不符（无 HoverCard span 包装）时判定退化为无操作', async () => {
+  it('结构不符（无 HoverCard span 包装）时仍全部展开，但收起判定退化为无操作', async () => {
     const clicks: string[] = []
     // 旧式平铺 fixture：行与会话行是 list 的直接子节点，section 守卫应拒绝归属判定。
+    const row = groupRow('ws-a', false, clicks)
+    row.addEventListener('click', () => {
+      row.setAttribute('aria-expanded', 'true')
+    })
     const list = document.createElement('div')
-    list.append(
-      groupRow('ws-a', true, clicks),
-      sessionRow('s1', clicks, 'ongoing'),
-    )
+    list.append(row, sessionRow('s1', clicks, 'ongoing'))
     document.body.appendChild(list)
 
-    // 展开阶段没有命中（守卫返回 null），收起阶段子树判定同样为 null → 不收。
-    expect(await focusReminderRows(document)).toBe(0)
-    expect(clicks).toEqual([])
+    // 展开阶段不再做归属判定（先全开），收起阶段子树判定为 null → 不收。
+    expect(await focusActiveRows(document)).toBe(1)
+    expect(clicks).toEqual(['ws-a'])
   })
 })
 

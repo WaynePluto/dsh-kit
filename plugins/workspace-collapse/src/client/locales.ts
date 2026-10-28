@@ -4,7 +4,7 @@
 export const en = {
   collapseAll: 'Collapse all workspaces',
   expandAll: 'Expand all workspaces',
-  focusUpdates: 'Expand only workspaces with updates',
+  focusUpdates: 'Expand only active workspaces',
 } as const
 
 /** 本 namespace 的文案 key 类型。 */
@@ -14,5 +14,5 @@ export type WorkspaceCollapseKey = keyof typeof en
 export const zh: Record<WorkspaceCollapseKey, string> = {
   collapseAll: '收起全部工作区',
   expandAll: '展开全部工作区',
-  focusUpdates: '仅展开有提醒的工作区',
+  focusUpdates: '仅展开活动的工作区',
 }

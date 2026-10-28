@@ -19,10 +19,11 @@
  *   展开时渲染子分组行，父行展开后新挂载的子行（各自持持久化的收起态）才进
  *   文档，所以按「点击一批 → 等 React 落 DOM → 再探下一轮」循环到没有未点过的
  *   收起行；每行只点一次，行数有限故必然终止。
- * - 聚焦提醒：展开全部自有会话带提醒状态点的分组（运行中/待用户操作/完成未读，
- *   见 {@link REMINDER_DOT_SELECTOR}），收起子树无提醒的分组；会话行归属用
- *   renderGroup 的 section 结构（`div.groupSection > HoverCard span > 行` +
- *   `div[role=group]` 包子分组）判定，见 {@link sectionOfHeader}。
+ * - 聚焦活动：先展开全部分组（收起分组的会话行不在 DOM——上游 deriveGroups 对
+ *   收起分组输出空 sessions，纯 DOM 判定看不到它们的任何会话状态），再收起子树
+ *   无活动会话的分组；最终态即「只展开活动的工作区」。会话行归属用 renderGroup
+ *   的 section 结构（`div.groupSection > HoverCard span > 行` + `div[role=group]`
+ *   包子分组）判定，见 {@link sectionOfHeader}。
  * 点击都走原生 onToggle 路径写回 store 并持久化，与用户逐个点击分组头完全同路径。
  *
  * @module @dsh-kit/dsh-plugin-workspace-collapse/client/collapse
@@ -41,12 +42,15 @@ export const COLLAPSED_ROW_SELECTOR = '[data-row-key^="workspace:"][aria-expande
 export const SESSION_ROW_SELECTOR = '[data-row-key^="session:"]'
 
 /**
- * 会话行内的「提醒」状态点（原生 `StateDot` 的 `data-state`，会话行内唯一）：
+ * 会话行内的「活动」状态点（原生 `StateDot` 的 `data-state`，会话行内唯一）：
  * `ongoing` = 运行中（含子代理）、`warning` = 待用户操作（审批/计划确认/提问）、
- * `done` = 完成未读（打开会话才清除）。`idle` 不渲染状态点，天然不是提醒。
+ * `done` = 完成未读（打开会话才清除）。`idle` 不渲染状态点，天然不算活动。
  * 出处：`ui-workspace/src/client/rows/Rows.tsx` 的 sessionStatuses + `SessionStatusDots`。
  */
-export const REMINDER_DOT_SELECTOR = '[data-state="ongoing"], [data-state="warning"], [data-state="done"]'
+export const ACTIVE_DOT_SELECTOR = '[data-state="ongoing"], [data-state="warning"], [data-state="done"]'
+
+/** 当前选中的会话行（role=treeitem + aria-selected）；聚焦时其所在分组保留展开。 */
+export const SELECTED_SESSION_SELECTOR = `${SESSION_ROW_SELECTOR}[aria-selected="true"]`
 
 /** 注入标记，挂在按钮容器与样式元素上。 */
 export const BUTTON_ATTR = 'data-dsh-ws-collapse'
@@ -69,7 +73,7 @@ export type CollapseMode = 'collapse' | 'expand'
  * opacity/transform 退场动画（同一组 token 与 `--ds-ease-in-out` 节奏），通过
  * `:has(~ …)` 认领后续兄弟上的 `headerActionsHidden` 类；按钮本体复刻
  * iconButton 的 28px 契约（含 inset 焦点圈）。容器装两枚按钮
- * （收起/展开 + 聚焦提醒），max-width 按两钮加 2px 间隙预留。
+ * （收起/展开 + 仅展开活动），max-width 按两钮加 2px 间隙预留。
  *
  * 水平定位：searchSlot 自带 `margin-left:auto`，会在 flex:1 被 max-width 钳住后
  * 吸收剩余空间、把注入项顶到标题旁（优先级高于 justify-content）；容器同样用
@@ -227,55 +231,33 @@ function sectionOfHeader(header: Element): Element | null {
 }
 
 /**
- * 判定分组行自己（不含子分组）是否拥有带提醒状态点的会话行。
- * 自有会话行 = section 子树里不被 `div[role=group]` 直接子容器包含的那些。
- */
-function ownsReminderSession(header: Element): boolean {
-  const section = sectionOfHeader(header)
-  if (section === null) return false
-  const childGroups = Array.from(section.querySelectorAll(':scope > [role="group"]'))
-  return Array.from(section.querySelectorAll(SESSION_ROW_SELECTOR)).some(row =>
-    childGroups.every(group => !group.contains(row))
-    && row.querySelector(REMINDER_DOT_SELECTOR) !== null)
-}
-
-/**
- * 「聚焦提醒」动作：展开全部有提醒会话（运行中、待用户操作、完成未读）的工作区，
- * 收起其余没有提醒的工作区。两个阶段：
- * - 展开（多轮）：点击收起中且自有会话带提醒的分组行；父行展开后新挂载的子分组
- *   行进入文档，再探下一轮（每行只点一次，与 {@link expandCollapsedRows} 同款终止）。
- *   局限：收起中分组的后代里若藏着提醒（该子分组行未渲染），DOM 判定看不到，
- *   不会为它展开祖先。
- * - 收起（单轮逆序）：点击展开中但 section 子树完全无提醒的分组行；子树含提醒的
- *   祖先链保留展开，避免把刚展开的提醒分组重新藏起来。逆序保证先子后父，
+ * 「仅展开活动的工作区」动作：先展开全部分组，再收起子树完全无活动会话的分组。
+ * 两个阶段：
+ * - 展开（多轮）：复用 {@link expandCollapsedRows} 点开全部收起分组。收起分组的
+ *   会话行不在 DOM（上游 deriveGroups 对收起分组输出空 sessions），必须先展开，
+ *   会话行（及其状态点）才进入文档可供判定；子分组行也在这一步全部挂载。
+ * - 收起（单轮逆序）：点击展开中但 section 子树完全无活动状态点、也不含当前
+ *   选中会话的分组行；子树含活动或当前会话的祖先链保留展开。逆序保证先子后父，
  *   已被摘除的行跳过。
+ * 已知局限：分组会话超过原生水位线（默认 5 条）时，深处会话行不在 DOM（由
+ * overflow 行替代），其活动状态判定不到；当前会话所在分组始终保留展开。
  * 点击都走原生 onToggle 写回 store 并持久化。
  * @param root - 查询与派发点击的文档。
  * @returns 本次点击的分组行数。
  */
-export async function focusReminderRows(root: ParentNode): Promise<number> {
-  let count = 0
-  const expanded = new WeakSet<Element>()
-  for (;;) {
-    const rows = Array.from(root.querySelectorAll(COLLAPSED_ROW_SELECTOR))
-      .filter(row => !expanded.has(row) && ownsReminderSession(row))
-    if (rows.length === 0) break
-    for (const row of rows) {
-      expanded.add(row)
-      ;(row as HTMLElement).click()
-      count += 1
-    }
-    // eslint-disable-next-line no-await-in-loop -- 逐轮让出事件循环，等本轮点击落 DOM 后再探
-    await new Promise<void>(resolve => { setTimeout(resolve, 0) })
-  }
+export async function focusActiveRows(root: ParentNode): Promise<number> {
+  let count = await expandCollapsedRows(root)
+  // 等最后一轮点击的会话行落 DOM（expandCollapsedRows 内部每轮已让出事件循环，
+  // 这里再让出一拍保证状态点可查询）。
+  await new Promise<void>(resolve => { setTimeout(resolve, 0) })
   const rows = Array.from(root.querySelectorAll(EXPANDED_ROW_SELECTOR))
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index] as HTMLElement
     const section = sectionOfHeader(row)
-    // 结构不符时跳过（宁可少收，不误收）；子树含提醒的祖先链保留展开，
-    // 避免把刚展开的提醒分组重新藏起来。
+    // 结构不符时跳过（宁可少收，不误收）；子树含活动状态点或当前选中会话的
+    // 祖先链保留展开，避免把活动分组与用户正盯着的分组收起来。
     if (section === null || !row.isConnected
-      || section.querySelector(REMINDER_DOT_SELECTOR) !== null) continue
+      || section.querySelector(`${ACTIVE_DOT_SELECTOR}, ${SELECTED_SESSION_SELECTOR}`) !== null) continue
     row.click()
     count += 1
   }
@@ -292,7 +274,7 @@ export interface CollapseButtonOptions {
   onActivate: () => void
   /** 聚焦按钮的 Tooltip 与 aria-label 文案（静态字形，无方向）。 */
   focusLabel: string
-  /** 聚焦按钮点击回调：展开有提醒的工作区、收起其余。 */
+  /** 聚焦按钮点击回调：展开全部分组后收起无活动会话的分组。 */
   onFocus: () => void
 }
 
@@ -366,7 +348,7 @@ export function installWorkspaceCollapse(deps: CollapseDeps): () => void {
   }
 
   const activateFocus = (): void => {
-    void focusReminderRows(doc)
+    void focusActiveRows(doc)
   }
 
   const optionsFor = (next: CollapseMode): CollapseButtonOptions => ({
