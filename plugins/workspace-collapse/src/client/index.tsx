@@ -12,9 +12,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：引入声明本插件读取的 Context service merge（locale 服务）。
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type { ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  IconChevronDownOutlineMedium, IconChevronUpOutlineMedium, IconSlidersTwoOutlineMedium,
+  IconChevronDownOutlineMedium, IconChevronUpOutlineMedium,
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SELF_NAMESPACE } from '../shared.js'
@@ -24,6 +25,20 @@ import type {
 } from './collapse.js'
 import { en, zh } from './locales.js'
 import type { WorkspaceCollapseKey } from './locales.js'
+
+/** 聚焦按钮的组合字形：三条工作区分组线 + 右侧上下 chevron（Medium 1.3px 描边，
+ *  16 viewBox 与原生 outline 字形同规范；颜色走 currentColor 随按钮状态）。 */
+function FocusRemindersGlyph(): ReactNode {
+  return (
+    <svg width={12} height={12} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" strokeWidth={1.3}>
+      <path d="M2.5 4.2H9" stroke="currentColor" />
+      <path d="M2.5 8H9" stroke="currentColor" />
+      <path d="M2.5 11.8H9" stroke="currentColor" />
+      <path d="m10.9 6.3 1.65-1.65 1.65 1.65" stroke="currentColor" />
+      <path d="m10.9 9.7 1.65 1.65 1.65-1.65" stroke="currentColor" />
+    </svg>
+  )
+}
 
 export { en, zh } from './locales.js'
 export type { WorkspaceCollapseKey } from './locales.js'
@@ -95,8 +110,9 @@ function mountCollapseButton(container: HTMLElement, options: CollapseButtonOpti
             aria-label={opts.focusLabel}
             onClick={opts.onFocus}
           >
-            {/* 筛选滑块字形：聚焦动作按会话提醒（运行中/待用户操作/完成未读）筛选展开。 */}
-            <IconSlidersTwoOutlineMedium size={12} />
+            {/* 组合字形（三条分组线 + 上下 chevron）：聚焦动作仅展开有会话提醒
+                （运行中/待用户操作/完成未读）的工作区。 */}
+            <FocusRemindersGlyph />
           </button>
         </Tooltip>
       </>,

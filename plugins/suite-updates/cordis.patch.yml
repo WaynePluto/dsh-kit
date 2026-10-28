@@ -1,0 +1,6 @@
+# dsh-kit 的独立 Bundle patch；行 id 是插件行在 loader 树里的稳定身份。
+# 宿主半注册 kit 私有 /api 通道（kit 信封，D16）；浏览器半在套件 Bundle 详情页
+# 渲染「套件更新」配置区（plugins.bundle.config keyed 槽）。
+- insert:
+    - id: suite-updates
+      name: './dist/index.js'

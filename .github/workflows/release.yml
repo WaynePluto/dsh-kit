@@ -1,11 +1,8 @@
 # 发布：推送 v* 标签 → 构建两半产物与套件 → 打自包含 tarball → 创建 GitHub Release。
-# 资产两名同内容（D21）：
-# - 固定名 dsh-kit.tar.gz：「添加插件」首次安装永久使用
-#   https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
-#   （latest/download 恒指最新 Release；同地址重复输入会被官方管理器拒为
-#   already-installed，不能用于升级）。
-# - 版本名 dsh-kit-<version>.tar.gz：升级地址。「添加插件」输入新版本的资产 URL
-#   即原地替换已装套件并在线热生效（无需先卸载；spec 与已存依赖值不同即放行）。
+# 单资产 dsh-kit.tar.gz（D21，2026-10-28 修订）：资产地址统一为带 tag 的固定名形式
+#   https://github.com/WaynePluto/dsh-kit/releases/download/<tag>/dsh-kit.tar.gz
+# 首次安装与升级同一形式（tag 变化即地址变化，官方管理器放行原地替换热升级；
+# 同地址重复输入被拒为 already-installed）。README 的下载链接随每次发版更新 tag。
 # 环境与 ci.yml 保持同版本（pnpm 10.17.0 + Node 22），产物可复现。
 
 name: Release
@@ -44,4 +41,4 @@ jobs:
       - name: 创建 Release 并上传资产
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes release/dsh-kit.tar.gz "release/dsh-kit-*.tar.gz"
+        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes "release/${GITHUB_REF_NAME}/dsh-kit.tar.gz"

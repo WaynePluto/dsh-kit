@@ -27,7 +27,7 @@
 
 | 主题 | 检查入口 |
 |---|---|
-| 套件装载层 | node scripts/suite-toggle-check.mjs 与 node scripts/suite-first-enable-check.mjs（套件 Bundle 在线停用/启用与首次启用）；node scripts/suite-upgrade-check.mjs（在线原地升级：旧版冷启动 → 新地址热替换，D21）；node scripts/verify-suite-client.mjs --token `<宿主打印的 token>`（浏览器行图） |
+| 套件装载层 | node scripts/suite-toggle-check.mjs 与 node scripts/suite-first-enable-check.mjs（套件 Bundle 在线停用/启用与首次启用）；node scripts/suite-upgrade-check.mjs（在线原地升级：旧版冷启动 → 新地址热替换，D21）；node scripts/suite-updates-check.mjs（套件更新通道：check 端点真实查询 GitHub）；node scripts/verify-suite-client.mjs --token `<宿主打印的 token>`（浏览器行图） |
 | 模型 | node scripts/copilot-auth-check.mjs；node scripts/favorite-models-check.mjs；node scripts/model-provider-check.mjs；node scripts/deepseek-official-switch-check.mjs |
 | 代理 | node scripts/proxy-check.mjs |
 | 重试与消息 | node scripts/turn-retry-check.mjs；node scripts/user-message-fork-check.mjs；node scripts/chat-scroll-check.mjs；node scripts/stats-hours-check.mjs |

@@ -49,7 +49,7 @@ const FAILURE_SIGNATURES = ['failed to import', 'did not activate', 'Agent resol
 
 const SUITE_VERSION = JSON.parse(readFileSync(join(PLUGINS_DIRECTORY, 'suite', 'package.json'), 'utf8')).version
 const OLD_VERSION = `${SUITE_VERSION}-smoke-old`
-const NEW_TARBALL = join(ROOT, 'release', `dsh-kit-${SUITE_VERSION}.tar.gz`)
+const NEW_TARBALL = join(ROOT, 'release', `v${SUITE_VERSION}`, 'dsh-kit.tar.gz')
 const OLD_TARBALL = join(UPGRADE_DIRECTORY, `dsh-kit-${OLD_VERSION}.tar.gz`)
 
 const BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', SUITE_PACKAGE]

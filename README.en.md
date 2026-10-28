@@ -4,7 +4,7 @@
 
 Verified against official dsh: `0.2.1-rc.3` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
 
-A third-party **plugin suite** for the official DeepSeek Harness (dsh): 23 components
+A third-party **plugin suite** for the official DeepSeek Harness (dsh): 24 components
 that improve everyday model, conversation, workspace and runtime workflows. Install or
 upgrade everything by entering **one address** in the official dsh plugin manager
 ("+ Add plugin").
@@ -22,34 +22,34 @@ Global prompt, egress proxy, Copilot login, model catalog, model capabilities,
 favorite models, model provider label, DeepSeek API switch, turn retry, chat scroll
 navigation, session-stats hours, user-message fork, session rename, session
 workspace indicator, copy workspace path, task notifications, tool status, skill
-status, file browsing, resident services, interactive terminal, web-search switch.
+status, file browsing, resident services, interactive terminal, web-search switch,
+suite update checker.
 See the [plugin index](docs/plugins.md) and each package README (Chinese).
 
 ## Install
 
-dsh → Plugins → Add plugin → enter **one of the two addresses below** → Install →
-Enable → restart dsh. Both addresses deliver the same self-contained suite package;
-you can switch between them anytime (uninstall first, then install the other one).
+dsh → Plugins → Add plugin → enter the download address below → Install →
+Enable → restart dsh.
 
-**Option 1: GitHub install (recommended, no clone needed)**
+**GitHub install (recommended, no clone needed)**
 
 ```text
-https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
+https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit.tar.gz
 ```
 
-`latest/download` always points at the newest release — use it for the **first
-install**. **Upgrading needs no uninstall**: open the new release on
-[Releases](https://github.com/WaynePluto/dsh-kit/releases), copy the address of
-its `dsh-kit-<version>.tar.gz` asset (e.g.
-`https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit-0.0.1.tar.gz`)
-and enter it in "Add plugin" — the suite is replaced in place and hot-applied.
-Re-entering the same address is refused as already-installed, so the upgrade
-address must carry the version. Note that the bare repository URL
+The address has the form `releases/download/<tag>/dsh-kit.tar.gz`; the tag above
+is **updated on every release**, and the same kind of address serves both the
+first install and upgrades. Upgrading needs no uninstall: paste the new
+release's address into "Add plugin" and the suite is replaced in place and
+hot-applied (re-entering the same address is refused as already-installed; a new
+tag means a new address). Once installed, the **Suite updates** section on the
+suite's plugin detail page checks for new releases and copies the upgrade
+address for you. Note that the bare repository URL
 (`https://github.com/WaynePluto/dsh-kit`) does not work: pnpm treats it as a git
 dependency and strips the suite's bundled dependency closure — only the Release
-assets above are supported.
+asset above is supported.
 
-**Option 2: local directory install (development / offline)**
+**Local directory install (development / offline)**
 
 ```powershell
 git clone https://github.com/WaynePluto/dsh-kit.git

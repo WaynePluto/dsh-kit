@@ -106,6 +106,12 @@
       disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-stats-hours/package.json") } catch { return true } return false } return true })()'
       name: '@dsh-kit/dsh-plugin-stats-hours'
 
+# ── @dsh-kit/dsh-plugin-suite-updates ──
+- insert:
+    - id: suite-updates
+      disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-suite-updates/package.json") } catch { return true } return false } return true })()'
+      name: '@dsh-kit/dsh-plugin-suite-updates'
+
 # ── @dsh-kit/dsh-plugin-terminal ──
 - insert:
     - id: terminal

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Suite updates",
+    "description": "Check for new dsh-kit releases on the suite detail page; copies the upgrade address so you can paste it into \"Add plugin\"."
+  }
+}

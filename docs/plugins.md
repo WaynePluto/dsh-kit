@@ -40,10 +40,11 @@
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
 | [网页搜索开关](../plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
+| [套件更新](../plugins/suite-updates/README.md) | 插件 → 套件 → 套件更新 | 检查 dsh-kit 新版本；发现新版本时复制升级地址，粘贴到「添加插件」即可原地升级 |
 
 ## 分发组合
 
-23 个功能组件以 7 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+24 个功能组件以 8 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
@@ -56,6 +57,7 @@
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
 | web-search-switch | 独立包 | 网页搜索开关 |
+| suite-updates | 独立包 | 套件检查更新（升级地址复制，D21） |
 
 完整包名均为 `@dsh-kit/dsh-plugin-<上表名称>`（套件包为 `@dsh-kit/dsh-plugin-suite`）。
 组件顺序以根目录 [plugin-catalog.json](../plugin-catalog.json) 为唯一清单。
@@ -68,21 +70,22 @@
 ## 安装、升级与停用
 
 - 安装：官方 dsh → 插件 → 添加插件 → 输入安装地址 → 安装 → 启用 → 重启 dsh。
-  三种地址装的是同一自包含产物（D20/D21，见 [架构](03-architecture.md)）：
-  GitHub Release 固定名 `https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz`
-  （latest 永久链接，首次安装用）、GitHub Release 版本名
-  `…/releases/download/v<版本>/dsh-kit-<版本>.tar.gz`（升级用）、本地 tarball
-  `release/dsh-kit-<版本>.tar.gz`、开发用本地目录 `plugins/suite` 绝对路径。
+  各形态地址装的是同一自包含产物（D20/D21，见 [架构](03-architecture.md)）：
+  GitHub Release 资产 `https://github.com/WaynePluto/dsh-kit/releases/download/v<版本>/dsh-kit.tar.gz`
+  （单资产固定名，带 tag 的地址首次安装与升级同一形式；README 里的下载链接随每次
+  发版更新 tag）、本地 tarball `release/v<版本>/dsh-kit.tar.gz`、开发用本地目录
+  `plugins/suite` 绝对路径（link: 语义，构建产物改动直接生效）。
   Git 仓库地址（裸 github.com 仓库 URL）不可用：pnpm 按 git 依赖重打包会剥掉物化
   node_modules 并触发 prepare 门禁（2026-10-27 实测，见 [roadmap](05-roadmap.md)）。
   首次安装的重启是生效的必要步骤：运行中的 dsh 点「启用」时组件行会因可解析性守卫整包
   延迟到重启装载（不再报 failed to import；安装前启动的进程里裸包名解析不到组件，见
   [插件机制](dsh/plugins.md)）；个别机器上首次启用还可能报一条 session-controller 的
   file-upload 重挂载竞态（上游已知，见 [roadmap](05-roadmap.md)），同样重启即恢复。
-- 升级（D21）：到 Releases 打开新版本，复制 `dsh-kit-<版本>.tar.gz` 资产地址，
-  在「添加插件」输入即原地替换旧版并在线热生效，**无需先卸载**、无需重启
-  （`suite-upgrade-check.mjs` 实机守护）。同地址（固定 latest/download 名或已安装
-  spec）重复输入会被官方管理器拒为 already-installed，因此升级地址必须带版本号。
+- 升级（D21）：输入与已装地址**字符串不同**的新版本资产地址（tag 变化即地址变化）
+  即原地替换旧版并在线热生效，**无需先卸载**、无需重启（`suite-upgrade-check.mjs`
+  实机守护）。同一地址重复输入会被官方管理器拒为 already-installed；也可以在套件
+  详情页的「套件更新」区点检查（suite-updates 组件），升级地址自动复制后粘贴过来。
+  本地 tarball 形态同理：每次升级用不同路径（如 `release/v<新版本>/dsh-kit.tar.gz`）。
 - 停用：套件是一个普通 Bundle。插件页的 Bundle 开关停用整个套件；套件详情里的
   组件开关停用单个组件的行。两者都写在 profile patch 的 `disabled` 或 `dsh.profile.bundles`，
   重启后保持。

@@ -17,12 +17,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
-import { DEV_DIRECTORY, DSH_BIN, DSH_PROFILE, PNPM_CLI, ROOT } from './local-config.mjs'
+import { DEV_DIRECTORY, DSH_BIN, DSH_PROFILE, PNPM_CLI, PLUGINS_DIRECTORY, ROOT } from './local-config.mjs'
 import { cleanupCheckHome, withCheckHome } from './lib/check-home.mjs'
 import { createCheckContext, runLiveDshCheck } from './lib/check-context.mjs'
 
 const HOME = join(tmpdir(), 'dsh-kit-suite-tarball-home')
-const TARBALL = join(ROOT, 'release', 'dsh-kit.tar.gz')
+const SUITE_VERSION = JSON.parse(readFileSync(join(PLUGINS_DIRECTORY, 'suite', 'package.json'), 'utf8')).version
+const TARBALL = join(ROOT, 'release', `v${SUITE_VERSION}`, 'dsh-kit.tar.gz')
 
 const BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@dsh-kit/dsh-plugin-suite']
 

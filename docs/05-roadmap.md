@@ -300,7 +300,7 @@
   未覆盖 `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED`，该错误显示为原始文案。
   现行分发仍是本地绝对路径（clone 后装 `plugins/suite` 不受影响）。
 - [x] 远程分发实施（2026-10-27，D20）：套件改为自包含产物——package.json 零
-  dependencies、23 个组件声明为 peerDependencies（精确版本，`build-suite.mjs` 校验
+  dependencies、24 个组件声明为 peerDependencies（精确版本，`build-suite.mjs` 校验
   覆盖与版本一致），依赖闭包照旧物化在套件内 `node_modules/`；安装地址三形态统一
   （本地目录 link:、本地 tarball、GitHub Release 资产 `…/releases/latest/download/dsh-kit.tar.gz`
   latest 永久链接）。裸仓库地址不可用的实测结论保留在上方条目（pnpm 对 git 形态 URL
@@ -310,17 +310,21 @@
   （不可达 registry 安装 tarball + 真实 dsh 冷启动，断言 23 组件行 ACTIVE、客户端图
   23/23、零 registry 解析）与 suite-toggle / first-enable（junction 形态）三检查在
   peers 形态下全部通过。待办：推仓库、打首版标签、真实 Release URL 实机验收。
-- [x] 版本名资产原地升级（2026-10-28，D21）：官方「添加插件」对已装包的拒绝只在
-  spec 能预先反查出包名时发生——固定 latest URL 重复输入命中拒绝（D20 的「升级 =
-  卸载重装」由此），输入**带版本号的新资产地址**则放行，pnpm 原地替换同包名依赖后
-  HMR 热装载（查证记录见 [插件机制](dsh/plugins.md)「覆盖安装与升级语义」；官方
-  「更新」按钮只给官方目录包，第三方无）。实施：`release.yml` 双资产上传（固定名 +
-  版本名）、`pack-suite.mjs` 两份产物同字节、README/文档升级指引更新。守护：
-  `suite-upgrade-check.mjs`（旧版 tarball 冷启动 23 行 ACTIVE → 在线 installBundle
-  新版本地址 → applied 热生效、23 行重新 ACTIVE、核心行稳定、依赖值换新、同 spec
-  重装被拒 already-installed），2026-10-28 本机全通过；CLI `dsh plugin --profile
-  desktop add <spec>`（裸 pnpm、无拒绝、重启生效）为兜底路径。待办：真实 Release
-  URL 升级实机验收（随首版发布一起）。
+- [x] 带 tag 单资产原地升级（2026-10-28，D21；同日由双资产修订为单链接形式）：
+  官方「添加插件」对已装包的拒绝只在 spec 能预先反查出包名时发生——同地址重复输入
+  命中拒绝（D20 的「升级 = 卸载重装」由此），输入**字符串不同的新版本地址**则放行，
+  pnpm 原地替换同包名依赖后 HMR 热装载（查证记录见 [插件机制](dsh/plugins.md)
+  「覆盖安装与升级语义」；官方「更新」按钮只给官方目录包，第三方无）。实施：
+  `release.yml` 单资产上传（每个 Release 一个 `dsh-kit.tar.gz`，地址带 tag）、
+  `pack-suite.mjs` 产物落 `release/v<版本>/`、安装/升级地址统一为
+  `releases/download/<tag>/dsh-kit.tar.gz`（README 下载链接随发版更新 tag）、
+  suite-updates 组件（套件详情页「检查更新」：GitHub latest 查询 + 升级地址复制，
+  安装仍走官方「添加插件」）。守护：`suite-upgrade-check.mjs`（旧版 tarball 冷启动
+  24 行 ACTIVE → 在线 installBundle 新地址 → applied 热生效、24 行重新 ACTIVE、
+  核心行稳定、依赖值换新、同 spec 重装被拒 already-installed）与
+  `suite-updates-check.mjs`（check 端点真实查询 GitHub、URL 形态、未知端点拒绝），
+  2026-10-28 本机全通过；CLI `dsh plugin --profile desktop add <spec>`（裸 pnpm、
+  无拒绝、重启生效）为兜底路径。
 - [ ] 按 [dsh-upgrade skill](../.agents/skills/dsh-upgrade/SKILL.md) 跟进官方 dsh 新版本，
   完成后回写 [源码依据](02-dsh-facts.md) 的适配基线。
 - [ ] 新增插件前先更新 [决策](01-decisions.md) 与 `plugin-catalog.json`，并在

@@ -136,6 +136,16 @@
           "rowId": "web-search-switch"
         }
       ]
+    },
+    {
+      "name": "@dsh-kit/dsh-plugin-suite-updates",
+      "source": "plugins/suite-updates",
+      "components": [
+        {
+          "name": "@dsh-kit/dsh-plugin-suite-updates",
+          "rowId": "suite-updates"
+        }
+      ]
     }
   ]
 }

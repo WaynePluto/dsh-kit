@@ -5,7 +5,7 @@
 对应官方 dsh：`0.2.1-rc.3`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
-个人体验增强，共 23 个组件，通过官方「添加插件」输入**一个地址**即可安装或升级全部内容。
+个人体验增强，共 24 个组件，通过官方「添加插件」输入**一个地址**即可安装或升级全部内容。
 
 - 不改 dsh、不 fork：扩展全部走官方插件机制（Profile Bundle + 行级停用）
 - 不含远程访问能力：没有 relay/connector、没有项目专属数据目录与环境变量
@@ -38,30 +38,28 @@
 | [常驻服务](plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
 | [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
+| [套件更新](plugins/suite-updates/README.md) | 插件 → 套件 → 套件更新 | 检查 dsh-kit 新版本，一键复制升级地址 |
 
 分组、顺序与停用粒度见 [插件索引](docs/plugins.md) 与根目录 [plugin-catalog.json](plugin-catalog.json)。
 
 ## 安装
 
-dsh → 插件 → 添加插件 → 输入下面**两种地址之一** → 安装 → 启用 → 重启 dsh。
-两种地址装的是同一个自包含套件包，随时可以互换（先卸载再装另一种）。
+dsh → 插件 → 添加插件 → 输入下面的下载地址 → 安装 → 启用 → 重启 dsh。
 
-**方式一：GitHub 安装（推荐，无需克隆仓库）**
+**GitHub 安装（推荐，无需克隆仓库）**
 
 ```text
-https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
+https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit.tar.gz
 ```
 
-`latest/download` 恒指最新 Release，用于**首次安装**。**升级不需要卸载**：到
-[Releases](https://github.com/WaynePluto/dsh-kit/releases) 打开新版本，复制
-`dsh-kit-<版本>.tar.gz` 资产的地址（形如
-`https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit-0.0.1.tar.gz`），
-在「添加插件」里输入即原地替换旧版并在线热生效；同一地址重复输入会被官方管理器
-拒为 already-installed，所以升级地址必须带版本号。注意：裸仓库地址
-（`https://github.com/WaynePluto/dsh-kit`）不可用——pnpm 会把它当 git 依赖重打包，
-剥掉套件自带的依赖闭包；只认上面的 Release 资产地址。
+地址形如 `releases/download/<tag>/dsh-kit.tar.gz`，**每次发新版会更新上面的 tag**；
+首次安装与升级用同一种地址。升级不需要卸载：把新版的地址粘进「添加插件」即原地
+替换并在线热生效（同一地址重复输入会被官方管理器拒绝，tag 变化即地址变化）。装好
+之后也可以在插件页「套件」详情页的**套件更新**区一键检查新版本、自动复制升级地址。
+注意：裸仓库地址（`https://github.com/WaynePluto/dsh-kit`）不可用——pnpm 会把它当
+git 依赖重打包，剥掉套件自带的依赖闭包；只认上面的 Release 资产地址。
 
-**方式二：本地目录安装（开发/离线）**
+**本地目录安装（开发/离线）**
 
 ```powershell
 git clone https://github.com/WaynePluto/dsh-kit.git

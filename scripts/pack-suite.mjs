@@ -10,12 +10,12 @@
  * 内容（files 声明 + README + package.json）+ 物化 node_modules（排除 .obsolete-*
  * 残留）；tests 不随包分发。
  *
- * 产物两份同字节文件（D21 双资产发布）：
- * - release/dsh-kit.tar.gz        固定资产名，「添加插件」首次安装用永久链接
- *   https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz
- *   （同地址重复输入被官方管理器拒为 already-installed，不能用于升级）。
- * - release/dsh-kit-<version>.tar.gz  带版本号，升级地址：「添加插件」输入新版本
- *   资产 URL 即原地替换已装套件并在线热生效，无需先卸载。
+ * 产物（D21 单资产，2026-10-28 修订：安装/升级地址统一为带 tag 的固定名资产）：
+ * - release/v<version>/dsh-kit.tar.gz
+ *   发布资产名 dsh-kit.tar.gz，上传后地址形如
+ *   https://github.com/WaynePluto/dsh-kit/releases/download/v<version>/dsh-kit.tar.gz
+ *   （首次安装与升级同一形式；tag 变化即地址变化，同地址重复输入被官方管理器
+ *   拒为 already-installed）。README 的下载链接随每次发版更新 tag。
  *
  * 用法：node scripts/pack-suite.mjs [v<期望标签>]（给出标签时核对与套件版本一致）。
  * 前置：pnpm suite:build（物化 + peerDependencies 契约校验）。
@@ -84,26 +84,24 @@ cpSync(join(SUITE, 'node_modules'), join(STAGING, 'package', 'node_modules'), {
     .some(segment => segment === '.vite' || segment.startsWith('.obsolete-')),
 })
 
-const outputs = ['dsh-kit.tar.gz', `dsh-kit-${manifest.version}.tar.gz`]
-for (const name of outputs) {
-  rmSync(join(RELEASE, name), { force: true })
-}
+const assetDirectory = join(RELEASE, `v${manifest.version}`)
+rmSync(assetDirectory, { recursive: true, force: true })
+mkdirSync(assetDirectory, { recursive: true })
 const measured = measure(join(STAGING, 'package'))
 // 产物用相对路径：GNU tar 会把绝对路径里的 `D:` 当成远程主机（colon 语法）。
-const tar = spawnSync('tar', ['-czf', outputs[0], '-C', STAGING, 'package'], { stdio: 'inherit', cwd: RELEASE })
+const tar = spawnSync('tar', ['-czf', `v${manifest.version}/dsh-kit.tar.gz`, '-C', STAGING, 'package'],
+  { stdio: 'inherit', cwd: RELEASE })
 if (tar.error !== undefined || tar.status !== 0) {
   throw new Error(`tar 打包失败：${tar.error?.message ?? `exit ${String(tar.status)}`}`)
 }
-cpSync(join(RELEASE, outputs[0]), join(RELEASE, outputs[1]))
 rmSync(STAGING, { recursive: true, force: true })
 
-for (const name of outputs) {
-  const size = statSync(join(RELEASE, name)).size
-  check(size > 0, `release/${name}`, `${(size / 1024 / 1024).toFixed(1)} MiB`)
-}
+const artifact = join(assetDirectory, 'dsh-kit.tar.gz')
+const size = statSync(artifact).size
+check(size > 0, `release/v${manifest.version}/dsh-kit.tar.gz`, `${(size / 1024 / 1024).toFixed(1)} MiB`)
 check(failures === 0, `内容：${manifest.name}@${manifest.version}，${String(peers.length)} 个 peerDependencies 组件，` +
   `${String(measured.files)} 个文件，物化内容 ${(measured.bytes / 1024 / 1024).toFixed(1)} MiB`)
 if (failures > 0) process.exit(1)
-console.log('发布：推送到 GitHub 后由 release 工作流上传两份资产（固定名 + 版本名）；\n' +
-  '首次安装填 https://github.com/WaynePluto/dsh-kit/releases/latest/download/dsh-kit.tar.gz，\n' +
-  `升级填新版本资产地址 https://github.com/WaynePluto/dsh-kit/releases/download/v${manifest.version}/dsh-kit-${manifest.version}.tar.gz`)
+console.log('发布：推送到 GitHub 后由 release 工作流上传资产 dsh-kit.tar.gz；「添加插件」填\n' +
+  `  https://github.com/WaynePluto/dsh-kit/releases/download/v${manifest.version}/dsh-kit.tar.gz\n` +
+  '  （发新版后同步更新 README 里的下载链接 tag）')
