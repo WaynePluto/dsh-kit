@@ -26,10 +26,10 @@
 | [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填 |
 | [会话重命名](../plugins/session-rename/README.md) | 顶栏 → 双击会话标题 | 双击对话顶栏的当前会话标题，弹窗重命名（原生入口只在侧栏） |
 | [复制工作区路径](../plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制该工作区的完整目录路径 |
-| [收起/展开全部工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增动作按钮：一键收起/展开全部分组，或按会话提醒（运行中、待操作、未读）聚焦展开 |
+| [收起/展开全部工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增动作按钮：一键收起/展开全部分组，或按会话提醒（运行中、待操作、未读）聚焦展开；聚焦后活动工作区按字母序置前 |
 | [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
 | [会话工作区显示](../plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
-| [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数；展开条目可复制工具名 |
+| [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数；展开条目可划选复制工具名 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
 | [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移、目录右键菜单与文件右键「查看 Git 变更」面板 |
 | [常驻服务](../plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务；注册表在 DSH_HOME，跨工作区可见可停 |

@@ -4,9 +4,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ACTIVE_DOT_SELECTOR, BUTTON_ATTR, COLLAPSED_ROW_SELECTOR, COLLAPSE_STYLE, CONTAINER_CLASS,
-  WORKSPACE_ROW_SELECTOR,
+  EXPANDED_ROW_SELECTOR, WORKSPACE_ROW_SELECTOR,
   collapseExpandedRows, expandCollapsedRows, focusActiveRows, installWorkspaceCollapse,
-  sectionHeaderOf,
+  planActiveFirstMoves, sectionHeaderOf, workspaceIdOfRow,
 } from '../src/client/collapse.js'
 import type {
   CollapseButtonOptions, CollapseDeps,
@@ -106,6 +106,11 @@ function listElement(sections: HTMLElement[]): HTMLElement {
   return list
 }
 
+/** 造排序条目；label 缺省同 id。 */
+function orderEntry(id: string, label = id): { id: string; label: string } {
+  return { id, label }
+}
+
 /** 造原生浏览器形态：sectionHeader（label + searchSlot + headerActions）+ listArea。 */
 function nativeBrowser(): {
   root: HTMLElement
@@ -131,10 +136,10 @@ function nativeBrowser(): {
   return { root, header, searchSlot, actions, listArea }
 }
 
-/** 记录挂载/更新/卸载的假依赖。 */
+/** 记录挂载/更新/卸载的假依赖；reorder 提供时注入聚焦收尾钩子。 */
 function harness(labels = {
   collapse: '收起全部工作区', expand: '展开全部工作区', focus: '仅展开活动的工作区',
-}) {
+}, reorder?: CollapseDeps['reorder']) {
   const mounted: { container: HTMLElement; options: CollapseButtonOptions }[] = []
   const updates: CollapseButtonOptions[] = []
   const unmounted: number[] = []
@@ -151,6 +156,7 @@ function harness(labels = {
       }
     },
     labels,
+    ...(reorder === undefined ? {} : { reorder }),
   }
   return { deps, mounted, updates, unmounted }
 }
@@ -333,6 +339,44 @@ describe('focusActiveRows', () => {
   })
 })
 
+describe('workspaceIdOfRow', () => {
+  it('取 workspace:<id> 的 id 部分', () => {
+    expect(workspaceIdOfRow(groupRow('ws-a', true, []))).toBe('ws-a')
+  })
+
+  it('未分组桶（workspace: 空串）、会话行与无属性行返回 undefined', () => {
+    expect(workspaceIdOfRow(groupRow('', true, []))).toBeUndefined()
+    const session = document.createElement('div')
+    session.setAttribute('data-row-key', 'session:s1')
+    expect(workspaceIdOfRow(session)).toBeUndefined()
+    expect(workspaceIdOfRow(document.createElement('div'))).toBeUndefined()
+  })
+})
+
+describe('planActiveFirstMoves', () => {
+  it('活动条目按显示标题字母序置前，其余保持现有相对顺序', () => {
+    const current = [orderEntry('w1', 'delta'), orderEntry('w2', 'alpha'), orderEntry('w3', 'charlie'), orderEntry('w4', 'beta')]
+    // 目标顺序 [w2, w4, w1, w3]：w2、w4 置前后，w1、w3 已在其目标位，只需两步。
+    expect(planActiveFirstMoves(current, ['w2', 'w4'])).toEqual([
+      { id: 'w2', beforeId: 'w1' },
+      { id: 'w4', beforeId: 'w1' },
+    ])
+  })
+
+  it('已在目标位置时不产生移动；没有活动条目时顺序不变', () => {
+    expect(planActiveFirstMoves([orderEntry('w2', 'alpha'), orderEntry('w1', 'delta')], ['w2'])).toEqual([])
+    expect(planActiveFirstMoves([orderEntry('w1'), orderEntry('w2')], [])).toEqual([])
+  })
+
+  it('全部活动时整体按字母序排', () => {
+    const current = [orderEntry('w1', 'c'), orderEntry('w2', 'a'), orderEntry('w3', 'b')]
+    expect(planActiveFirstMoves(current, ['w1', 'w2', 'w3'])).toEqual([
+      { id: 'w2', beforeId: 'w1' },
+      { id: 'w3', beforeId: 'w1' },
+    ])
+  })
+})
+
 describe('sectionHeaderOf', () => {
   it('从行向上找到浏览器根的 sectionHeader', () => {
     const { header, listArea } = nativeBrowser()
@@ -427,6 +471,29 @@ describe('installWorkspaceCollapse', () => {
     expect(clicks).toEqual(['ws-b', 'ws-a', 'ws-a', 'ws-b', 'ws-parent', 'ws-child'])
     expect(mounted[0]!.options.mode).toBe('collapse')
     expect(mounted[0]!.options.label).toBe('收起全部工作区')
+    dispose()
+  })
+
+  it('聚焦动作完成后以文档为参调用 reorder 收尾（活动置前重排钩子）', async () => {
+    const clicks: string[] = []
+    const { listArea } = nativeBrowser()
+    listArea.append(
+      section({ key: 'ws-run', expanded: true, clicks, flip: true, sessions: [sessionRow('s1', clicks, 'ongoing')] }),
+      section({ key: 'ws-quiet', expanded: true, clicks, flip: true, sessions: [sessionRow('s2', clicks)] }),
+    )
+    // reorder 在聚焦落定后执行：此时 ws-quiet 已被收起，只剩活动分组展开。
+    const events: string[] = []
+    const { deps, mounted } = harness(undefined, async () => {
+      events.push(`expanded=${document.querySelectorAll(EXPANDED_ROW_SELECTOR).length}`)
+    })
+    const dispose = installWorkspaceCollapse(deps)
+    await flush()
+    expect(mounted).toHaveLength(1)
+
+    mounted[0]!.options.onFocus()
+    await settle()
+    expect(clicks).toEqual(['ws-quiet'])
+    expect(events).toEqual(['expanded=1'])
     dispose()
   })
 

@@ -28,13 +28,20 @@
   文档逆序收起子树完全无活动状态点、也不含当前选中会话的分组；子树含活动的祖先链
   保留展开，不会把活动分组重新藏起来。已知局限：分组会话超过原生水位线（默认 5 条）
   时，深处会话行由 overflow 行替代，其活动状态判定不到；当前会话所在分组始终展开。
+- 聚焦完成后把仍展开（活动）的工作区按显示标题字母序移到列表最前，其余工作区保持
+  现有相对顺序：从幸存的展开行取工作区 id，对官方 `workspaces` 服务的 `insertBefore`
+  （原生拖拽排序同一条宿主路径）按最小移动计划逐条执行，顺序持久化；任一步被宿主
+  拒绝即告警并停止剩余移动，不影响已完成的聚焦。树形模式下重排作用于宿主清单，
+  呈现按父子嵌套投影（活动分组不会跳出自己的父分组）；未分组桶不参与重排（原生
+  恒定渲染在末尾）。
 - 提醒的判定依据是会话行内的原生状态点（`StateDot` 的 `data-state` 属性）：
   `ongoing` = 运行中、`warning` = 待用户操作、`done` = 完成未读；空闲会话不渲染
   状态点，天然不算活动。
 - 收起/展开图标是上下双 chevron（两条原生 chevron 字形纵向叠放）：收起方向两箭头指向
   彼此（下箭头在上、上箭头在下），展开方向互换指向外侧；聚焦按钮是组合字形（三条
-  工作区分组线 + 右侧上下 chevron，Medium 1.3px 描边与原生字形同规范）。
-  悬停均有原生 Tooltip，样式复刻原生头部 28px 图标按钮契约（深浅主题走主题 token）。
+  工作区分组线 + 右侧上下 chevron，Regular 1px 描边与相邻头部 `*OutlineRegular` 字形
+  族同规范，显示尺寸 16px）。悬停均有原生 Tooltip，样式复刻原生头部 28px 图标按钮
+  契约（深浅主题走主题 token）。
 
 ## 实现边界
 
@@ -46,6 +53,9 @@ dsh 的 section header 与分组展开状态都是 ui-workspace 私有界面：h
 childList mutation）。
 聚焦动作的会话归属按上游 renderGroup 的 section 结构判定（`groupSection > HoverCard
 span > 行`，子分组包在 `div[role=group]` 里），结构与上游不符时动作整体退化为无操作。
+聚焦后的置前重排不移动 DOM：走官方 `workspaces` 客户端服务的 `insertBefore`
+（`packages/api/workspace-controller/src/client/service.ts` 的 `IWorkspaces`），与原生
+拖拽排序同一条宿主路径；活动集合来自幸存展开行的 `data-row-key`。
 上游依据：`packages/client/ui-workspace/src/client/rows/{WorkspaceBrowser.tsx,Rows.tsx}`。
 头部定位用 CSS module 类名后缀匹配（构建产物类名是 `<hash>_<原名>`），哈希前缀随版本
 变化会静默失效，升级需按 dsh-upgrade 流程复核。

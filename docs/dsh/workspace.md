@@ -193,6 +193,15 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   （父分组展开后新挂载的子分组下一轮补点），再按文档逆序收起「section 子树无提醒点」的
   展开分组；子树含提醒的祖先链保留展开。收起中分组的后代不可见（未渲染），DOM 判定
   看不到藏在里面的提醒，不会为其展开祖先——这是 DOM 注入形态的已知边界。
+- 聚焦后的活动置前重排（2026-10-29）：分组顺序不归 view store——分组恒按宿主工作区
+  清单顺序渲染（`deriveGroups` → `groupByWorkspace` 按 `useWorkspaces().items` 顺序，
+  `orderBy` 只影响组内会话排序），重排只能走官方 `workspaces` 客户端服务的
+  `insertBefore(workspaceId, beforeWorkspaceId?)`（`packages/api/workspace-controller/
+  src/client/service.ts` 的 `IWorkspaces`，原生拖拽排序 `commitWorkspaceDrag` 同路径，
+  宿主权威并持久化）。插件从幸存展开行的 `data-row-key` 取 id，按「活动分组显示标题
+  字母序置前、其余保持相对顺序」的最小移动计划逐条执行，任一步拒绝即停止；未分组桶
+  不是工作区、恒渲染在末尾，不参与。树形模式下顺序作用于宿主清单、呈现按父子嵌套
+  投影（活动分组不会跳出自己的父分组）。
 
 ## 项目 files 增强层
 

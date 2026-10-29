@@ -52,6 +52,71 @@ export const ACTIVE_DOT_SELECTOR = '[data-state="ongoing"], [data-state="warning
 /** 当前选中的会话行（role=treeitem + aria-selected）；聚焦时其所在分组保留展开。 */
 export const SELECTED_SESSION_SELECTOR = `${SESSION_ROW_SELECTOR}[aria-selected="true"]`
 
+/** 工作区分组行 data-row-key 的前缀；未分组桶 key 是空串（`workspace:`）。 */
+const WORKSPACE_KEY_PREFIX = 'workspace:'
+
+/**
+ * 从工作区分组行取出工作区 id（`data-row-key="workspace:<id>"` 的 `<id>` 部分）。
+ * 未分组桶（key 为 `workspace:`）与其他行返回 undefined。
+ * @param row - 工作区分组行。
+ * @returns 工作区 id；非工作区行或未分组桶时为 undefined。
+ */
+export function workspaceIdOfRow(row: Element): string | undefined {
+  const key = row.getAttribute('data-row-key')
+  if (key === null || !key.startsWith(WORKSPACE_KEY_PREFIX)) return undefined
+  const id = key.slice(WORKSPACE_KEY_PREFIX.length)
+  return id === '' ? undefined : id
+}
+
+/** 工作区的排序条目：id 用于宿主移动接口，label 是参与字母序比较的显示标题。 */
+export interface WorkspaceOrderEntry {
+  /** 工作区 id。 */
+  readonly id: string
+  /** 显示标题（标题为空时调用方回退路径末段）。 */
+  readonly label: string
+}
+
+/** 一次工作区移动：把 `id` 移到 `beforeId` 之前（与原生拖拽排序同语义）。 */
+export interface WorkspaceMove {
+  /** 要移动的工作区 id。 */
+  readonly id: string
+  /** 锚点工作区 id：移动后被移动者紧邻其前。 */
+  readonly beforeId: string
+}
+
+/**
+ * 计算把活动工作区（按字母序）置前、其余保持现有相对顺序的移动序列。返回的
+ * 每一步都基于「上一步完成后的顺序」给出锚点，调用方按序对宿主逐条执行即可；
+ * 已经在目标位置的元素不产生移动。最坏 n-1 步，多数场景只有活动块整体前移的
+ * 少数几步。
+ * @param currentOrder - 当前宿主顺序（工作区清单条目，含显示标题）。
+ * @param activeIds - 聚焦后仍展开（活动）的工作区 id 集合。
+ * @returns 依次执行的移动序列；已就绪时为空数组。
+ */
+export function planActiveFirstMoves(
+  currentOrder: readonly WorkspaceOrderEntry[],
+  activeIds: readonly string[],
+): WorkspaceMove[] {
+  const active = new Set(activeIds)
+  const targets = [
+    ...currentOrder.filter(entry => active.has(entry.id))
+      .toSorted((a, b) => a.label.localeCompare(b.label)),
+    ...currentOrder.filter(entry => !active.has(entry.id)),
+  ].map(entry => entry.id)
+  const order = currentOrder.map(entry => entry.id)
+  const moves: WorkspaceMove[] = []
+  for (let index = 0; index < targets.length; index += 1) {
+    const target = targets[index]
+    const anchor = order[index]
+    if (target === undefined || anchor === undefined) break
+    if (anchor === target) continue
+    moves.push({ id: target, beforeId: anchor })
+    order.splice(order.indexOf(target), 1)
+    order.splice(index, 0, target)
+  }
+  return moves
+}
+
 /** 注入标记，挂在按钮容器与样式元素上。 */
 export const BUTTON_ATTR = 'data-dsh-ws-collapse'
 
@@ -293,6 +358,11 @@ export interface CollapseDeps {
   mount: (container: HTMLElement, options: CollapseButtonOptions) => CollapseButtonHandle
   /** 两个动作方向与聚焦按钮的 Tooltip/aria-label 文案。 */
   labels: { collapse: string; expand: string; focus: string }
+  /**
+   * 聚焦动作完成后的收尾钩子：把仍展开（活动）的工作区按字母序置前。参数是查询
+   * 用的文档；实现自担错误（失败不得影响已完成的聚焦动作）。缺省时聚焦后不重排。
+   */
+  reorder?: (root: ParentNode) => Promise<void> | void
 }
 
 /**
@@ -348,7 +418,11 @@ export function installWorkspaceCollapse(deps: CollapseDeps): () => void {
   }
 
   const activateFocus = (): void => {
-    void focusActiveRows(doc)
+    void (async () => {
+      // 先等聚焦落定（收起判定依赖展开后的 DOM），再按幸存的展开行重排顺序。
+      await focusActiveRows(doc)
+      await deps.reorder?.(doc)
+    })()
   }
 
   const optionsFor = (next: CollapseMode): CollapseButtonOptions => ({
