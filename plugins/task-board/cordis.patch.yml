@@ -1,0 +1,12 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+#
+# 形态与兄弟双面插件相同：`./` insert 名字由 dsh 锚定到本文件目录再转成 file:// URL，
+# 所以这里只写相对路径。
+#
+# 宿主半 `dist/index.js` 注册看板 JSON 存储的 `/task-board` RPC 通道；浏览器半
+# `dist/client.js` 注册「任务看板」全局面板（`main` keyed 主列页面 +
+# `sidebar.panellist` 侧边栏行，order 30）。**dist/client.js 缺失会让 dsh 启动失败**。
+- insert:
+    - id: task-board
+      name: './dist/index.js'

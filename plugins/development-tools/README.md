@@ -3,9 +3,10 @@
 `@dsh-kit/dsh-plugin-development-tools` 是开发工具的整体安装、卸载和升级单位，按固定顺序组合：
 
 1. 常驻服务（services）
-2. 交互终端（terminal）
-3. 工具状态（tools-inspector）
-4. 技能状态（skills-inspector）
+2. 任务看板（task-board）
+3. 交互终端（terminal）
+4. 工具状态（tools-inspector）
+5. 技能状态（skills-inspector）
 
 本包不包含运行时代码；`cordis.patch.yml` 通过 Bundle 内嵌依赖的相对路径加载固定版本组件，并用 Bundle 选择状态保护 HMR 卸载阶段的瞬时残留行。每个组件都可在 Bundle 详情中单独停用或重新启用，卸载 Bundle 会一起移除全部组件的装载入口。
 
@@ -13,4 +14,4 @@
 
 套件安装后本组件默认启用；后续升级以整个套件为单位，并保留 Bundle 与组件的停用状态，卸载后不会自动补回。
 需要重装时，在 dsh「添加插件」中填写套件目录 `plugins/suite` 的绝对目录。
-不要单独安装内部组件；相同稳定插件 ID 被重复装载会产生入口冲突。停用 services 不会停止已启动的服务进程；停用或卸载 terminal 会移除交互终端入口。
+不要单独安装内部组件；相同稳定插件 ID 被重复装载会产生入口冲突。停用 services 不会停止已启动的服务进程；停用 task-board 不删除 `$DSH_HOME/dsh-kit/task-board.json`；停用或卸载 terminal 会移除交互终端入口。

@@ -1,0 +1,11 @@
+{
+  // 浏览器半特意使用独立的 program：两半的 dsh 包会把不同的服务注册表
+  // 合并进 cordis 的 Context，同一 program 中会互相冲突。
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": ["src/client/**/*.ts", "src/client/**/*.tsx", "src/shared.ts"]
+}

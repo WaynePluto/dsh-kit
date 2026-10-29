@@ -125,6 +125,14 @@ dsh 只为已 retain 的会话物化 client scope：fork()/create() 只登记目
 input.for(scope) 也拒绝没有 retained binding 的 scope，所以回填草稿必须放在 openSession 之后。
 fork 子会话继承源会话的 agent preset（presetForObservation），sessions.create 的新会话按 Host 默认预设组合，与「新会话」按钮一致。
 
+程序化「发送」（task-board 实例，2026-10-29 实机验证）：`SessionInput.submit(mode?, source?)` 与
+`setDraft` 一样在 shell（input hub 的 per-session facade）层面工作，不要求 composer 已挂载——
+`create → openSession → scope.get('conversation').input.for(scope)` 后 `setDraft(text)` +
+`submit('queue','click')` 即把文本真正发出（输入法/命令仲裁都走原生 submit 机器）。
+`openSession` 的 replaceMain 用 'reveal' 语义，会顺带 `layout.selectPanel(null)` 把
+全局面板切回该会话；mode 是 BusyEnterBehavior（'queue' | 'steer'），不是 'send'。
+实例：`plugins/task-board/src/client/send-task.ts`。
+
 ## 会话重命名
 
 出处：`packages/session/session-title/src/{index,normalize}.ts`、

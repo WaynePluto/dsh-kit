@@ -49,6 +49,7 @@
     "@dsh-kit/dsh-plugin-skills-inspector": "workspace:*",
     "@dsh-kit/dsh-plugin-stats-hours": "workspace:*",
     "@dsh-kit/dsh-plugin-suite-updates": "workspace:*",
+    "@dsh-kit/dsh-plugin-task-board": "workspace:*",
     "@dsh-kit/dsh-plugin-terminal": "workspace:*",
     "@dsh-kit/dsh-plugin-tools-inspector": "workspace:*",
     "@dsh-kit/dsh-plugin-turn-retry": "workspace:*",

@@ -358,6 +358,10 @@ ui-primitives，portal 插件必须显式追加 `react-dom`，否则 tsdown 会�
 （曾产出 220KB bundle 且 portal 脱离页面 reconciler）。实例
 `plugins/model-capabilities/tsdown.config.ts`、`plugins/deepseek-official-switch/tsdown.config.ts`；
 契约记录在仓库根 `docs/dsh/plugins.md` 的「客户端产物」。
+**不止 portal**：任何内联的第三方 React 库若在运行时 `import 'react-dom'`（如 @dnd-kit/core
+的 createPortal/unstable_batchedUpdates），同样必须把 `react-dom` 加进
+`clientModuleTable`——否则 bundle 内出现第二份 react-dom 实例与页面 reconciler 冲突。
+实例：`plugins/task-board/tsdown.config.ts`（dnd-kit，2026-10-29 实机构建验证）。
 
 ### Dock 列表行的单行省略
 

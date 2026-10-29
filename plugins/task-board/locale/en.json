@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Task board",
+    "description": "A local Trello-style board: drag cards across lists with inline editing; first-list tasks can be sent to a workspace conversation"
+  }
+}

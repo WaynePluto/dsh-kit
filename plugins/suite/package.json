@@ -38,6 +38,7 @@
     "@dsh-kit/dsh-plugin-skills-inspector": "0.1.0",
     "@dsh-kit/dsh-plugin-stats-hours": "0.1.0",
     "@dsh-kit/dsh-plugin-suite-updates": "0.1.0",
+    "@dsh-kit/dsh-plugin-task-board": "0.1.0",
     "@dsh-kit/dsh-plugin-terminal": "0.1.0",
     "@dsh-kit/dsh-plugin-tools-inspector": "0.1.0",
     "@dsh-kit/dsh-plugin-turn-retry": "0.1.0",

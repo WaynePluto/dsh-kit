@@ -6,6 +6,23 @@
 
 ## 已实现
 
+- [x] 任务看板（task-board，2026-10-29，D23）：侧边栏「任务看板」全局面板（`main`
+  keyed 页面 + `sidebar.panellist` 行 order 30，services 同款双注册，行 toggle 由
+  panel-toggle 提供）。本地 Trello 式看板：卡片跨列拖动（onDragOver 实时换列、
+  其余卡片由 dnd-kit transform/transition 平滑滑开让位，DragOverlay 抬升影卡）、
+  列横向拖拽调序、拖到看板/列边缘时 dnd-kit 内建 autoScroll 自动滚动、点击卡片或
+  列标题原位编辑（textarea 替换、Escape 取消、失焦/Ctrl+Enter 提交、IME 守卫）、
+  列/卡片增删（列删除两步确认）；卡片左上角工作区 chip（官方 Menu 选择，缺省
+  「默认工作区」= dsh 新会话默认落点）、右上角复制（writeClipboard，成功短暂变勾）、
+  第一列卡片右下角发送按钮——`sessions.create({workspaceId})` →
+  `uiWorkspace.openSession()`（reveal 顺带把面板切回会话）→ conversation scope
+  `setDraft + submit('queue')`，与 user-message-fork 同款官方路径。数据整份 JSON 存
+  `$DSH_HOME/dsh-kit/task-board.json`（D17 同族；get 缺文件按界面语言播种三列，
+  put 全量校验有界上限：16 列/单列 200 卡/全板 2000 卡/文本 8000 字符）；浏览器半
+  乐观更新 + 400ms 防抖写回、卸载兜底 flush，失败亮错误不回滚。拖拽引擎 dnd-kit
+  （core 6.3.1/sortable 10.0.0/utilities 3.2.2，MIT，devDependencies 固定版本、
+  构建时内联进 client.js，react-dom 显式进浏览器模块表）。组件总数 27（口径与
+  plugin-catalog.json 对齐）；随 development-tools 分发。
 - [x] 切屏停靠（session-park，2026-10-29，D22）：窗口失焦/隐藏（blur + visibilitychange
   双信号，alt-tab 只触发 blur、最小化两者都触发）持续 3 秒且到点复查「仍离开且当前 main
   会话仍在运行」时，经官方 `uiWorkspace.startSession()`（与原生「新建会话」同路径，复用
@@ -271,6 +288,7 @@
 | notify | Windows 通知实际弹出、点击卡片把官方桌面版带到前台（未装桌面版时退化为仅关闭）、关闭按钮仍只关闭、专注助手与权限设置提示正确；任务运行中手动停止后不弹通知，失败等其他结束仍弹出。设置页开关写入在 CLI 冒烟形态被上游 0.2.0-rc.2 缺陷阻塞（见 [插件机制](dsh/plugins.md) 设置写入一节），官方桌面不受影响 |
 | panel-toggle | 面板页（插件/自动化任务/服务）选中时再点一次该侧栏行回到当前会话；未选中行、气泡菜单选中项与「更多」不受影响；停用组件后恢复原生无效重选 |
 | session-park | 停留在运行中的会话切屏离开，约 3 秒后回来：主视图停在当前工作区空白会话；原会话结束后侧栏行亮「完成未读」绿点，点击回原会话绿点清除、草稿仍在；快速 alt-tab（3 秒内回来）不动作；面板页挡住会话时切屏同样停靠；待操作黄点与运行中蓝点不受影响；停用组件后切屏不再停靠；深浅主题与中英文界面（组件清单名称） |
+| task-board | 侧边栏「任务看板」行（排在服务之后）打开/关闭看板页面；卡片跨列拖动时周围卡片平滑滑开、拖到看板左右边缘与列上下边缘时自动滚动；拖列标题调换列顺序；点击卡片/列标题原位编辑（无弹窗，Escape 取消）；列与卡片增删（列删除两步确认）；工作区 chip 选择目标工作区（缺省默认工作区）；复制按钮复制卡片文本；第一列卡片右下角发送按钮在所选工作区新建对话并自动发送（发送后面板切回该会话）；改动静置约 0.4 秒后落盘，重启 dsh 后看板保持；停用组件后侧栏行与面板消失、`task-board.json` 保留；深浅主题与中英文界面待实机确认 |
 | tools-inspector | 工具清单与历史调用、失败次数统计与只读性；展开条目的「复制工具名」按钮复制成功并短暂显示「已复制」 |
 | skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 首轮消息点击后新建同工作区会话并回填这条消息；其余消息子会话只继承前置历史，草稿可编辑，原会话不变 |

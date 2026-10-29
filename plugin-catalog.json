@@ -112,6 +112,10 @@
           "rowId": "services"
         },
         {
+          "name": "@dsh-kit/dsh-plugin-task-board",
+          "rowId": "task-board"
+        },
+        {
           "name": "@dsh-kit/dsh-plugin-terminal",
           "rowId": "terminal"
         },

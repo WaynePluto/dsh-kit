@@ -35,6 +35,7 @@
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
 | [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移、目录右键菜单与文件右键「查看 Git 变更」面板 |
 | [常驻服务](../plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务；注册表在 DSH_HOME，跨工作区可见可停 |
+| [任务看板](../plugins/task-board/README.md) | 侧边栏「任务看板」面板 | 本地 Trello 式看板：卡片跨列拖拽与就地编辑，第一列任务可发送到工作区新对话 |
 | [交互终端](../plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
 
 ## 运行环境
@@ -46,7 +47,7 @@
 
 ## 分发组合
 
-26 个功能组件以 8 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+27 个功能组件以 8 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
@@ -54,7 +55,7 @@
 |---|---|---|
 | model-enhancements | 组合包 | Copilot 登录、模型目录更新、模型能力与协议、常用模型、模型提供商、DeepSeek 官方 API 开关；模型目录和模型能力共享运行时目录服务，不可单独停用 |
 | conversation-enhancements | 组合包 | 失败重试、会话滚动、会话统计小时档、用户消息分叉、会话重命名、复制工作区路径、聚焦/折叠工作区、任务通知、会话工作区显示、侧栏面板行回会话、切屏停靠 |
-| development-tools | 组合包 | 常驻服务、交互终端、工具状态、技能状态 |
+| development-tools | 组合包 | 常驻服务、任务看板、交互终端、工具状态、技能状态 |
 | proxy | 独立包 | 出网代理 |
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
