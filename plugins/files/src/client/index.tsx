@@ -9,7 +9,7 @@ import type { FilesEndpoint, FilesSnapshot } from '../shared.js'
 import { en, NS, zh, type FilesKey } from './locales.js'
 import { ImageZoomStore } from './imageZoomOverlay.js'
 import { installNativeFilesEnhancement } from './nativeFilesAdapter.js'
-import { installPreviewTitleEnhancement } from './previewTabTitle.js'
+import { installPreviewTitleEnhancement, installTabChipConfirm } from './previewTabTitle.js'
 import { PreviewTabs } from './previewTabs.js'
 import { installTabContextActions } from './tabContextActions.js'
 import {
@@ -56,9 +56,11 @@ export function apply(ctx: Context): void {
   ctx.effect(() => {
     const disposeFiles = installNativeFilesEnhancement(ctx, ctx.sidebarRight, loadGit, t, previewTabs, openGitReview)
     const disposeTitle = installPreviewTitleEnhancement(ctx, previewTabs, imageStates, t)
+    const disposeChip = installTabChipConfirm(previewTabs)
     const disposeMenu = installTabContextActions(ctx, ctx.sidebarRight, t)
     return () => {
       disposeMenu()
+      disposeChip()
       imageStates.clear()
       disposeTitle()
       disposeFiles()

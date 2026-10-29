@@ -1,5 +1,5 @@
 /**
- * 侧栏「工作区」头部的两枚注入按钮：一键收起/展开与聚焦提醒。
+ * 侧栏「工作区」头部的单枚注入按钮：聚焦/折叠双态。
  *
  * dsh 的 section header（标题 + 搜索 + 视图选项 + 新增工作区）是 ui-workspace
  * 私有界面，没有插件槽位（上游 `packages/client/ui-workspace/src/client/rows/
@@ -10,20 +10,19 @@
  * - 注入：从任一工作区行向上找带 sectionHeader 直接子节点的祖先（浏览器根），
  *   把按钮容器插在搜索槽（searchSlot）之前；定位用类名后缀匹配，构建产物的
  *   CSS module 类名是 `<hash>_<原名>`，哈希前缀随版本变化会静默失效，升级需复核。
- * - 状态：只要还有展开中的分组行，按钮就是「收起全部」；全部收起后切到
- *   「展开全部」。展开态随行内 `aria-expanded` 变化，由观察器的 attribute 监听
- *   跟随（叶子分组折叠/展开只改属性，不产生 childList mutation）。
- * - 收起：对全部展开中的分组行按文档逆序派发 click——树形模式下祖先折叠会卸载
+ * - 状态：只要还有展开中的分组行，按钮就是「折叠所有工作区」；全部收起后切到
+ *   「仅展开活动的工作区」（聚焦）。展开态随行内 `aria-expanded` 变化，由观察器
+ *   的 attribute 监听跟随（叶子分组折叠/展开只改属性，不产生 childList mutation）。
+ * - 折叠：对全部展开中的分组行按文档逆序派发 click——树形模式下祖先折叠会卸载
  *   后代行，先子后父让每次点击都落在仍在文档中的行上。
- * - 展开：按文档顺序派发 click。展开是单向门——上游 renderGroup 只在父分组
- *   展开时渲染子分组行，父行展开后新挂载的子行（各自持持久化的收起态）才进
- *   文档，所以按「点击一批 → 等 React 落 DOM → 再探下一轮」循环到没有未点过的
- *   收起行；每行只点一次，行数有限故必然终止。
  * - 聚焦活动：先展开全部分组（收起分组的会话行不在 DOM——上游 deriveGroups 对
  *   收起分组输出空 sessions，纯 DOM 判定看不到它们的任何会话状态），再收起子树
  *   无活动会话的分组；最终态即「只展开活动的工作区」。会话行归属用 renderGroup
  *   的 section 结构（`div.groupSection > HoverCard span > 行` + `div[role=group]`
- *   包子分组）判定，见 {@link sectionOfHeader}。
+ *   包子分组）判定，见 {@link sectionOfHeader}。展开按文档顺序多轮派发 click——
+ *   上游 renderGroup 只在父分组展开时渲染子分组行，父行展开后新挂载的子行（各自
+ *   持持久化的收起态）才进文档，所以按「点击一批 → 等 React 落 DOM → 再探下一轮」
+ *   循环到没有未点过的收起行；每行只点一次，行数有限故必然终止。
  * 点击都走原生 onToggle 路径写回 store 并持久化，与用户逐个点击分组头完全同路径。
  *
  * @module @dsh-kit/dsh-plugin-workspace-collapse/client/collapse
@@ -127,18 +126,16 @@ const SEARCH_SLOT_SELECTOR = '[class*="searchSlot"]'
 /** 按钮容器与按钮的命名空间类名。 */
 export const CONTAINER_CLASS = 'dsh-ws-collapse'
 export const BUTTON_CLASS = 'dsh-ws-collapse-btn'
-export const GLYPH_CLASS = 'dsh-ws-collapse-glyph'
 
-/** 按钮当前指向的动作；存在展开中的分组行时是 collapse，否则是 expand。 */
-export type CollapseMode = 'collapse' | 'expand'
+/** 按钮当前指向的动作；存在展开中的分组行时是 collapse，否则是 focus。 */
+export type CollapseMode = 'collapse' | 'focus'
 
 /**
  * 按钮样式与「搜索展开时随原生动作簇一起退场」的规则。数值逐项对齐上游
  * `rows/WorkspaceBrowser.module.css`：容器镜像 headerActions 的 max-width/
  * opacity/transform 退场动画（同一组 token 与 `--ds-ease-in-out` 节奏），通过
  * `:has(~ …)` 认领后续兄弟上的 `headerActionsHidden` 类；按钮本体复刻
- * iconButton 的 28px 契约（含 inset 焦点圈）。容器装两枚按钮
- * （收起/展开 + 仅展开活动），max-width 按两钮加 2px 间隙预留。
+ * iconButton 的 28px 契约（含 inset 焦点圈），max-width 按单钮预留。
  *
  * 水平定位：searchSlot 自带 `margin-left:auto`，会在 flex:1 被 max-width 钳住后
  * 吸收剩余空间、把注入项顶到标题旁（优先级高于 justify-content）；容器同样用
@@ -151,8 +148,7 @@ export const COLLAPSE_STYLE = `
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  max-width: 58px;
+  max-width: 28px;
   overflow: hidden;
   box-sizing: border-box;
   margin-left: auto;
@@ -197,18 +193,6 @@ export const COLLAPSE_STYLE = `
 .${BUTTON_CLASS}:focus-visible {
   outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -2px;
-}
-.${GLYPH_CLASS} {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 0;
-}
-/* 两个 12px chevron 纵向叠放：墨迹在 16 viewBox 的 y≈6–10，按 12px 缩放后
-   下方箭头上移 5px，两段墨迹间隙约 5px——间隙小了四条斜臂会被读成 X
-   （实机反馈），拉开后才是上下两侧向内挤压的两个独立箭头。 */
-.${GLYPH_CLASS} > svg + svg {
-  margin-top: -5px;
 }
 `
 
@@ -329,18 +313,14 @@ export async function focusActiveRows(root: ParentNode): Promise<number> {
   return count
 }
 
-/** 按钮的挂载参数（容器里两枚按钮共用一份）。 */
+/** 按钮的挂载参数。 */
 export interface CollapseButtonOptions {
-  /** 收起/展开按钮的 Tooltip 与 aria-label 文案。 */
+  /** 按钮（按当前 mode 指向的动作）的 Tooltip 与 aria-label 文案。 */
   label: string
-  /** 当前指向的动作，决定字形方向。 */
+  /** 当前指向的动作，决定字形方向：collapse 折叠全部，focus 聚焦活动。 */
   mode: CollapseMode
-  /** 点击回调：按 mode 收起或展开全部分组。 */
+  /** 点击回调：按 mode 折叠全部分组，或聚焦展开活动分组。 */
   onActivate: () => void
-  /** 聚焦按钮的 Tooltip 与 aria-label 文案（静态字形，无方向）。 */
-  focusLabel: string
-  /** 聚焦按钮点击回调：展开全部分组后收起无活动会话的分组。 */
-  onFocus: () => void
 }
 
 /** 按钮句柄：模式变化时就地更新，卸载时释放。 */
@@ -356,8 +336,8 @@ export interface CollapseDeps {
   document: Document
   /** 在注入容器里挂按钮内容；返回更新与卸载句柄。 */
   mount: (container: HTMLElement, options: CollapseButtonOptions) => CollapseButtonHandle
-  /** 两个动作方向与聚焦按钮的 Tooltip/aria-label 文案。 */
-  labels: { collapse: string; expand: string; focus: string }
+  /** 两个动作方向的 Tooltip/aria-label 文案。 */
+  labels: { collapse: string; focus: string }
   /**
    * 聚焦动作完成后的收尾钩子：把仍展开（活动）的工作区按字母序置前。参数是查询
    * 用的文档；实现自担错误（失败不得影响已完成的聚焦动作）。缺省时聚焦后不重排。
@@ -391,9 +371,8 @@ function affectsButton(records: readonly MutationRecord[]): boolean {
 }
 
 /**
- * 安装工作区头部的两枚注入按钮（收起/展开 + 聚焦提醒）：注入样式、跟随列表
- * 出现/消失挂载与移除按钮容器，并跟随行内 `aria-expanded` 变化在收起/展开
- * 两个动作间切换。
+ * 安装工作区头部的注入按钮（聚焦/折叠双态）：注入样式、跟随列表出现/消失挂载
+ * 与移除按钮容器，并跟随行内 `aria-expanded` 变化在折叠与聚焦两个动作间切换。
  * @param deps - 外部依赖。
  * @returns 卸载函数：断开观察、移除按钮容器与样式。
  */
@@ -413,24 +392,21 @@ export function installWorkspaceCollapse(deps: CollapseDeps): () => void {
   }
 
   const activate = (): void => {
-    if (mode === 'expand') void expandCollapsedRows(doc)
-    else collapseExpandedRows(doc)
-  }
-
-  const activateFocus = (): void => {
-    void (async () => {
+    if (mode === 'focus') {
       // 先等聚焦落定（收起判定依赖展开后的 DOM），再按幸存的展开行重排顺序。
-      await focusActiveRows(doc)
-      await deps.reorder?.(doc)
-    })()
+      void (async () => {
+        await focusActiveRows(doc)
+        await deps.reorder?.(doc)
+      })()
+    } else {
+      collapseExpandedRows(doc)
+    }
   }
 
   const optionsFor = (next: CollapseMode): CollapseButtonOptions => ({
     label: deps.labels[next],
     mode: next,
     onActivate: activate,
-    focusLabel: deps.labels.focus,
-    onFocus: activateFocus,
   })
 
   const evaluate = (): void => {
@@ -443,7 +419,7 @@ export function installWorkspaceCollapse(deps: CollapseDeps): () => void {
     }
     const next: CollapseMode = doc.querySelector(EXPANDED_ROW_SELECTOR) !== null
       ? 'collapse'
-      : 'expand'
+      : 'focus'
     // 容器仍挂在文档里（原生重渲染不会摘走插件节点）时只跟随模式切换。
     if (container !== null && container.isConnected) {
       if (handle !== null && next !== mode) {

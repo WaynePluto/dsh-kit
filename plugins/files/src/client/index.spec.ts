@@ -4,7 +4,7 @@ import { installNativeFilesEnhancement } from './nativeFilesAdapter.js'
 
 vi.mock('./styles.js', () => ({ installStyles: () => () => {} }))
 vi.mock('./nativeFilesAdapter.js', () => ({ installNativeFilesEnhancement: vi.fn(() => () => {}) }))
-vi.mock('./previewTabTitle.js', () => ({ installPreviewTitleEnhancement: () => () => {} }))
+vi.mock('./previewTabTitle.js', () => ({ installPreviewTitleEnhancement: () => () => {}, installTabChipConfirm: () => () => {} }))
 vi.mock('./tabContextActions.js', () => ({ installTabContextActions: () => () => {} }))
 vi.mock('./previewTabs.js', () => ({ PreviewTabs: class { dispose(): void {} } }))
 vi.mock('./imageZoomOverlay.js', () => ({ ImageZoomStore: class { clear(): void {} } }))

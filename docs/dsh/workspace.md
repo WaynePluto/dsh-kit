@@ -219,7 +219,9 @@ component、store、inject、locale 和原生 `files` guide；文件正文由 `u
   data marker、aria-label/title，并通过外层事件委托提供右键菜单；不插入或移动原生行 DOM。
 - 首次文件点击通过 `sidebarRight.split` 建立目标 pane，再以 `tab.actions.openResource` 打开原生资源；
   单击由 `previewTabs` 维护每个 session + pane 一个斜体临时 tab，下一次单击通过原生 `replaceTab` 替换；
-  双击文件或 title slot 使 tab 保留。若空间、用户布局或 pane 生命周期不允许，回退原生打开行为。
+  双击文件、页签或 title slot 使 tab 保留（chip 空白不经过插件组件，由 document 捕获级
+  dblclick 委托按 dockkit chip 标记回查观测表后走同一条 confirm；非文件页签与 chip 内按钮不拦截）。
+  若空间、用户布局或 pane 生命周期不允许，回退原生打开行为。
 - 图片预览保留原生每 tab 的适应宽度/固定档位/Ctrl+滚轮。项目在原生 text title slot 生成
   document.body portal 附加控件，对当前选中 image preview 的 frame 叠加 CSS zoom，提供适应窗口与 Space+鼠标平移；
   不增加图片 RPC。title menu 通过 `sidebar.right.tab.menu.item` 追加「关闭其他」「关闭全部」，先按目标 tab

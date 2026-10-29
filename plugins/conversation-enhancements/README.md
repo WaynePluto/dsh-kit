@@ -8,7 +8,7 @@
 4. 用户消息分叉（user-message-fork）
 5. 会话重命名（session-rename）
 6. 复制工作区路径（workspace-path）
-7. 收起全部工作区（workspace-collapse）
+7. 聚焦/折叠工作区（workspace-collapse）
 8. 通知（notify）
 9. 会话工作区显示（session-workspace）
 

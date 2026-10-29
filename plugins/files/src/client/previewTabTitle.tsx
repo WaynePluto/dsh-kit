@@ -75,6 +75,45 @@ function nativeTitleEntry(entries: readonly StoredEntry[]): StoredEntry | undefi
   return entries.find(entry => entry.options.key === TEXT_PREVIEW_ID && (entry.options.priority ?? 0) >= 0)
 }
 
+/**
+ * Resolve the file tab a double-click landed on, from the dock chip or a
+ * floating panel's header. The chip around the title span belongs to dsh's
+ * dockkit and never reaches a plugin component, so the title's own handler
+ * only covers the icon+text box; this reads dsh's chip markers instead.
+ * Every file preview tab renders through the wrapped title above and therefore
+ * carries `data-files-preview-tab-title`, including inside a float header.
+ */
+function chipTabIdOf(target: Element): TabId | undefined {
+  const chip = target.closest('[data-dockkit-tab]')
+  const marked = chip?.getAttribute('data-dockkit-tab')
+    ?? target.closest('[data-dockkit-float-grip]')
+      ?.querySelector('[data-files-preview-tab-title]')?.getAttribute('data-files-preview-tab-title')
+  return marked as TabId | undefined
+}
+
+/**
+ * Double-click anywhere on a file tab's chip — the blank padding included —
+ * confirms it, matching the title span's own double-click and the tree row's.
+ * Chips of non-file tabs resolve to no observation and stay untouched; the
+ * chips' nested buttons (close, dock) act on the first click, so a double
+ * click must not confirm behind them.
+ */
+export function installTabChipConfirm(manager: PreviewTabs): () => void {
+  const onDoubleClick = (event: MouseEvent): void => {
+    const target = event.target instanceof Element ? event.target : undefined
+    if (target === undefined || target.closest('button') !== null) return
+    const tabId = chipTabIdOf(target)
+    if (tabId === undefined) return
+    const observation = manager.observation(tabId)
+    if (observation === undefined) return
+    manager.confirm(observation.sessionId, observation.paneId, observation.contentId)
+    event.preventDefault()
+    event.stopPropagation()
+  }
+  document.addEventListener('dblclick', onDoubleClick, true)
+  return () => { document.removeEventListener('dblclick', onDoubleClick, true) }
+}
+
 function registerWrappedTitle(ctx: Context, entry: StoredEntry, manager: PreviewTabs, imageStates: ImageZoomStore, translate: Translate): () => void {
   const options: Record<string, unknown> = {
     name: TITLE_SLOT,

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** 工作区头部注入按钮的 DOM 编排测试：折叠与展开选择、仅展开活动的归属、注入位置、模式跟随与卸载。 */
+/** 工作区头部注入按钮的 DOM 编排测试：折叠与聚焦双态、仅展开活动的归属、注入位置、模式跟随与卸载。 */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -138,7 +138,7 @@ function nativeBrowser(): {
 
 /** 记录挂载/更新/卸载的假依赖；reorder 提供时注入聚焦收尾钩子。 */
 function harness(labels = {
-  collapse: '收起全部工作区', expand: '展开全部工作区', focus: '仅展开活动的工作区',
+  collapse: '折叠所有工作区', focus: '仅展开活动的工作区',
 }, reorder?: CollapseDeps['reorder']) {
   const mounted: { container: HTMLElement; options: CollapseButtonOptions }[] = []
   const updates: CollapseButtonOptions[] = []
@@ -406,11 +406,11 @@ describe('installWorkspaceCollapse', () => {
     expect(container.className).toBe(CONTAINER_CLASS)
     expect(searchSlot.previousElementSibling).toBe(container)
     expect(header.contains(container)).toBe(true)
-    expect(mounted[0]!.options.label).toBe('收起全部工作区')
+    expect(mounted[0]!.options.label).toBe('折叠所有工作区')
     dispose()
   })
 
-  it('存在展开中的行时挂载为收起态，全部收起后更新为展开态', async () => {
+  it('存在展开中的行时挂载为折叠态，全部收起后更新为聚焦态', async () => {
     const { listArea } = nativeBrowser()
     const row = groupRow('ws-a', true, [])
     listArea.append(row, groupRow('ws-b', false, []))
@@ -420,17 +420,17 @@ describe('installWorkspaceCollapse', () => {
 
     expect(mounted).toHaveLength(1)
     expect(mounted[0]!.options.mode).toBe('collapse')
-    expect(mounted[0]!.options.label).toBe('收起全部工作区')
+    expect(mounted[0]!.options.label).toBe('折叠所有工作区')
 
     row.setAttribute('aria-expanded', 'false')
     await flush()
     expect(updates).toHaveLength(1)
-    expect(mounted[0]!.options.mode).toBe('expand')
-    expect(mounted[0]!.options.label).toBe('展开全部工作区')
+    expect(mounted[0]!.options.mode).toBe('focus')
+    expect(mounted[0]!.options.label).toBe('仅展开活动的工作区')
     dispose()
   })
 
-  it('点击按钮按当前模式动作：收起态折叠并翻到展开态，再点击多轮展开翻回收起态', async () => {
+  it('点击按钮按当前模式动作：折叠态一键折叠并翻到聚焦态，聚焦态点开全部再收起无活动分组', async () => {
     const clicks: string[] = []
     const { listArea } = nativeBrowser()
     // 点击后翻转展开态的行，模拟原生 onToggle。
@@ -448,38 +448,28 @@ describe('installWorkspaceCollapse', () => {
     expect(mounted[0]!.options.mode).toBe('collapse')
 
     mounted[0]!.options.onActivate()
-    // 逆序收起，行点击翻转展开态后按钮切到展开方向。
+    // 逆序收起，行点击翻转展开态后按钮切到聚焦方向。
     expect(clicks).toEqual(['ws-b', 'ws-a'])
     await flush()
-    expect(mounted[0]!.options.mode).toBe('expand')
-    expect(mounted[0]!.options.label).toBe('展开全部工作区')
+    expect(mounted[0]!.options.mode).toBe('focus')
+    expect(mounted[0]!.options.label).toBe('仅展开活动的工作区')
 
-    // 收起的父行点击后挂载保持收起的子行（原生 renderGroup 行为）。
-    const parent = flippingRow('ws-parent', false)
-    parent.addEventListener('click', () => {
-      if (parent.getAttribute('aria-expanded') === 'true') {
-        listArea.appendChild(flippingRow('ws-child', false))
-      }
-    })
-    listArea.appendChild(parent)
-    await flush()
-
+    // 聚焦态再点击：全部行都无活动状态点，先按文档顺序点开全部，再逆序收起全部。
     mounted[0]!.options.onActivate()
     await settle()
-    // 多轮补点：第一轮按文档顺序点开全部收起行（含上一阶段收掉的 ws-a/ws-b 与
-    // 父行），父行展开挂载子行后第二轮补点；全展开后按钮翻回收起方向。
-    expect(clicks).toEqual(['ws-b', 'ws-a', 'ws-a', 'ws-b', 'ws-parent', 'ws-child'])
-    expect(mounted[0]!.options.mode).toBe('collapse')
-    expect(mounted[0]!.options.label).toBe('收起全部工作区')
+    expect(clicks).toEqual(['ws-b', 'ws-a', 'ws-a', 'ws-b', 'ws-b', 'ws-a'])
+    expect(mounted[0]!.options.mode).toBe('focus')
+    expect(mounted[0]!.options.label).toBe('仅展开活动的工作区')
     dispose()
   })
 
   it('聚焦动作完成后以文档为参调用 reorder 收尾（活动置前重排钩子）', async () => {
     const clicks: string[] = []
     const { listArea } = nativeBrowser()
+    // 两个分组都收起：全部收起态按钮才指向聚焦动作。
     listArea.append(
-      section({ key: 'ws-run', expanded: true, clicks, flip: true, sessions: [sessionRow('s1', clicks, 'ongoing')] }),
-      section({ key: 'ws-quiet', expanded: true, clicks, flip: true, sessions: [sessionRow('s2', clicks)] }),
+      section({ key: 'ws-run', expanded: false, clicks, flip: true, sessions: [sessionRow('s1', clicks, 'ongoing')] }),
+      section({ key: 'ws-quiet', expanded: false, clicks, flip: true, sessions: [sessionRow('s2', clicks)] }),
     )
     // reorder 在聚焦落定后执行：此时 ws-quiet 已被收起，只剩活动分组展开。
     const events: string[] = []
@@ -489,10 +479,12 @@ describe('installWorkspaceCollapse', () => {
     const dispose = installWorkspaceCollapse(deps)
     await flush()
     expect(mounted).toHaveLength(1)
+    expect(mounted[0]!.options.mode).toBe('focus')
 
-    mounted[0]!.options.onFocus()
+    mounted[0]!.options.onActivate()
     await settle()
-    expect(clicks).toEqual(['ws-quiet'])
+    // 展开阶段按文档顺序点开两个分组，收起阶段逆序只收无活动的 ws-quiet。
+    expect(clicks).toEqual(['ws-run', 'ws-quiet', 'ws-quiet'])
     expect(events).toEqual(['expanded=1'])
     dispose()
   })
@@ -544,10 +536,10 @@ describe('installWorkspaceCollapse', () => {
     expect(COLLAPSE_STYLE).toContain('--dsw-alias-label-secondary')
     expect(COLLAPSE_STYLE).toContain('--ds-ease-in-out')
     // 水平定位契约：容器接住剩余空间，并归零 searchSlot 的 auto margin，
-    // 使按钮紧贴搜索图标左侧而不是被顶到标题旁。
+    // 使按钮紧贴搜索图标左侧而不是被顶到标题旁；容器按单钮预留宽度。
+    expect(COLLAPSE_STYLE).toContain('max-width: 28px')
     expect(COLLAPSE_STYLE).toContain('margin-left: auto')
     expect(COLLAPSE_STYLE).toContain('~ [class*="searchSlot"]')
-    expect(COLLAPSE_STYLE).toContain('> svg + svg')
     dispose()
   })
 

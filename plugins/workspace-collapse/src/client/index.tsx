@@ -1,12 +1,13 @@
 /**
- * workspace-collapse 的 browser half：在侧栏「工作区」头部注入两枚按钮——
- * 一键收起/展开与仅展开活动的工作区（有运行中/待操作/未读会话的分组保留展开，
- * 收起其余；聚焦完成后把活动工作区按字母序置前——走官方 `workspaces` 服务的
- * `insertBefore`，与原生拖拽排序同一条宿主路径）。注入编排见 `collapse.ts`；
- * 按钮内容用原生 `Tooltip`（external，样式由页面提供，fixed 气泡不受
- * sectionHeader 的 overflow:hidden 裁剪，与原生头部按钮同参数）包裹原生字形
- * （双 chevron 纵向叠放 / 三线+上下 chevron 组合），在注入容器里挂独立 React 根；
- * 动作方向切换时就地重渲染，只换文案与字形顺序。
+ * workspace-collapse 的 browser half：在侧栏「工作区」头部注入一枚双态按钮——
+ * 存在展开中的分组时是「折叠所有工作区」，全部收起后是「仅展开活动的工作区」
+ * （有运行中/待操作/未读会话的分组保留展开，收起其余；聚焦完成后把活动工作区按
+ * 字母序置前——走官方 `workspaces` 服务的 `insertBefore`，与原生拖拽排序同一条
+ * 宿主路径）。注入编排见 `collapse.ts`；按钮内容用原生 `Tooltip`（external，样式
+ * 由页面提供，fixed 气泡不受 sectionHeader 的 overflow:hidden 裁剪，与原生头部
+ * 按钮同参数）包裹原生字形（三条工作区分组线 + 上下 chevron 组合，chevron 方向
+ * 随模式翻转），在注入容器里挂独立 React 根；动作方向切换时就地重渲染，只换
+ * 文案与字形方向。
  *
  * @module @dsh-kit/dsh-plugin-workspace-collapse/client
  */
@@ -18,35 +19,48 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import {
-  IconChevronDownOutlineMedium, IconChevronUpOutlineMedium,
-  Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SELF_NAMESPACE } from '../shared.js'
 import {
-  BUTTON_CLASS, EXPANDED_ROW_SELECTOR, GLYPH_CLASS, installWorkspaceCollapse,
+  BUTTON_CLASS, EXPANDED_ROW_SELECTOR, installWorkspaceCollapse,
   planActiveFirstMoves, workspaceIdOfRow,
 } from './collapse.js'
 import type {
-  CollapseButtonHandle, CollapseButtonOptions,
+  CollapseButtonHandle, CollapseButtonOptions, CollapseMode,
 } from './collapse.js'
 import { en, zh } from './locales.js'
 import type { WorkspaceCollapseKey } from './locales.js'
 
-/** 聚焦按钮的组合字形：三条工作区分组线 + 右侧上下 chevron（Regular 1px 描边——
- *  相邻原生头部图标搜索/视图选项/新增全是 `*OutlineRegular` 字形族，Medium 1.3px
- *  是 14px dock 字形族，用在 16px 头部会显粗；16 viewBox、显示尺寸 16px 与邻居
- *  一致，颜色走 currentColor 随按钮状态）。墨迹按 2026-10-29 实机截图（DPR=1）
- *  量到邻居为搜索 15×15、视图选项 14×12、新增 16×14，旧路径墨迹 13×8.9 偏矮被
- *  读小；现路径（线 y=3/8/13、chevron 2.2×2.2）墨迹约 13.4×11.8，与邻居同档。 */
-function FocusRemindersGlyph(): ReactNode {
+/** 聚焦/折叠按钮的组合字形：三条工作区分组线 + 右侧上下 chevron（Regular 1px
+ *  描边——相邻原生头部图标搜索/视图选项/新增全是 `*OutlineRegular` 字形族，
+ *  Medium 1.3px 是 14px dock 字形族，用在 16px 头部会显粗；16 viewBox、显示尺寸
+ *  16px 与邻居一致，颜色走 currentColor 随按钮状态）。墨迹按 2026-10-29 实机截图
+ *  （DPR=1）量到邻居为搜索 15×15、视图选项 14×12、新增 16×14，旧路径墨迹 13×8.9
+ *  偏矮被读小；现路径（线 y=3/8/13、chevron 2.2×2.2）墨迹约 13.4×11.8，与邻居同档。
+ *  chevron 方向随模式翻转：focus 态（无展开分组，点击聚焦）指向外侧——上箭头在上、
+ *  下箭头在下；collapse 态（有展开分组，点击折叠全部）指向彼此，与被移除的旧
+ *  双 chevron 按钮同语义。 */
+function FocusCollapseGlyph({ mode }: { mode: CollapseMode }): ReactNode {
   return (
     <svg width={16} height={16} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" strokeWidth={1}>
       <path d="M2.5 3H8.8" stroke="currentColor" />
       <path d="M2.5 8H8.8" stroke="currentColor" />
       <path d="M2.5 13H8.8" stroke="currentColor" />
-      <path d="m10.4 5.2 2.2-2.2 2.2 2.2" stroke="currentColor" />
-      <path d="m10.4 10.8 2.2 2.2 2.2-2.2" stroke="currentColor" />
+      {mode === 'collapse'
+        ? (
+            <>
+              {/* 下箭头在上（apex y=5.2）、上箭头在下（apex y=10.8）：墨迹范围与
+                  focus 态两段完全一致，只是方向翻转指向彼此。 */}
+              <path d="m10.4 3 2.2 2.2 2.2-2.2" stroke="currentColor" />
+              <path d="m10.4 13 2.2-2.2 2.2 2.2" stroke="currentColor" />
+            </>
+          )
+        : (
+            <>
+              <path d="m10.4 5.2 2.2-2.2 2.2 2.2" stroke="currentColor" />
+              <path d="m10.4 10.8 2.2 2.2 2.2-2.2" stroke="currentColor" />
+            </>
+          )}
     </svg>
   )
 }
@@ -77,56 +91,29 @@ const NS = SELF_NAMESPACE
 export const inject = ['locale', 'workspaces']
 
 /**
- * 在注入容器里渲染 Tooltip 包裹的两枚原生风格图标按钮（收起/展开 + 仅展开活动）。
+ * 在注入容器里渲染 Tooltip 包裹的原生风格图标按钮（聚焦/折叠双态，方向与文案由
+ * mode 决定）。
  * @param container - 注入编排提供的挂载点。
- * @param options - 两个动作的文案、方向与回调。
+ * @param options - 当前动作的文案、方向与回调。
  * @returns 更新与卸载句柄。
  */
 function mountCollapseButton(container: HTMLElement, options: CollapseButtonOptions): CollapseButtonHandle {
   const root = createRoot(container)
   const render = (opts: CollapseButtonOptions): void => {
     root.render(
-      <>
-        <Tooltip label={opts.label} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={BUTTON_CLASS}
-            aria-label={opts.label}
-            aria-expanded={opts.mode === 'collapse'}
-            onClick={opts.onActivate}
-          >
-            {/* 双 chevron 纵向叠放的挤压记号：收起时下箭头在上、上箭头在下（指向
-                彼此），展开时上下互换（指向外侧）；间距契约见 COLLAPSE_STYLE。 */}
-            <span className={GLYPH_CLASS} aria-hidden="true">
-              {opts.mode === 'collapse'
-                ? (
-                    <>
-                      <IconChevronDownOutlineMedium size={12} />
-                      <IconChevronUpOutlineMedium size={12} />
-                    </>
-                  )
-                : (
-                    <>
-                      <IconChevronUpOutlineMedium size={12} />
-                      <IconChevronDownOutlineMedium size={12} />
-                    </>
-                  )}
-            </span>
-          </button>
-        </Tooltip>
-        <Tooltip label={opts.focusLabel} side="bottom" delayMs={500}>
-          <button
-            type="button"
-            className={BUTTON_CLASS}
-            aria-label={opts.focusLabel}
-            onClick={opts.onFocus}
-          >
-            {/* 组合字形（三条分组线 + 上下 chevron）：聚焦动作仅展开活动的工作区
-                （有运行中/待用户操作/完成未读会话的分组）。 */}
-            <FocusRemindersGlyph />
-          </button>
-        </Tooltip>
-      </>,
+      <Tooltip label={opts.label} side="bottom" delayMs={500}>
+        <button
+          type="button"
+          className={BUTTON_CLASS}
+          aria-label={opts.label}
+          aria-expanded={opts.mode === 'collapse'}
+          onClick={opts.onActivate}
+        >
+          {/* 组合字形（三条分组线 + 上下 chevron）：collapse 态折叠所有工作区，
+              focus 态仅展开活动的工作区（有运行中/待用户操作/完成未读会话的分组）。 */}
+          <FocusCollapseGlyph mode={opts.mode} />
+        </button>
+      </Tooltip>,
     )
   }
   render(options)
@@ -144,9 +131,9 @@ function workspaceLabel(item: WorkspaceView): string {
 }
 
 /**
- * 注册文案并安装工作区头部的收起/展开与「仅展开活动」按钮。聚焦动作完成后把
- * 仍展开（活动）的工作区按字母序置前：从幸存的展开行取 id，对官方 `workspaces`
- * 服务的 `insertBefore`（原生拖拽排序的同一条宿主路径，顺序持久化）按
+ * 注册文案并安装工作区头部的聚焦/折叠双态按钮。聚焦动作完成后把仍展开（活动）
+ * 的工作区按字母序置前：从幸存的展开行取 id，对官方 `workspaces` 服务的
+ * `insertBefore`（原生拖拽排序的同一条宿主路径，顺序持久化）按
  * {@link planActiveFirstMoves} 的计划逐条执行；任一步被拒即告警并放弃剩余移动，
  * 不影响已完成的聚焦动作。
  */
@@ -180,7 +167,6 @@ export function apply(ctx: Context): void {
     mount: mountCollapseButton,
     labels: {
       collapse: translate('collapseAll'),
-      expand: translate('expandAll'),
       focus: translate('focusUpdates'),
     },
     reorder: reorderActiveFirst,

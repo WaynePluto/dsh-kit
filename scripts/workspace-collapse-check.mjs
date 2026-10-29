@@ -1,7 +1,7 @@
 /**
  * 在不启动 dsh 或打开会话的情况下，对 workspace-collapse 浏览器产物做冒烟检查。
  * 它在小型浏览器模块 shim 中执行构建后的加载器包装，验证头部按钮注入编排的
- * 挂载参数、收起/展开两个动作的选择器契约，以及 bundle 内的 dsh DOM 契约字符串。
+ * 挂载参数、折叠/聚焦两个动作的选择器契约，以及 bundle 内的 dsh DOM 契约字符串。
  *
  * 构建插件后运行：
  *
@@ -71,7 +71,7 @@ const exports = loaded.factory(id => {
   if (id === 'react/jsx-runtime') return { Fragment: NOOP, jsx: NOOP, jsxs: NOOP }
   if (id === 'react-dom') return { createRoot: () => ({ render: NOOP, unmount: NOOP }) }
   if (id === '@deepseek-ai/dsh-client-ui-primitives') {
-    return { IconChevronUpOutlineMedium: NOOP, Tooltip: NOOP }
+    return { Tooltip: NOOP }
   }
   throw new Error(`bundle 要求页面模块表之外的模块：${id}`)
 })
@@ -102,7 +102,7 @@ check(
 check(
   observations[0]?.options?.attributes === true
   && observations[0]?.options?.attributeFilter?.includes('aria-expanded') === true,
-  '监听 aria-expanded 属性变化以跟随收起/展开模式',
+  '监听 aria-expanded 属性变化以跟随折叠/聚焦模式',
   JSON.stringify(observations[0]?.options),
 )
 check(queries.includes('[data-row-key^="workspace:"]'), '挂载后立即按工作区行选择器评估存量 DOM', JSON.stringify(queries))
@@ -154,11 +154,15 @@ check(/sectionHeader\\?"/.test(source) && /searchSlot\\?"/.test(source), 'bundle
 check(source.includes('headerActionsHidden') && source.includes(':has(~ '), 'bundle 包含搜索展开退场的 :has 规则')
 check(source.includes('data-row-key') && source.includes('aria-expanded'), 'bundle 包含工作区行 DOM 契约')
 check(
-  source.includes('收起全部工作区') && source.includes('Collapse all workspaces')
-  && source.includes('展开全部工作区') && source.includes('Expand all workspaces'),
-  'bundle 包含收起与展开两个方向的中英文文案',
+  source.includes('折叠所有工作区') && source.includes('Collapse all workspaces')
+  && source.includes('仅展开活动的工作区') && source.includes('Expand only active workspaces'),
+  'bundle 包含折叠与聚焦两个方向的中英文文案',
 )
-check(source.includes('IconChevronDownOutlineMedium') && source.includes('IconChevronUpOutlineMedium'), 'bundle 使用上下双 chevron 原生字形')
+// 组合字形随模式翻转 chevron 方向：focus 态上箭头 apex 在 y=5.2、collapse 态在 y=3。
+check(
+  source.includes('m10.4 5.2 2.2-2.2 2.2 2.2') && source.includes('m10.4 3 2.2 2.2 2.2-2.2'),
+  'bundle 使用三线+上下 chevron 组合字形且方向随模式翻转',
+)
 check(
   source.includes('--dsw-alias-label-secondary') && source.includes('--ds-ease-in-out')
   && source.includes('margin-left: 0'),
