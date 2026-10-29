@@ -18,7 +18,7 @@ import type { LocaleKey } from './locales.js'
 export { en, zh } from './locales.js'
 export type { LocaleKey } from './locales.js'
 export { SuiteUpdatesCard } from './SuiteUpdatesCard.js'
-export type { SuiteUpdatesApi, SuiteUpdatesInjected } from './SuiteUpdatesCard.js'
+export type { SuiteUpdatesApi, SuiteUpdatesCheckResult, SuiteUpdatesInjected } from './SuiteUpdatesCard.js'
 export { installStyles } from './styles.js'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

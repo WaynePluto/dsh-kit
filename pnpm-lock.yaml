@@ -1104,12 +1104,24 @@ importers:
       '@deepseek-ai/dsh-plugin-manager':
         specifier: 0.2.1-rc.3
         version: 0.2.1-rc.3(7adfa96ae160b71f67fed784d5a7a4e7)
+      '@testing-library/dom':
+        specifier: 10.4.0
+        version: 10.4.0
+      '@testing-library/react':
+        specifier: 16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.0)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react':
         specifier: 18.3.31
         version: 18.3.31
+      jsdom:
+        specifier: 26.1.0
+        version: 26.1.0
       react:
         specifier: 18.3.1
         version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@22.20.4)(esbuild@0.28.2)(jsdom@26.1.0)(tsx@4.23.15)(yaml@2.9.1)

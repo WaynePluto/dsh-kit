@@ -11,13 +11,18 @@ export interface SuiteUpdatesInjected {
   readonly t: (key: LocaleKey, values?: Readonly<Record<string, string | number>>) => string
 }
 
-/** 一次检查调用交给卡片的最小结果面（kit 信封的 value/error）。 */
+/** 一次检查调用交给卡片的最小结果面：成功返回检查值，失败（传输或业务）抛 Error，
+ *  错误消息已由通道层从 kit 信封拆出、可直接显示。 */
+export interface SuiteUpdatesCheckResult {
+  readonly current: string
+  readonly latest: string
+  readonly hasUpdate: boolean
+  readonly url: string
+}
+
 export interface SuiteUpdatesApi {
-  /** 发起一次检查；传输失败抛 Error。 */
-  check: () => Promise<
-    { ok: true; value: { readonly current: string; readonly latest: string; readonly hasUpdate: boolean; readonly url: string } }
-    | { ok: false; error: { readonly code: string; readonly message: string } }
-  >
+  /** 发起一次检查；失败抛 Error。 */
+  check: () => Promise<SuiteUpdatesCheckResult>
 }
 
 type Phase = 'checking' | 'latest' | 'update' | 'error'
@@ -40,21 +45,16 @@ export function SuiteUpdatesCard({ t, api }: SuiteUpdatesInjected & { readonly a
     setBusy(true)
     setDetail('')
     try {
-      const result = await api.check()
-      if (result.ok) {
-        setCurrent(result.value.current)
-        setLatest(result.value.latest)
-        setUrl(result.value.url)
-        if (result.value.hasUpdate) {
-          // 发现新版本时直接把升级地址放上剪贴板；失败不阻塞，提示里给完整地址。
-          setCopied(await writeClipboard(result.value.url))
-          setPhase('update')
-        } else {
-          setPhase('latest')
-        }
+      const value = await api.check()
+      setCurrent(value.current)
+      setLatest(value.latest)
+      setUrl(value.url)
+      if (value.hasUpdate) {
+        // 发现新版本时直接把升级地址放上剪贴板；失败不阻塞，提示里给完整地址。
+        setCopied(await writeClipboard(value.url))
+        setPhase('update')
       } else {
-        setDetail(result.error.message)
-        setPhase('error')
+        setPhase('latest')
       }
     } catch (error) {
       setDetail(error instanceof Error ? error.message : String(error))

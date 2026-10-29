@@ -26,10 +26,10 @@ export const zh: Record<LocaleKey, string> = {
   checkFailed: '检查失败：{detail}',
 }
 
-/** 把 `{key}` 占位符替换为值；缺值时保留占位符原文。 */
-export function fill(template: string, values: Readonly<Record<string, string | number>>): string {
+/** 把 `{key}` 占位符替换为值；`values` 可省略（先取模板、再填值的用法），缺值时保留占位符原文。 */
+export function fill(template: string, values?: Readonly<Record<string, string | number>>): string {
   return template.replace(/\{(\w+)\}/gu, (match, key: string) => {
-    const value = values[key]
+    const value = values?.[key]
     return value === undefined ? match : String(value)
   })
 }
