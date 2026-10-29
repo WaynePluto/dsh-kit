@@ -1,7 +1,7 @@
 # AGENTS.md
 
 适用于本仓库中的 AI 编码助手。本项目 dsh-kit（用户文案「DSH 增强套件」）是官方
-DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」输入一条路径安装 24 个
+DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」输入一条路径安装 26 个
 功能组件，扩展只走官方插件机制，不含远程访问能力。
 
 ## 开始前
@@ -17,7 +17,8 @@ DeepSeek Harness (dsh) 的第三方插件套件：通过官方「添加插件」
 - 唯一分发路径是套件单包：`plugins/suite` 经官方「添加插件」安装/升级，安装地址统一为
   同一自包含产物（本地目录、本地 tarball、GitHub Release 带 tag 单资产
   `releases/download/<tag>/dsh-kit.tar.gz`，安装与升级同一形式、README 下载链接随发版
-  更新 tag；D20/D21）；升级 = 输入字符串不同的新版本地址在线热替换，不卸载不重启，
+  更新 tag；D20/D21）；套件版本号只在用户明确指定发新版本时才更新，否则按当前版本号
+  重新打包重发（本地覆盖 `release/v<版本>/` 产物）；升级 = 输入字符串不同的新版本地址在线热替换，不卸载不重启，
   同地址重复输入被官方管理器拒为 already-installed；套件 package.json 零 dependencies、组件声明为 peerDependencies（精确版本，依赖闭包
   物化在套件内 node_modules），git 形态仓库 URL 因 pnpm 按 npm-packlist 重打包剥 node_modules
   而不可用；不实现第二套插件管理器，不做 launcher 式的外部安装、介质同步或进程编排。

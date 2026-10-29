@@ -24,7 +24,8 @@
     "@dsh-kit/dsh-plugin-workspace-collapse": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-notify": "workspace:0.1.0",
     "@dsh-kit/dsh-plugin-session-workspace": "workspace:0.1.0",
-    "@dsh-kit/dsh-plugin-panel-toggle": "workspace:0.1.0"
+    "@dsh-kit/dsh-plugin-panel-toggle": "workspace:0.1.0",
+    "@dsh-kit/dsh-plugin-session-park": "workspace:0.1.0"
   },
   "exports": {
     "./package.json": "./package.json",

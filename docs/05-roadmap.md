@@ -6,6 +6,19 @@
 
 ## 已实现
 
+- [x] 切屏停靠（session-park，2026-10-29，D22）：窗口失焦/隐藏（blur + visibilitychange
+  双信号，alt-tab 只触发 blur、最小化两者都触发）持续 3 秒且到点复查「仍离开且当前 main
+  会话仍在运行」时，经官方 `uiWorkspace.startSession()`（与原生「新建会话」同路径，复用
+  当前工作区 blank）把 mainView 让给空白会话——上游 `completionUnread` 只在会话结束时
+  「不在 mainView」才记（isMain 判定，面板页挡住时同样不清 retain），停留的运行中会话
+  结束因此从来没有绿点；本组件在「人已离开」时满足该判定的前提。纯浏览器半、全程公开
+  Context service（sessions/uiSession/uiWorkspace）、零 DOM 注入、无设置项（组件总数 26，
+  全部带浏览器半，计数口径与 plugin-catalog.json 对齐）；每个离开周期最多停靠一次、不
+  自动切回；warning/ongoing 状态点不做 isMain 过滤，停靠不影响。顺带补登 panel-toggle
+  上次提交漏掉的四处登记：plugin-catalog.json 条目（suite-toggle/upgrade/tarball 等
+  实机检查的期望行清单从 catalog 派生，漏登会让检查跳过该行）、verify-suite-client.mjs
+  期望清单、docs/plugins.md 分发组合行、conversation-enhancements README 与 locale 描述；
+  并按 D21 单资产口径修正 docs/03-architecture.md 的 suite:pack 产物行。
 - [x] 聚焦/折叠工作区单钮化（workspace-collapse，2026-10-29）：去掉「收起/展开全部」
   按钮（展开全部实用价值低），保留的聚焦按钮改为双态——有展开分组时是「折叠所有工作区」
   （组合字形 chevron 翻转指向彼此，点击一键折叠全部），全部收起后是「仅展开活动的工作区」
@@ -256,6 +269,8 @@
 | terminal | 人类直接输入，默认密码遮罩；忙碌时保留草稿，中断有效；Linux sudo 任务复用系统缓存待实机确认 |
 | files | 图片缩放与 Space + 鼠标左键拖动平移、临时预览/双击保留、当前分栏关闭其他/全部方案待实机确认；Git 变更面板（右键入口、清单与 diff、左右对比/换行、深浅主题与中英文）待实机确认 |
 | notify | Windows 通知实际弹出、点击卡片把官方桌面版带到前台（未装桌面版时退化为仅关闭）、关闭按钮仍只关闭、专注助手与权限设置提示正确；任务运行中手动停止后不弹通知，失败等其他结束仍弹出。设置页开关写入在 CLI 冒烟形态被上游 0.2.0-rc.2 缺陷阻塞（见 [插件机制](dsh/plugins.md) 设置写入一节），官方桌面不受影响 |
+| panel-toggle | 面板页（插件/自动化任务/服务）选中时再点一次该侧栏行回到当前会话；未选中行、气泡菜单选中项与「更多」不受影响；停用组件后恢复原生无效重选 |
+| session-park | 停留在运行中的会话切屏离开，约 3 秒后回来：主视图停在当前工作区空白会话；原会话结束后侧栏行亮「完成未读」绿点，点击回原会话绿点清除、草稿仍在；快速 alt-tab（3 秒内回来）不动作；面板页挡住会话时切屏同样停靠；待操作黄点与运行中蓝点不受影响；停用组件后切屏不再停靠；深浅主题与中英文界面（组件清单名称） |
 | tools-inspector | 工具清单与历史调用、失败次数统计与只读性；展开条目的「复制工具名」按钮复制成功并短暂显示「已复制」 |
 | skills-inspector | 技能来源与会话加载历史、无宿主机桌面时的降级提示 |
 | user-message-fork | 首轮消息点击后新建同工作区会话并回填这条消息；其余消息子会话只继承前置历史，草稿可编辑，原会话不变 |

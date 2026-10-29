@@ -4,7 +4,7 @@
 
 Verified against official dsh: `0.2.1-rc.3` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
 
-A third-party **plugin suite** for the official DeepSeek Harness (dsh): 24 components
+A third-party **plugin suite** for the official DeepSeek Harness (dsh): 26 components
 that improve everyday model, conversation, workspace and runtime workflows. Install or
 upgrade everything by entering **one address** in the official dsh plugin manager
 ("+ Add plugin").
@@ -21,9 +21,10 @@ upgrade everything by entering **one address** in the official dsh plugin manage
 Global prompt, egress proxy, Copilot login, model catalog, model capabilities,
 favorite models, model provider label, DeepSeek API switch, turn retry, chat scroll
 navigation, session-stats hours, user-message fork, session rename, session
-workspace indicator, copy workspace path, task notifications, tool status, skill
-status, file browsing, resident services, interactive terminal, web-search switch,
-suite update checker.
+workspace indicator, copy workspace path, collapse/focus workspaces, task
+notifications, sidebar panel row toggle-back, session park on away, tool status,
+skill status, file browsing, resident services, interactive terminal, web-search
+switch, suite update checker.
 See the [plugin index](docs/plugins.md) and each package README (Chinese).
 
 ## Install

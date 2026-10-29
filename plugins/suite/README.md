@@ -1,7 +1,7 @@
 # DSH 增强套件（suite）
 
 dsh-kit 的唯一分发包（D3、D20）：在官方 dsh（桌面版或 web 版）的插件管理页
-「+ 添加插件」输入一个地址即可安装或升级全部内容——24 个功能组件。
+「+ 添加插件」输入一个地址即可安装或升级全部内容——26 个功能组件。
 套件被停用或卸载时全部组件行一并禁用（组合包官方 disabled 表达式约定）。
 
 ## 安装地址（多形态同一产物）
@@ -12,7 +12,7 @@ dsh-kit 的唯一分发包（D3、D20）：在官方 dsh（桌面版或 web 版�
 | 本地 tarball | `release/v<版本>/dsh-kit.tar.gz` 的绝对路径 | 无网络/发布前验证（与 Release 走 pnpm 同一条 plain-tarball 路径） |
 | 本地目录（开发） | 本目录绝对路径 | pnpm `link:` 语义，直接用仓库里的构建产物 |
 
-各形态装的是同一棵自包含树：`package.json` 零 dependencies，24 个组件声明为
+各形态装的是同一棵自包含树：`package.json` 零 dependencies，26 个组件声明为
 peerDependencies（精确版本），全部依赖闭包物化在本目录 `node_modules/`
 （`@deepseek-ai/*` 由 dsh 运行时树提供，不复制第二份）。组件不发布 npm；
 pnpm 安装 tarball 时不解析任何 registry 依赖，dsh 启动时沿 peers 闭包物理探测

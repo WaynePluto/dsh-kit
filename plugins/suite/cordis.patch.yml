@@ -88,6 +88,12 @@
       disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-services/package.json") } catch { return true } return false } return true })()'
       name: '@dsh-kit/dsh-plugin-services'
 
+# ── @dsh-kit/dsh-plugin-session-park ──
+- insert:
+    - id: session-park
+      disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-session-park/package.json") } catch { return true } return false } return true })()'
+      name: '@dsh-kit/dsh-plugin-session-park'
+
 # ── @dsh-kit/dsh-plugin-session-rename ──
 - insert:
     - id: session-rename

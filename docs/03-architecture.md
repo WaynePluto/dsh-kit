@@ -3,7 +3,7 @@
 ## 1. 全景
 
 官方 dsh（桌面版或 web 版）是唯一宿主：Agent、工具、会话、界面与服务都由它提供。
-本项目是它的第三方插件套件——一个 Bundle 包 `plugins/suite`，安装后把 24 个组件挂进宿主。
+本项目是它的第三方插件套件——一个 Bundle 包 `plugins/suite`，安装后把 26 个组件挂进宿主。
 项目里没有常驻进程，也没有自有数据目录。
 
 ```mermaid
@@ -48,7 +48,7 @@ dsh 的三层事实（契约出处见 [插件机制](dsh/plugins.md)）：
 3. 生成后把组件包与 registry 依赖闭包物化进 `plugins/suite/node_modules/`
    （`@deepseek-ai/*` 由宿主运行时树提供，不复制第二份）。
 
-自包含契约（D20）：套件 package.json 零 dependencies，24 个组件声明为 peerDependencies
+自包含契约（D20）：套件 package.json 零 dependencies，26 个组件声明为 peerDependencies
 （精确版本）。pnpm 安装 tarball 时不解析任何 registry 依赖；dsh 启动时按「选中 bundle 的
 deps+peers 闭包」从套件锚物理探测组件（进 runtime resolution 表），裸包名行与客户端半
 照常发现。本地目录（link: 语义）、本地 tarball、GitHub Release 资产三者安装的是同一棵
@@ -89,9 +89,9 @@ plugins/<组件>/
 |---|---|
 | `pnpm plugins:build` | 构建全部插件的两层产物（`packages/plugin-ui` + `plugins/**`） |
 | `pnpm suite:build` | 生成套件 patch 并物化依赖闭包到 `plugins/suite/node_modules/` |
-| `pnpm suite:pack` | 构建 + 物化后打成自包含 tarball（`release/dsh-kit.tar.gz` 固定名 + `dsh-kit-<版本>.tar.gz` 版本名双资产，发布产物） |
+| `pnpm suite:pack` | 构建 + 物化后打成自包含 tarball（`release/v<版本>/dsh-kit.tar.gz`，发布资产固定名 `dsh-kit.tar.gz`，D21） |
 | `pnpm dev` | 隔离开发实例：DSH_HOME=`~/.dsh-dev`、profile `dsh-kit-dev`、端口 3180，启动前自动检查运行时并安装套件 |
 | `node scripts/<主题>-check.mjs` | 隔离 home + 真实 dsh 的冒烟断言，入口表见 [源码依据](02-dsh-facts.md) |
-| `node scripts/verify-suite-client.mjs --token <token>` | 校验运行中宿主首页的 `__DSH_BOOT__` 图含全部 24 个浏览器行 |
+| `node scripts/verify-suite-client.mjs --token <token>` | 校验运行中宿主首页的 `__DSH_BOOT__` 图含全部 26 个浏览器行 |
 
 套件所在 profile 没有 HMR：改动插件任何一半后都要重新构建并重启 dsh。

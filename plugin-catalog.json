@@ -82,6 +82,14 @@
         {
           "name": "@dsh-kit/dsh-plugin-session-workspace",
           "rowId": "session-workspace"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-panel-toggle",
+          "rowId": "panel-toggle"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-session-park",
+          "rowId": "session-park"
         }
       ]
     },

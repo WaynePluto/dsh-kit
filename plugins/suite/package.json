@@ -32,6 +32,7 @@
     "@dsh-kit/dsh-plugin-panel-toggle": "0.1.0",
     "@dsh-kit/dsh-plugin-proxy": "0.1.0",
     "@dsh-kit/dsh-plugin-services": "0.1.0",
+    "@dsh-kit/dsh-plugin-session-park": "0.1.0",
     "@dsh-kit/dsh-plugin-session-rename": "0.1.0",
     "@dsh-kit/dsh-plugin-session-workspace": "0.1.0",
     "@dsh-kit/dsh-plugin-skills-inspector": "0.1.0",

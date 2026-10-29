@@ -106,6 +106,9 @@ importers:
       '@dsh-kit/dsh-plugin-services':
         specifier: workspace:*
         version: link:plugins/services
+      '@dsh-kit/dsh-plugin-session-park':
+        specifier: workspace:*
+        version: link:plugins/session-park
       '@dsh-kit/dsh-plugin-session-rename':
         specifier: workspace:*
         version: link:plugins/session-rename
@@ -281,6 +284,9 @@ importers:
       '@dsh-kit/dsh-plugin-panel-toggle':
         specifier: workspace:0.1.0
         version: link:../panel-toggle
+      '@dsh-kit/dsh-plugin-session-park':
+        specifier: workspace:0.1.0
+        version: link:../session-park
       '@dsh-kit/dsh-plugin-session-rename':
         specifier: workspace:0.1.0
         version: link:../session-rename
@@ -940,6 +946,27 @@ importers:
       react:
         specifier: 18.3.1
         version: 18.3.1
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@22.20.4)(esbuild@0.28.2)(jsdom@26.1.0)(tsx@4.23.15)(yaml@2.9.1)
+
+  plugins/session-park:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5(@deepseek-ai/cordis-plugin-loader@1.0.6)
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: 0.2.1-rc.3
+        version: 0.2.1-rc.3(49976606f39f7137eab25f05730dbb0a)
+      '@deepseek-ai/dsh-client-ui-session':
+        specifier: 0.2.1-rc.3
+        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-client-ui-workspace':
+        specifier: 0.2.1-rc.3
+        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-session':
+        specifier: 0.2.1-rc.3
+        version: 0.2.1-rc.3(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-scope@0.2.1-rc.3(@deepseek-ai/cordis@4.0.5))
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@22.20.4)(esbuild@0.28.2)(jsdom@26.1.0)(tsx@4.23.15)(yaml@2.9.1)

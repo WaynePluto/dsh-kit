@@ -178,6 +178,20 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   `ongoing` = 运行中（含子代理）、`warning` = 待用户操作（审批/计划确认/提问）、
   `done` = 完成未读（打开会话清除）；`idle` 不渲染状态点（leading 槽让给插件）。行尾
   时间格在有待操作时改显紧凑文案（`trailingLabel`）。归档行状态点槽保持空白。
+- **完成未读的精确机制**（0.2.1-rc.3 核实，`packages/client/ui-session/src/client/index.ts`）：
+  `done` 即 `SessionStatus.completionUnread`（上游注释原话「observed stop **outside the
+  main view**」）。会话由运行转停止时（`observeRunning`），仅当该会话**不是 mainView**
+  （`retainedBy.mainView > 0`，`isMain`）才记入 `completionUnread`；mainView 会话的未读
+  在每次列表 reconcile 时被持续清除（`reconcileStatus`）。mainView 由 `ui-workspace`
+  导航层持有（`navigation.ts` 的 `replaceMain` 以 `retain(target, { source: 'mainView' })`
+  换持）；**选中插件/服务等面板页时 mainView 保留在原会话**（会话列卸载不清 retain，
+  `layout.selectPanel` 只切面板）——因此「面板挡住会话」期间会话结束同样不记未读。
+  切走 mainView（如停在别的会话上）后，原会话结束即记未读；mainView 再次指回该会话
+  （retain 重建触发 reconcile）时清除。`warning`/`ongoing` 不做 isMain 过滤，恒显示。
+  官方导航服务 `ctx.uiWorkspace`（声明合并的公开 Context service，同 `navigation.ts`）
+  提供 `openSession`/`openWorkspace`/`startSession`（新会话 = 在目标工作区复用或创建
+  blank 会话并接管 mainView，与原生「新建会话」同路径）；当前 main 会话经
+  `ctx.uiSession.adapter.current` 读取。
 - workspace-collapse 组件的注入契约：从任一工作区行向上找第一个带 sectionHeader 直接
   子节点的祖先（浏览器根），按钮容器插在 `searchSlot` 之前。头部动作簇 `headerActions`
   是 max-width 60px 的定宽簇（装不下第三个按钮），不能内插；**searchSlot 自带

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Session park",
+    "description": "When you leave the window while a session is running, hand the main view to a blank session so the completion shows an unread dot"
+  }
+}

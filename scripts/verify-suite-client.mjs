@@ -23,9 +23,10 @@ if (token === undefined || token === '') {
 // 与 plugin-catalog.json 对齐：声明 dsh.client 且随套件分发的浏览器行。
 const EXPECTED = [
   'agents-md', 'chat-scroll', 'copilot-auth', 'deepseek-official-switch', 'favorite-models', 'files',
-  'model-capabilities', 'model-provider', 'models-catalog', 'notify', 'proxy', 'services', 'session-rename',
-  'session-workspace', 'skills-inspector', 'stats-hours', 'terminal', 'tools-inspector', 'turn-retry',
-  'user-message-fork', 'web-search-switch', 'workspace-collapse', 'workspace-path',
+  'model-capabilities', 'model-provider', 'models-catalog', 'notify', 'panel-toggle', 'proxy', 'services',
+  'session-park', 'session-rename', 'session-workspace', 'skills-inspector', 'stats-hours', 'terminal',
+  'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch', 'workspace-collapse',
+  'workspace-path',
 ].map(id => `@dsh-kit/dsh-plugin-${id}`)
 
 const exchange = await fetch(`${host}/?token=${encodeURIComponent(token)}`, { redirect: 'manual' })
