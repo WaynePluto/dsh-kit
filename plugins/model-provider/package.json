@@ -35,7 +35,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
+    "test": "vitest run --max-workers 25%",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json"
   },
   "devDependencies": {

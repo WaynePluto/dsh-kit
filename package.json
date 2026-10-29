@@ -21,7 +21,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present --workspace-concurrency=2 test",
     "check:dependencies": "node scripts/check-dependency-versions.mjs"
   },
   "devDependencies": {
@@ -40,6 +40,7 @@
     "@dsh-kit/dsh-plugin-model-provider": "workspace:*",
     "@dsh-kit/dsh-plugin-models-catalog": "workspace:*",
     "@dsh-kit/dsh-plugin-notify": "workspace:*",
+    "@dsh-kit/dsh-plugin-panel-toggle": "workspace:*",
     "@dsh-kit/dsh-plugin-proxy": "workspace:*",
     "@dsh-kit/dsh-plugin-services": "workspace:*",
     "@dsh-kit/dsh-plugin-session-rename": "workspace:*",

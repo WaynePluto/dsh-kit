@@ -305,6 +305,17 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
   套件的面板行与 View 标签可被用户收起，属预期行为不是装载故障；「更多」按钮只在对应
   actions 槽有注册项时出现。
 - 实例：`plugins/services/src/client/{index.tsx,ServicesPage.tsx,ServicesPanelIcon.tsx}`（order 20）。
+- **面板行没有原生 toggle（0.2.1-rc.3 核实）**：`PanelRow` 的点击无条件
+  `selectPanel(id)`，对已选中行是无效重选；`layout.selectPanel(null)` 是唯一的
+  「回到会话」开关（`clearMain` 同款，null 不做注册校验）。活动行的稳定信号是
+  `aria-current="page"`（只有当前选中行输出），行在侧栏唯一的
+  `nav[class*="panelList"]` 内、类名含 `panelRow`（CSS module 哈希后缀）。
+  注意上游 `ui-primitives` Menu 的选中菜单项同样输出 `aria-current="page"`，但
+  portal 在 body、不在该 nav 内——document 级监听必须用容器判定排除。「更多」行是
+  `aria-haspopup="menu"` 的菜单启动器，不占主列、无 toggle 语义。面板页展示期间
+  会话结束不记「完成未读」绿点（status-controller 的 `isMain` 按 mainView 保留判定，
+  选中面板不释放保留），见 docs/dsh/workspace.md；panel-toggle 组件实现了活动行
+  再点一次回会话，上游若原生实现 toggle 应删除该组件。
 
 ### 右侧 Sidebar 页面类型
 

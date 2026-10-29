@@ -76,6 +76,12 @@
       disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-notify/package.json") } catch { return true } return false } return true })()'
       name: '@dsh-kit/dsh-plugin-notify'
 
+# ── @dsh-kit/dsh-plugin-panel-toggle ──
+- insert:
+    - id: panel-toggle
+      disabled: !!js '(() => { const selected = JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-suite"); if (selected) { try { process.getBuiltinModule("node:module").createRequire(new URL("./", baseUrl)).resolve("@dsh-kit/dsh-plugin-panel-toggle/package.json") } catch { return true } return false } return true })()'
+      name: '@dsh-kit/dsh-plugin-panel-toggle'
+
 # ── @dsh-kit/dsh-plugin-services ──
 - insert:
     - id: services

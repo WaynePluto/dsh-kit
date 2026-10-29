@@ -1,0 +1,9 @@
+# dsh-kit 的受管 Bundle patch 层；package.json 的 dsh.bundle.patch 指向本文件，
+# 由 profile 的 bundles 数组装载（层序：Bundle → profile patch → home patch → --patch）。
+# `./` 开头的路径由 dsh 锚定到本文件所在目录；不能写绝对路径。
+#
+# 宿主半没有业务逻辑；它存在是为了让 dsh 的客户端模块扫描器发现本包的
+# `dsh.client` 声明，并把 dist/client.js 下发到浏览器。
+- insert:
+    - id: panel-toggle
+      name: './dist/index.js'

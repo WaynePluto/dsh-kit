@@ -1,0 +1,36 @@
+{
+  "name": "@dsh-kit/dsh-plugin-panel-toggle",
+  "version": "0.1.0",
+  "description": "侧栏面板行再点一次回到会话：拦截活动面板行的点击，走 layout.selectPanel(null) 返回当前会话。",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run --max-workers 25%",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.3",
+    "vitest": "4.1.11"
+  }
+}

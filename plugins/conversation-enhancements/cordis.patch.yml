@@ -45,3 +45,8 @@
     - id: session-workspace
       name: './node_modules/@dsh-kit/dsh-plugin-session-workspace/dist/index.js'
       disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-conversation-enhancements")'
+
+- insert:
+    - id: panel-toggle
+      name: './node_modules/@dsh-kit/dsh-plugin-panel-toggle/dist/index.js'
+      disabled: !!js '!JSON.parse(process.getBuiltinModule("node:fs").readFileSync(new URL("package.json", baseUrl), "utf8")).dsh?.profile?.bundles?.includes("@dsh-kit/dsh-plugin-conversation-enhancements")'

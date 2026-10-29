@@ -27,6 +27,7 @@
 | [会话重命名](../plugins/session-rename/README.md) | 顶栏 → 双击会话标题 | 双击对话顶栏的当前会话标题，弹窗重命名（原生入口只在侧栏） |
 | [复制工作区路径](../plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制该工作区的完整目录路径 |
 | [收起/展开全部工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增动作按钮：一键收起/展开全部分组，或按会话提醒（运行中、待操作、未读）聚焦展开；聚焦后活动工作区按字母序置前 |
+| [侧栏面板行回会话](../plugins/panel-toggle/README.md) | 侧栏 → 面板行（插件/自动化任务/服务） | 再点一次高亮的面板行即返回当前会话（原生只能无效重选） |
 | [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
 | [会话工作区显示](../plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数；展开条目可划选复制工具名 |

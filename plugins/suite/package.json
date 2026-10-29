@@ -29,6 +29,7 @@
     "@dsh-kit/dsh-plugin-model-provider": "0.1.0",
     "@dsh-kit/dsh-plugin-models-catalog": "0.1.0",
     "@dsh-kit/dsh-plugin-notify": "0.1.0",
+    "@dsh-kit/dsh-plugin-panel-toggle": "0.1.0",
     "@dsh-kit/dsh-plugin-proxy": "0.1.0",
     "@dsh-kit/dsh-plugin-services": "0.1.0",
     "@dsh-kit/dsh-plugin-session-rename": "0.1.0",
@@ -48,6 +49,6 @@
     "vitest": "4.1.11"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run --max-workers 25%"
   }
 }
