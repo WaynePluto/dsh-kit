@@ -420,6 +420,11 @@ services 面板（2026-10-23 起）是侧边栏「服务」全局面板：root �
   内容列 `max-width:960px; margin:0 auto; padding:0 clamp(24px,4vw,48px) 48px`；标题行
   `padding-top:28px`（darwin 加 `--dsh-frame-top-clearance`）、h1 `20px/28px/500`、右侧动作钮
   `Button size="sm"`。页面不能像 dock 卡那样「无数据即 return null」——给空态文案。
+- **状态提示行常驻占位（task-board，2026-10-30 实测）**：标题区与 flex:1 内容区之间的
+  瞬态提示（保存中/错误）若条件渲染，出现时会把内容区顶起、消失时回落——高频状态
+  切换下内容上下抖动。正确形态：提示行恒渲染，固定 `height` + `min-height`（如 20px
+  行高 + 2px padding-top），空闲时只留空文本；出现/消失只换文字与配色，不改变布局
+  高度。回归验证方式：读提示出现前后的内容区 `getBoundingClientRect().top` 应相等。
 - 组件停用后行随槽注销消失；该面板正被选中时 layout store 自动把 activePanelId 回落 null。
 - 实例：`plugins/services/src/client/{index.tsx,ServicesPage.tsx,ServicesPanelIcon.tsx}`；
   契约细节在仓库根 `docs/dsh/plugins.md` 的「全局面板」一节。

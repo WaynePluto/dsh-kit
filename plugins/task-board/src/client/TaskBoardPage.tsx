@@ -106,21 +106,26 @@ function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, sendC
 }) {
   const { board, saveState, saveError, update } = useBoardStore(initial, save)
   const deps: BoardDeps = { translate, workspaces, copyText, sendCard }
+  const statusText = sendError !== undefined
+    ? sendError
+    : saveState === 'error'
+      ? fill(translate('saveFailed'), { message: saveError ?? '' })
+      : saveState === 'pending' || saveState === 'saving'
+        ? translate('savedLocally')
+        : ''
   return (
     <section className="dsh-task-board-page" data-dsh-task-board-page="" aria-label={translate('title')}>
       <header className="dsh-task-board-heading">
         <h1 className="dsh-task-board-title">{translate('title')}</h1>
         <p className="dsh-task-board-hint">{translate('hint')}</p>
       </header>
-      {(saveState !== 'idle' || sendError !== undefined) && (
-        <p className={`dsh-task-board-status${saveState === 'error' || sendError !== undefined ? ' dsh-task-board-statusError' : ''}`}>
-          {sendError !== undefined
-            ? sendError
-            : saveState === 'error'
-              ? fill(translate('saveFailed'), { message: saveError ?? '' })
-              : translate('savedLocally')}
-        </p>
-      )}
+      {/* 常驻占位（高度固定）：提示出现/消失只换文字，不挤压下方卡片列。 */}
+      <p
+        className={`dsh-task-board-status${saveState === 'error' || sendError !== undefined ? ' dsh-task-board-statusError' : ''}`}
+        aria-live="polite"
+      >
+        {statusText}
+      </p>
       <div className="dsh-task-board-board">
         <div className="dsh-task-board-columns">
           <Board board={board} onChange={update} deps={deps} />

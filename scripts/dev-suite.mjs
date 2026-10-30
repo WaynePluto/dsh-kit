@@ -61,14 +61,32 @@ if (!existsSync(manifestPath)) {
     name: `dsh-profile-${PROFILE}`, private: true, dependencies: {},
     dsh: { profile: { bundles: [] } },
   }, undefined, 2)}\n`)
-  writeFileSync(join(profileDirectory, 'cordis.patch.yml'), '[]\n')
+  // 首启欢迎说明/API Key 向导的写回依赖 settings/mutate，而 CLI/dev profile 的
+  // settings 写入有上游缺陷（dual app-boot 实例致 bootstrapIncludes miss，0.2.0-rc.2
+  // 起已知，docs/dsh/plugins.md「设置写入」），确认会弹「暂时无法保存确认状态」并挡住
+  // 面板。这里直接预写官方三行的 volatile Config 覆写（welcomeNoticeVersion 与
+  // ui-settings-models onboarding-copy 的 WELCOME_NOTICE_VERSION 精确相等比较；
+  // 上游升级改版提示时需同步更新），官方桌面不受影响。
+  writeFileSync(join(profileDirectory, 'cordis.patch.yml'), `# 开发 profile 的设置覆写：绕过首启欢迎说明/API Key 向导的写回（见下注）。
+- id: ui-settings-general
+  config:
+    welcomeNoticeVersion: '2026-09-28.1'
+
+- id: ui-settings-account
+  config:
+    step: done
+
+- id: ui-settings-models
+  config:
+    credentialOnboarding: false
+`)
   // allowBuilds 逐包显式决定，避免 pnpm 遇未列出的带脚本包硬失败；
   // 清单对齐官方桌面 project-manager.ts 的 workspaceFile（0.2.0-rc.2）：
   // 原生模块（subprocess-local/koffi/node-pty/fs-ext）置 true，纯 JS/预编译包置 false。
   writeFileSync(join(profileDirectory, 'pnpm-workspace.yaml'),
     'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\nallowBuilds:\n' +
-    "  '@deepseek-ai/dsh-subprocess-local': true\n  '@google/genai': false\n  esbuild: false\n  fs-ext: true\n" +
-    '  koffi: true\n  node-addon-require-builtin: false\n  node-pty: true\n  protobufjs: false\n')
+      "  '@deepseek-ai/dsh-subprocess-local': true\n  '@google/genai': false\n  esbuild: false\n  fs-ext: true\n" +
+      '  koffi: true\n  node-addon-require-builtin: false\n  node-pty: true\n  protobufjs: false\n')
 }
 runDshCli(['add', `@deepseek-ai/dsh-base@${DSH_VERSION}`, `@deepseek-ai/dsh-web-app@${DSH_VERSION}`, SUITE_DIRECTORY])
 
