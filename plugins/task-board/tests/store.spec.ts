@@ -30,11 +30,11 @@ describe('store', () => {
     const dir = home()
     const first = loadOrSeedBoard(dir, 'zh')
     expect(first.seeded).toBe(true)
-    expect(first.board.lists.map(item => item.title)).toEqual(['待办', '进行中', '已完成'])
+    expect(first.board.lists.map(item => item.title)).toEqual(['待办', '进行中', '待验证', '已完成'])
     const second = loadOrSeedBoard(dir, 'en')
     expect(second.seeded).toBe(false)
     // 已有文件不被第二次调用的语言覆盖。
-    expect(second.board.lists.map(item => item.title)).toEqual(['待办', '进行中', '已完成'])
+    expect(second.board.lists.map(item => item.title)).toEqual(['待办', '进行中', '待验证', '已完成'])
   })
 
   it('writeBoard 原子落盘且可读回', () => {
@@ -51,7 +51,7 @@ describe('store', () => {
     writeFileSync(boardPath(dir), '{oops', 'utf8')
     expect(readBoard(dir)).toBeUndefined()
     writeBoard(dir, seedBoard('zh'))
-    expect(readBoard(dir)?.lists.length).toBe(3)
+    expect(readBoard(dir)?.lists.length).toBe(4)
   })
 
   it('半写坏字段被宽容裁剪而不是判死', () => {
@@ -93,7 +93,7 @@ describe('dispatch', () => {
     const ok = dispatch('put', { board }, dir)
     expect(ok.ok).toBe(true)
     if (ok.ok) {
-      expect((ok.value as { lists: number, cards: number }).lists).toBe(3)
+      expect((ok.value as { lists: number, cards: number }).lists).toBe(4)
     }
     expect(readBoard(dir)).toEqual(board)
 

@@ -54,7 +54,7 @@ export function writeBoard(home: string, board: BoardDocument): void {
 }
 
 /**
- * 读取看板；文件不存在时播种初始三列并写盘。播种语言由页面按当前界面语言传入。
+ * 读取看板；文件不存在时播种初始四列并写盘。播种语言由页面按当前界面语言传入。
  * @param home - dsh home。
  * @param seed - 播种语言。
  * @returns 文档与是否新播种。

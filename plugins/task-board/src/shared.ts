@@ -90,7 +90,7 @@ export const MAX_LIST_TITLE_LENGTH = 80;
  * `get` 的 payload。
  */
 export interface BoardGetPayload {
-  /** 文件不存在时按该语言播种初始三列；缺省 zh。 */
+  /** 文件不存在时按该语言播种初始四列；缺省 zh。 */
   readonly seed?: 'zh' | 'en'
 }
 
@@ -202,14 +202,14 @@ export function normalizeBoard(value: unknown): BoardDocument {
   return { version: 1, lists }
 }
 
-/** 播种初始看板的三列标题。 */
+/** 播种初始看板的四列标题（四列正好铺满 358px 列宽的一行）。 */
 const SEED_TITLES = {
-  zh: ['待办', '进行中', '已完成'],
-  en: ['To do', 'Doing', 'Done'],
+  zh: ['待办', '进行中', '待验证', '已完成'],
+  en: ['To do', 'Doing', 'To verify', 'Done'],
 } as const
 
 /**
- * 构造初始看板：空的三列。
+ * 构造初始看板：空的四列。
  * @param seed - 播种语言。
  * @returns 初始文档。
  */

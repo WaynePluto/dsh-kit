@@ -57,7 +57,7 @@ export function TaskBoardPage(props: TaskBoardPageProps) {
 
   useEffect(() => {
     let alive = true
-    // 界面语言决定初始三列的播种语言；Host 只在文件不存在时才用它。
+    // 界面语言决定初始四列的播种语言；Host 只在文件不存在时才用它。
     const seedLocale = document.documentElement.lang.startsWith('en') ? 'en' : 'zh'
     void (async () => {
       try {

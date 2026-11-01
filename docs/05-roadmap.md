@@ -17,7 +17,7 @@
   第一列卡片右下角发送按钮——`sessions.create({workspaceId})` →
   `uiWorkspace.openSession()`（reveal 顺带把面板切回会话）→ conversation scope
   `setDraft + submit('queue')`，与 user-message-fork 同款官方路径。数据整份 JSON 存
-  `$DSH_HOME/dsh-kit/task-board.json`（D17 同族；get 缺文件按界面语言播种三列，
+  `$DSH_HOME/dsh-kit/task-board.json`（D17 同族；get 缺文件按界面语言播种四列，
   put 全量校验有界上限：16 列/单列 200 卡/全板 2000 卡/文本 8000 字符）；浏览器半
   乐观更新 + 400ms 防抖写回、卸载兜底 flush，失败亮错误不回滚。拖拽引擎 dnd-kit
   （core 6.3.1/sortable 10.0.0/utilities 3.2.2，MIT，devDependencies 固定版本、

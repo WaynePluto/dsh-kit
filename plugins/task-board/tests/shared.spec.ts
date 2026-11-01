@@ -77,11 +77,11 @@ describe('normalizeBoard', () => {
 })
 
 describe('seedBoard', () => {
-  it('按语言给出三列空板', () => {
+  it('按语言给出四列空板', () => {
     const zh = seedBoard('zh')
-    expect(zh.lists.map(item => item.title)).toEqual(['待办', '进行中', '已完成'])
+    expect(zh.lists.map(item => item.title)).toEqual(['待办', '进行中', '待验证', '已完成'])
     expect(zh.lists.every(item => item.cards.length === 0)).toBe(true)
-    expect(seedBoard('en').lists.map(item => item.title)).toEqual(['To do', 'Doing', 'Done'])
+    expect(seedBoard('en').lists.map(item => item.title)).toEqual(['To do', 'Doing', 'To verify', 'Done'])
   })
 })
 
