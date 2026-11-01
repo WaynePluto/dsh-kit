@@ -6,9 +6,12 @@
  * @module @dsh-kit/dsh-plugin-task-board/client/TaskBoardPage
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { IconPlusOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BoardCard, BoardDocument } from '../shared.js'
 import { Board, type BoardDeps, type WorkspaceOption } from './Board.js'
+import { addList } from './board-ops.js'
+import { AddListForm } from './editors.js'
 import { useBoardStore } from './use-board-store.js'
 import { installBoardStyles } from './styles.js'
 import { fill, type TaskBoardKey } from './locales.js'
@@ -106,6 +109,7 @@ function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, sendC
 }) {
   const { board, saveState, saveError, update } = useBoardStore(initial, save)
   const deps: BoardDeps = { translate, workspaces, copyText, sendCard }
+  const boardScrollRef = useRef<HTMLDivElement | null>(null)
   const statusText = sendError !== undefined
     ? sendError
     : saveState === 'error'
@@ -118,6 +122,7 @@ function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, sendC
       <header className="dsh-task-board-heading">
         <h1 className="dsh-task-board-title">{translate('title')}</h1>
         <p className="dsh-task-board-hint">{translate('hint')}</p>
+        <AddListHeadingControl board={board} onChange={update} translate={translate} scrollRef={boardScrollRef} />
       </header>
       {/* 常驻占位（高度固定）：提示出现/消失只换文字，不挤压下方卡片列。 */}
       <p
@@ -126,11 +131,52 @@ function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, sendC
       >
         {statusText}
       </p>
-      <div className="dsh-task-board-board">
+      <div className="dsh-task-board-board" ref={boardScrollRef}>
         <div className="dsh-task-board-columns">
           <Board board={board} onChange={update} deps={deps} />
         </div>
       </div>
     </section>
+  )
+}
+
+// ── 添加列表（页头入口）─────────────────────────────────────────────────────
+
+/** 页头「添加列表」控件：紧随提示文字的文字按钮，展开为单行标题输入；新列落板尾并滚过去。 */
+function AddListHeadingControl({ board, onChange, translate, scrollRef }: {
+  board: BoardDocument
+  onChange: (next: BoardDocument) => void
+  translate: (key: TaskBoardKey) => string
+  scrollRef: { readonly current: HTMLDivElement | null }
+}) {
+  const t = translate
+  const [open, setOpen] = useState(false)
+  // 新列落在看板末尾，而入口在页头：提交后把横向滚动区推到最右，新列立即可见。
+  const commit = useCallback((title: string) => {
+    setOpen(false)
+    onChange(addList(board, title))
+    requestAnimationFrame(() => {
+      const element = scrollRef.current
+      if (element !== null) element.scrollTo({ left: element.scrollWidth, behavior: 'smooth' })
+    })
+  }, [board, onChange, scrollRef])
+  if (!open) {
+    return (
+      <button type="button" className="dsh-task-board-textBtn dsh-task-board-headingAdd" onClick={() => { setOpen(true) }}>
+        <IconPlusOutlineMedium size={14} />
+        {t('addList')}
+      </button>
+    )
+  }
+  return (
+    <div className="dsh-task-board-headingAdd dsh-task-board-headingAddOpen">
+      <AddListForm
+        placeholder={t('newListPlaceholder')}
+        addLabel={t('addListAction')}
+        cancelLabel={t('cancel')}
+        onCommit={commit}
+        onCancel={() => { setOpen(false) }}
+      />
+    </div>
   )
 }

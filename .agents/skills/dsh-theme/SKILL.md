@@ -150,6 +150,19 @@ grid 列模板、`min-height` 行高、`white-space: pre` 与 wrap 分支选择�
 让百分比上限对整行宽父级解析。依据 `packages/client/ui-chat/src/client/chat/{MessageItem.module.css,UserContent.tsx}`；
 本仓库实例 `plugins/user-message-fork/src/client/styles.ts`（2026-10-21 源码定位，styles/component 单测锁定回归）。
 
+### Menu 锚点 wrapper 是内容宽，anchor 上的百分比上限会对它解析
+
+external `Menu` 把 `anchor` 渲染在自己的包装 span（`Menu.module.css` 的 `.root`：
+`position:relative; display:inline-flex`，无任何宽度约束）里。宿主 flex 行里给 anchor 元素自身写
+`max-width:N%`，百分比对这个**按内容收缩**的 wrapper 解析而不是所在的定宽行——效果是 anchor
+永远按自身内容宽的 N% 截断：短文本也必然出省略号，行内剩余空间再多也不参与（2026-11-01
+task-board 实机：6 字标题 scrollWidth 72px 只分到 41.7px，"dsh-kit" 只剩 "d…"；孤立 HTML 复现
+不出来，必须在真实页面量 label 的 clientWidth/scrollWidth）。正确做法：宽度与收缩压力经
+`Menu` 的 `className`（落在锚点 wrapper）写在 wrapper 上——`flex:0 1 auto; min-width:0`——
+让 wrapper 对定宽宿主行收缩；anchor 元素自身只留 `min-width:0`，不写百分比上限。长文本占满
+行内可用空间后省略，短文本完整显示。实例 `plugins/task-board/src/client/styles.ts` 的
+`.dsh-task-board-wsChipHost`；契约同步记录在仓库根 `docs/dsh/plugins.md`「选项菜单」。
+
 ### 设置导航与正文覆盖
 
 当前 `settings.section` 的 priority shadow 只影响正文 renderer；`ui-settings-general/src/client/index.ts`

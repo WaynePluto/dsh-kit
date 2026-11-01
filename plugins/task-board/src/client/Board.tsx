@@ -31,9 +31,10 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BoardCard as BoardCardModel, BoardDocument } from '../shared.js'
 import {
-  addCard, addList, deleteCard, deleteList, moveCard, moveList, renameList, updateCard,
+  addCard, deleteCard, deleteList, moveCard, moveList, renameList, updateCard,
 } from './board-ops.js'
-import { AddCardComposer, AddListForm, CardEdit, ListTitleEdit } from './editors.js'
+import { AddCardComposer, CardEdit, ListTitleEdit } from './editors.js'
+import { PinToTopIcon } from './PinToTopIcon.js'
 import { fill, type TaskBoardKey } from './locales.js'
 
 /** 工作区选择器的一个选项。 */
@@ -75,8 +76,8 @@ function DropHint({ visible }: { visible: boolean }) {
   )
 }
 
-/** 列槽距：列宽 284px + 列间 12px。 */
-const COLUMN_SLOT_PX = 296
+/** 列槽距：列宽 358px + 列间 12px（370×4 = 此前 296×5 的铺满宽度）。 */
+const COLUMN_SLOT_PX = 370
 
 /**
  * 看板碰撞检测：指针落在哪个矩形内（pointerWithin），而不是 closestCorners 的
@@ -271,7 +272,6 @@ export function Board({ board, onChange, deps }: {
           hoverHint={hoveredListId === list.id && list.cards.length === 0}
         />
       ))}
-      <AddListControl board={board} onChange={onChange} translate={deps.translate} />
       <DragOverlay>
         {activeCard !== undefined
           ? (
@@ -379,6 +379,7 @@ function BoardColumn({ list, isFirst, shift, board, onChange, deps, hoverHint }:
             <BoardCardRow
               key={card.id}
               card={card}
+              listId={list.id}
               isFirstList={isFirst}
               board={board}
               onChange={onChange}
@@ -441,8 +442,10 @@ function BoardColumn({ list, isFirst, shift, board, onChange, deps, hoverHint }:
 // ── 卡片 ────────────────────────────────────────────────────────────────────
 
 /** 一张卡片（可排序项）。 */
-function BoardCardRow({ card, isFirstList, board, onChange, deps }: {
+function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
   card: BoardCardModel
+  /** 卡片当前所在列（置顶按钮的移动目标）。 */
+  listId: string
   isFirstList: boolean
   board: BoardDocument
   onChange: (next: BoardDocument) => void
@@ -509,6 +512,7 @@ function BoardCardRow({ card, isFirstList, board, onChange, deps }: {
           portal
           dense
           align="start"
+          className="dsh-task-board-wsChipHost"
           anchor={(
             <button
               type="button"
@@ -532,6 +536,17 @@ function BoardCardRow({ card, isFirstList, board, onChange, deps }: {
           onClose={() => { setMenuOpen(false) }}
         />
         <div className="dsh-task-board-cardActions">
+          {/* 置顶仅是列内重排：移到本列下标 0（后置顶的排到它前面），已是第一张则无操作。 */}
+          <button
+            type="button"
+            className="dsh-task-board-iconBtn"
+            title={t('pinCard')}
+            aria-label={t('pinCard')}
+            onClick={() => { onChange(moveCard(board, card.id, listId, 0)) }}
+            onPointerDown={event => { event.stopPropagation() }}
+          >
+            <PinToTopIcon size={14} />
+          </button>
           <button
             type="button"
             className="dsh-task-board-iconBtn"
@@ -631,37 +646,6 @@ function CardFace({ card, deps }: { card: BoardCardModel, deps: BoardDeps }) {
   )
 }
 
-// ── 添加列表 ────────────────────────────────────────────────────────────────
+// 「添加列表」的入口在页头（TaskBoardPage 标题区的文字按钮），不在板尾占虚线幽灵列；
+// 列宽因此可以铺满整行（见 styles 的列宽契约）。
 
-/** 看板尾部的「添加列表」控件（收起是虚线幽灵块，展开是标题输入行）。 */
-function AddListControl({ board, onChange, translate }: {
-  board: BoardDocument
-  onChange: (next: BoardDocument) => void
-  translate: (key: TaskBoardKey) => string
-}) {
-  const t = translate
-  const [open, setOpen] = useState(false)
-  return (
-    <div className={`dsh-task-board-addColumn${open ? ' dsh-task-board-addColumnOpen' : ''}`}>
-      {open
-        ? (
-            <AddListForm
-              placeholder={t('newListPlaceholder')}
-              addLabel={t('addListAction')}
-              cancelLabel={t('cancel')}
-              onCommit={title => {
-                onChange(addList(board, title))
-                setOpen(false)
-              }}
-              onCancel={() => { setOpen(false) }}
-            />
-          )
-        : (
-            <button type="button" className="dsh-task-board-textBtn" onClick={() => { setOpen(true) }}>
-              <IconPlusOutlineMedium size={14} />
-              {t('addList')}
-            </button>
-          )}
-    </div>
-  )
-}

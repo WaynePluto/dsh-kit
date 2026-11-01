@@ -119,4 +119,15 @@ describe('moveCard', () => {
     const moved = after.lists[1]?.cards[0]
     expect(moved?.createdAt).toBe('2026-01-01T00:00:00.000Z')
   })
+
+  it('置顶（同列移到下标 0）：后置顶的排最前，已是第一张则无操作', () => {
+    // 置第三张 → 第一，其余顺序后移。
+    const first = moveCard(board(), 'l1-c3', 'l1', 0)
+    expect(ids(first, 'l1')).toEqual(['l1-c3', 'l1-c1', 'l1-c2'])
+    // 再置原第一张 → 它回到最前，之前置顶的变成第二。
+    const second = moveCard(first, 'l1-c1', 'l1', 0)
+    expect(ids(second, 'l1')).toEqual(['l1-c1', 'l1-c3', 'l1-c2'])
+    // 已在列首再点置顶：返回原文档引用。
+    expect(moveCard(second, 'l1-c1', 'l1', 0)).toBe(second)
+  })
 })

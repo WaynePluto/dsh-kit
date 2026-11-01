@@ -491,6 +491,11 @@ token 拼写和实际值是两件事，需用真实页面 getComputedStyle 检�
 - 选项 hover 使用 `--dsw-alias-interactive-bg-hover`，不要给原生 option 强套 CSS，或修改触发器背景来代替。
 - 默认 `selection='check'` 以右侧勾号标记 `selectedId`，选中未 hover 时仍透明；`fill` 会常驻高亮，语义不同。
 - 设置页使用 `portal` 避开滚动容器裁剪；Menu 的 `className` 仅给锚点 wrapper，不传给浮层。
+- 锚点 wrapper（`.root`，`position:relative; display:inline-flex`）是**内容宽**的：给 anchor 元素
+  自身写 `max-width:N%` 会对这个 wrapper 解析而不是宿主行，等于永远按自身内容宽截断（短文本也出
+  省略号）。宽度约束应经 `className` 写在 wrapper 上（`flex:0 1 auto; min-width:0`），anchor 元素
+  只留 `min-width:0`。实例：task-board 工作区 chip 的 `.dsh-task-board-wsChipHost`
+  （2026-11-01 实机定位：6 字标题 scrollWidth 72 只分到 41.7px）。
 - 当前 Menu 无选中项自动聚焦或方向键导航；替换原生 select 时由字段局部补齐箭头/Home/End、
   Enter/Space、Tab/Escape 和选择后焦点归还。外部点击关闭不抢焦点；禁用时关闭菜单并拒绝选择。
 - Portal 首帧隐藏以测量尺寸；自动聚焦需等定位提交后（如可清理的下一帧），不能在同轮父 layout effect 中直接 focus。
