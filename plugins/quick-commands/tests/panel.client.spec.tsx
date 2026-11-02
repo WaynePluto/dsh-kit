@@ -143,16 +143,22 @@ describe('QuickCommandsPanel', () => {
     expect(fixture.onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('composer 卡片内点击不关闭（放置光标流程），卡片外点击关闭', async () => {
+  it('点弹窗外任何位置都关闭：输入框本体与会话区关闭，触发按钮不重复关（toggle 自管）', async () => {
     const fixture = setup(doc([{ id: 'a', text: '行' }]))
     await waitFor(() => expect(screen.getByText('行')).toBeDefined())
+    // 触发按钮豁免：mousedown 不关（开关由按钮自身 onClick 切换）。
     fireEvent.mouseDown(fixture.anchor, { bubbles: true })
     expect(fixture.onClose).not.toHaveBeenCalled()
-    const outside = document.createElement('div')
-    document.body.appendChild(outside)
-    fireEvent.mouseDown(outside, { bubbles: true })
+    // composer 卡片内的输入框本体：关闭。
+    const composer = fixture.anchor.closest('[data-composer-card]')!
+    const inputArea = document.createElement('div')
+    composer.appendChild(inputArea)
+    fireEvent.mouseDown(inputArea, { bubbles: true })
     expect(fixture.onClose).toHaveBeenCalledTimes(1)
-    outside.remove()
+    // 会话区（composer 卡片外）：关闭。
+    fireEvent.mouseDown(document.body, { bubbles: true })
+    expect(fixture.onClose).toHaveBeenCalledTimes(2)
+    inputArea.remove()
   })
 
   it('装载失败亮错误并可重试', async () => {

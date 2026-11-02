@@ -1,8 +1,7 @@
 /**
  * 快捷指令悬浮面板：MenuSurface（官方磨砂菜单面）+ portal + 视口钳制定位
  * （favorite-models 同款 place()）。列表行点击插入、行尾编辑/删除、底部新增；
- * 点击输入框本体（放置光标）不关闭面板——「先把光标点到正文中间，再点指令」
- * 是本插件的核心流程，只有点击面板与 composer 卡片之外的区域才关闭。
+ * 点弹窗外任何位置（输入框本体、会话区）都关闭，触发按钮自行管理开/关切换。
  *
  * @module @dsh-kit/dsh-plugin-quick-commands/client/panel
  */
@@ -91,13 +90,15 @@ export function QuickCommandsPanel({ load, save, insert, t, anchorRef, onClose }
     }
   }, [anchorRef, status, editingId])
 
-  // 外点关闭；composer 卡片内的点击例外（放置光标是核心流程的一部分）。
+  // 外点关闭：点弹窗外任何位置（输入框本体、会话区、侧栏）都关。只豁免面板自身
+  // 与触发按钮——按钮的开/关由它自己的 onClick 切换（mousedown 先于 click，
+  // 不豁免会让「点按钮关闭」变成关闭后立刻重开）。
   useEffect(() => {
     const closeOutside = (event: Event): void => {
       const target = event.target
       if (!(target instanceof Node)) return
       if (menuRef.current?.contains(target) === true) return
-      if (anchorRef.current?.closest('[data-composer-card]')?.contains(target) === true) return
+      if (anchorRef.current?.contains(target) === true) return
       onClose()
     }
     document.addEventListener('mousedown', closeOutside)
