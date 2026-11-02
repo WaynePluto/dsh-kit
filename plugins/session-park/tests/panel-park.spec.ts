@@ -12,6 +12,7 @@ interface PanelHarness {
   dispose: () => void
   park: ReturnType<typeof vi.fn>
   isMainSessionRunning: ReturnType<typeof vi.fn>
+  isMainSessionPendingInteraction: ReturnType<typeof vi.fn>
   isMainSessionBlank: ReturnType<typeof vi.fn>
   selectPanel: ReturnType<typeof vi.fn>
 }
@@ -20,11 +21,12 @@ interface PanelHarness {
  * 装一个面板停靠。`running`/`blank` 给 main 会话状态的当前值；测试中途可改写
  * `isMainSessionRunning.mockReturnValue` 模拟「停靠 reveal 已换持 blank」。
  */
-function harness(options?: { running?: boolean; blank?: boolean; initial?: string | null }): PanelHarness {
+function harness(options?: { running?: boolean; blank?: boolean; pending?: boolean; initial?: string | null }): PanelHarness {
   const listeners = new Set<() => void>()
   let active: MainPanelId | null = (options?.initial ?? null) as MainPanelId | null
   const park = vi.fn()
   const isMainSessionRunning = vi.fn(() => options?.running ?? true)
+  const isMainSessionPendingInteraction = vi.fn(() => options?.pending ?? false)
   const isMainSessionBlank = vi.fn(() => options?.blank ?? false)
   const selectPanel = vi.fn((id: MainPanelId) => { setPanel(id) })
   const setPanel = (id: string | null): void => {
@@ -39,10 +41,11 @@ function harness(options?: { running?: boolean; blank?: boolean; initial?: strin
     getActivePanel: () => active,
     selectPanel,
     isMainSessionRunning,
+    isMainSessionPendingInteraction,
     isMainSessionBlank,
     park,
   })
-  return { setPanel, dispose, park, isMainSessionRunning, isMainSessionBlank, selectPanel }
+  return { setPanel, dispose, park, isMainSessionRunning, isMainSessionPendingInteraction, isMainSessionBlank, selectPanel }
 }
 
 afterEach(() => {
@@ -59,6 +62,13 @@ describe('installPanelPark', () => {
 
   it('main 会话不在运行（含无 main）：打开面板不停靠', () => {
     const h = harness({ running: false })
+    h.setPanel('plugins')
+    expect(h.park).not.toHaveBeenCalled()
+    h.dispose()
+  })
+
+  it('main 会话待用户操作（黄点）：打开面板不停靠（黄点需用户答题才消失）', () => {
+    const h = harness({ pending: true })
     h.setPanel('plugins')
     expect(h.park).not.toHaveBeenCalled()
     h.dispose()

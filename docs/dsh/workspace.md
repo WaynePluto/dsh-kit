@@ -178,6 +178,10 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   `ongoing` = 运行中（含子代理）、`warning` = 待用户操作（审批/计划确认/提问）、
   `done` = 完成未读（打开会话清除）；`idle` 不渲染状态点（leading 槽让给插件）。行尾
   时间格在有待操作时改显紧凑文案（`trailingLabel`）。归档行状态点槽保持空白。
+  插件侧程序化查询用官方公开 observable `ctx.uiSession.sessionStatus`
+  （`HostObservable<ReadonlyMap<SessionId, SessionStatus>>`，`getSnapshot().get(key)`）：
+  `pendingInteraction` 有值即黄点事实（kind 为 `approval`/`plan-review`/`question`），
+  与 `running`/`completionUnread` 三字段同源（0.2.1-rc.3 核实）。
 - **完成未读的精确机制**（0.2.1-rc.3 核实，`packages/client/ui-session/src/client/index.ts`）：
   `done` 即 `SessionStatus.completionUnread`（上游注释原话「observed stop **outside the
   main view**」）。会话由运行转停止时（`observeRunning`），仅当该会话**不是 mainView**

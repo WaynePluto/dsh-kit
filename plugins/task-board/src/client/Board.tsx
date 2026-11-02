@@ -51,8 +51,8 @@ export interface BoardDeps {
   readonly workspaces: () => readonly WorkspaceOption[]
   /** 复制文本到剪贴板；返回是否成功。 */
   readonly copyText: (text: string) => Promise<boolean>
-  /** 把卡片任务发送到目标工作区的新对话（失败以异常抛出）。 */
-  readonly sendCard: (card: BoardCardModel) => Promise<void>
+  /** 把卡片任务填入目标工作区新对话的输入框（不发送；失败以异常抛出）。 */
+  readonly draftCard: (card: BoardCardModel) => Promise<boolean>
 }
 
 /** drag data 判别：卡片 or 列。 */
@@ -475,7 +475,7 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
   const workspaceLabel = card.workspaceId === undefined
     ? t('workspaceDefault')
     : deps.workspaces().find(item => item.id === card.workspaceId)?.title ?? t('untitledWorkspace')
-  const sendLabel = fill(t('sendCard'), { workspace: workspaceLabel })
+  const draftLabel = fill(t('draftCard'), { workspace: workspaceLabel })
 
   const menuEntries = (): MenuEntry[] => {
     const entries: MenuEntry[] = [{
@@ -594,9 +594,9 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
             <button
               type="button"
               className="dsh-task-board-iconBtn"
-              title={sendLabel}
-              aria-label={sendLabel}
-              onClick={() => { void deps.sendCard(card) }}
+              title={draftLabel}
+              aria-label={draftLabel}
+              onClick={() => { void deps.draftCard(card) }}
               onPointerDown={event => { event.stopPropagation() }}
             >
               <IconSendOutlineMedium size={14} />

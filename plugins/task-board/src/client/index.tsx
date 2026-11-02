@@ -12,7 +12,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-// 仅类型：'main' keyed 槽的声明在 ui-layout；sessions/uiWorkspace/workspaces 是发送动作的官方服务。
+// 仅类型：'main' keyed 槽的声明在 ui-layout；sessions/uiWorkspace/workspaces 是填草稿动作的官方服务。
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
@@ -23,7 +23,7 @@ import { CHANNEL, SELF_NAMESPACE } from '../shared.js'
 import type { BoardDocument } from '../shared.js'
 import { TaskBoardPanelIcon } from './TaskBoardPanelIcon.js'
 import { TaskBoardPage } from './TaskBoardPage.js'
-import { sendTaskToWorkspace } from './send-task.js'
+import { draftTaskToWorkspace } from './draft-task.js'
 import { en, zh } from './locales.js'
 import type { TaskBoardKey } from './locales.js'
 import { callKitChannel } from '@dsh-kit/plugin-rpc'
@@ -31,8 +31,8 @@ import { callKitChannel } from '@dsh-kit/plugin-rpc'
 export { TaskBoardPage } from './TaskBoardPage.js'
 export type { TaskBoardPageProps } from './TaskBoardPage.js'
 export { TaskBoardPanelIcon } from './TaskBoardPanelIcon.js'
-export { sendTaskToWorkspace } from './send-task.js'
-export type { SendTaskDeps } from './send-task.js'
+export { draftTaskToWorkspace } from './draft-task.js'
+export type { DraftTaskDeps } from './draft-task.js'
 export type { TaskBoardKey } from './locales.js'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -87,8 +87,8 @@ export function apply(ctx: Context): void {
       }))
       : [],
     copyText: async (text: string) => await writeClipboard(text),
-    sendTask: async (text: string, workspaceId: string | undefined) => {
-      await sendTaskToWorkspace(
+    draftTask: async (text: string, workspaceId: string | undefined) => {
+      await draftTaskToWorkspace(
         {
           sessions: {
             create: async options =>

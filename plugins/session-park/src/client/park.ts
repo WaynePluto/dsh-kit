@@ -10,7 +10,8 @@
  *
  * 出发信号：window blur 与 document visibilitychange→hidden；回来信号：window focus
  * 与 visibilitychange→visible。alt-tab 只触发 blur，最小化两者都触发，两条都要听。
- * 到点复查仍离开且仍在运行：快速往返不动作，失焦后 delay 内会话恰好结束也不停靠。
+ * 到点复查仍离开、仍在运行且无待操作（黄点不会自动消失，答题期间停靠只会把要操作
+ * 的会话从眼前换走）：快速往返不动作，失焦后 delay 内会话恰好结束也不停靠。
  * 一次离开（到下一次回来）最多停靠一次——停靠后没有新的出发事件，不会反复切走。
  *
  * @module @dsh-kit/dsh-plugin-session-park/client/park
@@ -25,6 +26,8 @@ export interface SessionParkDeps {
   document: Document
   /** 当前 main 会话是否运行中；无 main 会话时为 false。 */
   isMainSessionRunning: () => boolean
+  /** 当前 main 会话是否待用户操作（黄点：审批/计划确认/提问）；无 main 会话时为 false。 */
+  isMainSessionPendingInteraction: () => boolean
   /** 停靠动作：把 mainView 让给当前工作区的 blank 会话（uiWorkspace.startSession()）。 */
   park: () => void
   /** 失焦到停靠的等待时长；测试注入以便手动推进。 */
@@ -58,6 +61,9 @@ export function installSessionPark(deps: SessionParkDeps): () => void {
     timer = deps.setTimeout(() => {
       timer = undefined
       if (!away() || !deps.isMainSessionRunning()) return
+      // 黄点（待用户操作）不会自动消失，需要用户回答才清除：停靠换出会话视图没有
+      // 收益，还把要操作的会话从眼前拿走。
+      if (deps.isMainSessionPendingInteraction()) return
       deps.park()
     }, deps.delayMs)
   }

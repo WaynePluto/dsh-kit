@@ -47,16 +47,18 @@ function showWindow(state: { focused: boolean; visibility: 'visible' | 'hidden' 
   document.dispatchEvent(new Event('visibilitychange'))
 }
 
-function harness(running = true, delayMs = 1000) {
+function harness(running = true, delayMs = 1000, pendingInteraction = false) {
   const state = { focused: true, visibility: 'visible' as 'visible' | 'hidden' }
   stubWindowState(state)
   const park = vi.fn()
   const isMainSessionRunning = vi.fn(() => running)
+  const isMainSessionPendingInteraction = vi.fn(() => pendingInteraction)
   const timers: FakeTimer[] = []
   const dispose = installSessionPark({
     window,
     document,
     isMainSessionRunning,
+    isMainSessionPendingInteraction,
     park,
     delayMs,
     setTimeout: (handler, ms) => {
@@ -66,7 +68,7 @@ function harness(running = true, delayMs = 1000) {
     },
     clearTimeout: handle => { (handle as FakeTimer).cleared = true },
   })
-  return { state, dispose, park, isMainSessionRunning, timers }
+  return { state, dispose, park, isMainSessionRunning, isMainSessionPendingInteraction, timers }
 }
 
 /** 触发全部未清除、未触发过的到点回调（按预约顺序）。 */
@@ -115,6 +117,15 @@ describe('installSessionPark', () => {
 
   it('到点时不在运行：不停靠（失焦窗口内会话恰好结束）', () => {
     const { state, dispose, park, timers } = harness(false)
+    blurWindow(state)
+
+    firePending(timers)
+    expect(park).not.toHaveBeenCalled()
+    dispose()
+  })
+
+  it('到点时待用户操作（黄点）：不停靠（黄点需用户答题才消失）', () => {
+    const { state, dispose, park, timers } = harness(true, 1000, true)
     blurWindow(state)
 
     firePending(timers)

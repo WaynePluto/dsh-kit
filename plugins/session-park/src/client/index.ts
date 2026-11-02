@@ -9,8 +9,9 @@
  *
  * 上游事实（docs/dsh/workspace.md「完成未读的精确机制」）：停在运行中的会话上切屏、
  * 或被插件/服务等面板页挡住（面板页不清 mainView retain），会话结束都不记未读；
- * 本组件在「人已离开」时满足该判定的前提。停靠不区分状态点细类：待操作（warning）
- * 与运行中（ongoing）都不做 isMain 过滤、恒显示，停靠不会「弄丢」任何状态点。
+ * 本组件在「人已离开」时满足该判定的前提。待操作（黄点，pendingInteraction：审批/
+ * 计划确认/提问）不会自动消失、需要用户回答才清除，此时停靠只会把要操作的会话从
+ * 眼前换走，因此运行判定之外还排除黄点状态（官方 `uiSession.sessionStatus` 快照）。
  *
  * 已知边界：失焦后 `PARK_DELAY_MS` 内会话恰好结束则不停靠（该次结束不记未读，但
  * 用户很快回来时内容就在眼前）；当前视图是子代理会话时 sessions 列表无对应行，
@@ -49,10 +50,18 @@ export function apply(ctx: Context): void {
     const key = mainKey()
     return key === undefined ? undefined : ctx.sessions.list.getSnapshot().byId[key]
   }
+  // 黄点（待用户操作：审批/计划确认/提问）来自官方 sessionStatus 快照；黄点不会自动
+  // 消失、需要用户答题才清除，停靠换出会话视图无收益，两条停靠路径都排除。
+  const isMainSessionPendingInteraction = (): boolean => {
+    const key = mainKey()
+    return key !== undefined
+      && ctx.uiSession.sessionStatus.getSnapshot().get(key)?.pendingInteraction !== undefined
+  }
   ctx.effect(() => installSessionPark({
     window,
     document,
     isMainSessionRunning: () => mainSummary()?.running === true,
+    isMainSessionPendingInteraction,
     park: () => { ctx.uiWorkspace.startSession() },
     delayMs: PARK_DELAY_MS,
     setTimeout: (handler, timeout) => window.setTimeout(handler, timeout),
@@ -63,6 +72,7 @@ export function apply(ctx: Context): void {
     getActivePanel: () => ctx.layout.panelInfo.getSnapshot().activePanelId,
     selectPanel: panelId => { ctx.layout.selectPanel(panelId) },
     isMainSessionRunning: () => mainSummary()?.running === true,
+    isMainSessionPendingInteraction,
     isMainSessionBlank: () => mainSummary()?.blank === true,
     park: () => { ctx.uiWorkspace.startSession() },
   }), 'session-park: panel park on running session')

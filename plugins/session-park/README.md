@@ -53,9 +53,10 @@ A 的结果被错过。本组件在「人已离开会话视图」时用纯官方
 
 - 停靠落点是**当前会话所在工作区**的空白会话（复用既有 blank，与原生新建会话
   完全同路径，不会堆积会话）；输入框草稿跟随会话，停靠不丢草稿。
-- 待操作（黄点，审批/提问/计划确认）与运行中（蓝点）状态点上游不做主视图过滤、
-  恒显示，停靠不会让你错过它们；等待审批期间停靠无收益（任务无法推进），但一致
-  的行为更可预期。
+- **待操作（黄点，审批/计划确认/提问）期间不停靠**：黄点不会自动消失、需要用户
+  回答才清除（官方 `uiSession.sessionStatus` 快照的 `pendingInteraction`），停靠
+  只会把要操作的会话从眼前换走；答完题会话继续运行，再切走按新一轮正常停靠。
+- 运行中（蓝点）状态点上游不做主视图过滤、恒显示，停靠不会让你错过它。
 - 设置页（设置按钮）不在触发范围：它是设置 shell/modal，不经过 `selectPanel`、
   不换 main 视图。
 - 当前视图是子代理会话、或没有主视图会话时，判定为不在运行，不动作。
@@ -70,9 +71,10 @@ pnpm --filter @dsh-kit/dsh-plugin-session-park test
 
 纯浏览器半、无宿主服务；构建落盘后由官方 client-hmr 自动热替换（宿主半无改动、
 组件行已装载时无需重启 dsh）。依赖的 `layout.panelInfo` / `layout.selectPanel`、
-`uiSession.adapter.current`、`sessions.list` 与 `uiWorkspace.startSession` 都是公开
-契约，上游变更风险低；完成未读机制的出处与复核要点见 docs/dsh/workspace.md
-「完成未读的精确机制」，面板导航契约见 docs/dsh/plugins.md「全局面板」。
+`uiSession.adapter.current`、`uiSession.sessionStatus`（黄点判定）、`sessions.list`
+与 `uiWorkspace.startSession` 都是公开契约，上游变更风险低；完成未读机制的出处与
+复核要点见 docs/dsh/workspace.md「完成未读的精确机制」，面板导航契约见
+docs/dsh/plugins.md「全局面板」。
 
 ## 分发与管理
 

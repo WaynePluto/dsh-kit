@@ -131,7 +131,8 @@ fork 子会话继承源会话的 agent preset（presetForObservation），sessio
 `submit('queue','click')` 即把文本真正发出（输入法/命令仲裁都走原生 submit 机器）。
 `openSession` 的 replaceMain 用 'reveal' 语义，会顺带 `layout.selectPanel(null)` 把
 全局面板切回该会话；mode 是 BusyEnterBehavior（'queue' | 'steer'），不是 'send'。
-实例：`plugins/task-board/src/client/send-task.ts`。
+实例：`plugins/task-board/src/client/draft-task.ts`（2026-11-02 起只 `setDraft` 不 submit，
+发送留给用户现选模型/思考强度）。
 
 ## 会话重命名
 

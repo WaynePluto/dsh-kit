@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconPlusOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BoardCard, BoardDocument } from '../shared.js'
 import { Board, type BoardDeps, type WorkspaceOption } from './Board.js'
-import { addList } from './board-ops.js'
+import { addList, moveCard } from './board-ops.js'
 import { AddListForm } from './editors.js'
 import { useBoardStore } from './use-board-store.js'
 import { installBoardStyles } from './styles.js'
@@ -26,8 +26,8 @@ export interface TaskBoardActions {
   workspaces: () => readonly WorkspaceOption[]
   /** 复制文本到剪贴板；返回是否成功。 */
   copyText: (text: string) => Promise<boolean>
-  /** 把任务文本发送到目标工作区的新对话；失败 reject。 */
-  sendTask: (text: string, workspaceId: string | undefined) => Promise<void>
+  /** 把任务文本填入目标工作区新对话的输入框（不发送）；失败 reject。 */
+  draftTask: (text: string, workspaceId: string | undefined) => Promise<void>
 }
 
 /** 页面 props：注入动作 + 文案 thunk（PropsLocale）。 */
@@ -36,7 +36,7 @@ export interface TaskBoardPageProps {
   onSave: TaskBoardActions['onSave']
   workspaces: TaskBoardActions['workspaces']
   copyText: TaskBoardActions['copyText']
-  sendTask: TaskBoardActions['sendTask']
+  draftTask: TaskBoardActions['draftTask']
   t?: (key: TaskBoardKey) => string
 }
 
@@ -72,14 +72,16 @@ export function TaskBoardPage(props: TaskBoardPageProps) {
 
   const save = useCallback((board: BoardDocument) => props.onSave(board).then(undefined), [props.onSave])
 
-  const sendCard = useCallback(async (card: BoardCard) => {
+  const draftCard = useCallback(async (card: BoardCard): Promise<boolean> => {
     setSendError(undefined)
     try {
-      await props.sendTask(card.text, card.workspaceId)
+      await props.draftTask(card.text, card.workspaceId)
+      return true
     } catch (error: unknown) {
-      setSendError(fill(translate('sendFailed'), { message: error instanceof Error ? error.message : String(error) }))
+      setSendError(fill(translate('draftFailed'), { message: error instanceof Error ? error.message : String(error) }))
+      return false
     }
-  }, [props.sendTask, translate])
+  }, [props.draftTask, translate])
 
   if (initial === undefined) {
     return (
@@ -94,21 +96,32 @@ export function TaskBoardPage(props: TaskBoardPageProps) {
     )
   }
 
-  return <TaskBoardLoaded initial={initial} save={save} translate={translate} workspaces={props.workspaces} copyText={props.copyText} sendCard={sendCard} sendError={sendError} />
+  return <TaskBoardLoaded initial={initial} save={save} translate={translate} workspaces={props.workspaces} copyText={props.copyText} draftCard={draftCard} sendError={sendError} />
 }
 
 /** 已装载文档后的正文；独立一层让 useBoardStore 的 initial 引用保持稳定。 */
-function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, sendCard, sendError }: {
+function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, draftCard, sendError }: {
   initial: BoardDocument
   save: (board: BoardDocument) => Promise<void>
   translate: (key: TaskBoardKey) => string
   workspaces: () => readonly WorkspaceOption[]
   copyText: (text: string) => Promise<boolean>
-  sendCard: (card: BoardCard) => Promise<void>
+  draftCard: (card: BoardCard) => Promise<boolean>
   sendError: string | undefined
 }) {
   const { board, saveState, saveError, update } = useBoardStore(initial, save)
-  const deps: BoardDeps = { translate, workspaces, copyText, sendCard }
+  // 填草稿成功后把卡片挪到第二列首位（待办 → 进行中）；失败或不足两列不移动，
+  // 卡片在发送期间被删除时 moveCard 返回原文档（no-op，不触发写盘）。
+  const draftCardAndMove = useCallback(async (card: BoardCard): Promise<boolean> => {
+    const ok = await draftCard(card)
+    if (!ok) return false
+    const target = board.lists[1]
+    if (target === undefined) return true
+    const next = moveCard(board, card.id, target.id, 0)
+    if (next !== board) update(next)
+    return true
+  }, [draftCard, board, update])
+  const deps: BoardDeps = { translate, workspaces, copyText, draftCard: draftCardAndMove }
   const boardScrollRef = useRef<HTMLDivElement | null>(null)
   const statusText = sendError !== undefined
     ? sendError

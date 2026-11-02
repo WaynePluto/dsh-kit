@@ -9,7 +9,8 @@
  * - 停靠走 `uiWorkspace.startSession()`，其 replaceMain 以 'reveal' 收尾——换持
  *   mainView 后调 `layout.selectPanel(null)` 把面板切回会话视图，面板页被 deselect。
  *
- * 因此本模块在面板选中（null → 面板，含换面板）且当前 main 会话运行中时发起停靠，
+ * 因此本模块在面板选中（null → 面板，含换面板）、当前 main 会话运行中且无待操作
+ * （黄点不会自动消失，答题期间停靠无收益）时发起停靠，
  * 并在「我们发起的停靠落了地」的那次 reveal（面板 → null）里同步把面板选回来：
  * 恢复发生在同一次同步通知内、React 提交渲染之前，面板页不重挂、无闪烁。落了地的
  * 判据是「当前 main 会话已是 blank」——停靠 reveal 先换持 mainView 再 deselect
@@ -36,6 +37,8 @@ export interface PanelParkDeps {
   selectPanel: (panelId: MainPanelId) => void
   /** 当前 main 会话是否运行中；无 main 会话时为 false。 */
   isMainSessionRunning: () => boolean
+  /** 当前 main 会话是否待用户操作（黄点：审批/计划确认/提问）；无 main 会话时为 false。 */
+  isMainSessionPendingInteraction: () => boolean
   /** 当前 main 会话是否 blank（停靠落地的判据）。 */
   isMainSessionBlank: () => boolean
   /** 停靠动作：把 mainView 让给当前工作区的 blank 会话（uiWorkspace.startSession()）。 */
@@ -62,7 +65,8 @@ export function installPanelPark(deps: PanelParkDeps): () => void {
     if (current !== null) {
       // 打开或切换面板：旧的恢复意图作废（上游已 abort 那次停靠），按新面板重新判定。
       restorePanel = undefined
-      if (deps.isMainSessionRunning()) {
+      // 黄点（待用户操作）不会自动消失：停靠换出会话视图只会把要操作的会话从眼前拿走。
+      if (deps.isMainSessionRunning() && !deps.isMainSessionPendingInteraction()) {
         restorePanel = current
         deps.park()
       }
