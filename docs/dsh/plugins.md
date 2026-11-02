@@ -316,6 +316,17 @@ React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`n
   会话结束不记「完成未读」绿点（status-controller 的 `isMain` 按 mainView 保留判定，
   选中面板不释放保留），见 docs/dsh/workspace.md；panel-toggle 组件实现了活动行
   再点一次回会话，上游若原生实现 toggle 应删除该组件。
+- **`ctx.layout` 面板导航契约**（0.2.1-rc.5 核实，rc.3 同源码）：`panelInfo` 是
+  HostObservable（getSnapshot + subscribe；layout store 走 defineStore 默认 sync
+  flush，通知同步派发），可零 DOM 订阅面板选中变化；`selectPanel` 与
+  `beginNavigation` 都会 abort 挂起导航，在途的 startSession/openWorkspace 遇到任何
+  后续面板切换/回会话即放弃提交（openWorkspaceSession 的 navigation.aborted）。
+  换 mainView 的公开 API（openSession/startSession/openWorkspace）全部 'reveal'
+  收尾：replaceMain 先 retain 换持（`adapter.current` 随 retainInfo 订阅同步更新）
+  再 `selectPanel(null)` deselect 面板，无 'preserve' 公开路径——要在换 mainView 的
+  同时保住面板，只能在面板→null 的同步通知里补一次 `selectPanel(prev)`（发生在
+  React 提交渲染之前，面板页不重挂；id 已注销时抛错需捕获）。session-park 的
+  面板停靠即此形态。
 
 ### 右侧 Sidebar 页面类型
 

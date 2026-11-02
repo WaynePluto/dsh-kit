@@ -81,8 +81,8 @@ afterEach(() => {
 })
 
 describe('契约', () => {
-  it('browser half 注入三个导航与状态服务', () => {
-    expect(inject).toEqual(['sessions', 'uiSession', 'uiWorkspace'])
+  it('browser half 注入面板与导航状态服务', () => {
+    expect(inject).toEqual(['layout', 'sessions', 'uiSession', 'uiWorkspace'])
   })
 
   it('停靠延迟为 3 秒', () => {

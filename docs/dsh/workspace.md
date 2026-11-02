@@ -191,7 +191,9 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   官方导航服务 `ctx.uiWorkspace`（声明合并的公开 Context service，同 `navigation.ts`）
   提供 `openSession`/`openWorkspace`/`startSession`（新会话 = 在目标工作区复用或创建
   blank 会话并接管 mainView，与原生「新建会话」同路径）；当前 main 会话经
-  `ctx.uiSession.adapter.current` 读取。
+  `ctx.uiSession.adapter.current` 读取。三者的面板语义都是 'reveal'（换持 mainView 后
+  `layout.selectPanel(null)` deselect 面板），订阅/恢复面板的契约见
+  [插件机制](plugins.md)「全局面板」。
 - workspace-collapse 组件的注入契约：从任一工作区行向上找第一个带 sectionHeader 直接
   子节点的祖先（浏览器根），按钮容器插在 `searchSlot` 之前。头部动作簇 `headerActions`
   是 max-width 60px 的定宽簇（装不下第三个按钮），不能内插；**searchSlot 自带
