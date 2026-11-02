@@ -13,6 +13,7 @@
 9. 会话工作区显示（session-workspace）
 10. 侧栏面板行回会话（panel-toggle）
 11. 切屏停靠（session-park）
+12. 快捷指令（quick-commands）
 
 本包不包含运行时代码；`cordis.patch.yml` 通过 Bundle 内嵌依赖的相对路径加载固定版本组件，并用 Bundle 选择状态保护 HMR 卸载阶段的瞬时残留行。每个组件都可在 Bundle 详情中单独停用或重新启用，卸载 Bundle 会一起移除全部组件的装载入口。
 

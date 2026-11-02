@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Conversation Enhancements",
-    "description": "Retry, scrolling, stats hours, forking, rename, copy workspace path, collapse workspaces, notifications, panel row toggle-back, and session park"
+    "description": "Retry, scrolling, stats hours, forking, rename, copy workspace path, collapse workspaces, notifications, panel row toggle-back, session park, and quick commands"
   }
 }

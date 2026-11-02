@@ -90,6 +90,10 @@
         {
           "name": "@dsh-kit/dsh-plugin-session-park",
           "rowId": "session-park"
+        },
+        {
+          "name": "@dsh-kit/dsh-plugin-quick-commands",
+          "rowId": "quick-commands"
         }
       ]
     },

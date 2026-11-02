@@ -258,6 +258,28 @@ config-editor 行从 profile 的 hoisted node_modules 解析出第二份 app-boo
   pill 视觉契约见 `ui-chat/src/client/chat/StatsPills.module.css`（anchor 12px 次级字号、
   pill `1px 8px` 圆角 `--dsw-radius-sm`、tertiary 静息、hover interactive-bg-hover、svg 14px）。
   实例：`plugins/session-workspace/src/client/{index.tsx,pill.tsx}`（order -1，2026-10-27）。
+- conversation.input.left 是工具行左组（`.tools`）的 session 作用域 list 槽，渲染于
+  `[+]` 按钮与 permission/plan 模式之后、右侧控制组（`conversation.input.right` → 模型座位 →
+  发送）之前（`ui-conversation/src/client/skeleton/InputBar.tsx` 的行渲染顺序；官方仓库内
+  无占用者）。声明出处 `contract/slots.ts`（0.2.1-rc.3 第 278 行）。工具行按钮视觉契约：
+  圆形纯图标钮几何复刻同文件 `.add`（28×28、14px Medium 字形、focus 走全局 focus ring）；
+  **开关型按钮不要照抄 `.add` 的常驻灰底**——关闭态 transparent 底 + label-secondary 图标、
+  hover `--dsw-alias-interactive-bg-hover`，打开态（`[aria-expanded='true']`）才换
+  `--dsw-specific-selector` 灰底 + label-primary 图标、hover solid（用户由底色读出「点一次开、
+  再点一次关」，2026-11-02 用户反馈），带文字 chip 复刻
+  `PermissionSelect.module.css` 的 `.trigger`（28px 高、8px 圆角、13px/20px/500、hover
+  `--dsw-alias-interactive-bg-hover`、显式 2px box-shadow focus ring）。
+  实例：`plugins/quick-commands/src/client/{index.tsx,button.tsx}`（order 0，2026-11-02）。
+- **session 槽位组件的 `inputActions` 标准 prop**（`contract/input.ts` 的 `InputActions`，
+  SessionStandardProps 注入）是输入框草稿的公开动作面：`captureInsertion(): TokenSpan`
+  （修订守卫的光标区间副本）+ `insertText(text, span): boolean`（CAS 校验 draftRev，
+  草稿已变化或提交锁定时 false）+ `setDraft/persistDraft` 与附件操作。`TokenSpan`
+  坐标系是编辑器的 clipboard 投影（无 chip 纯文本坐标），不是 DOM `selectionStart`
+  ——输入框本体是 Lexical `contentEditable`（`ComposerContentEditable.tsx`），没有
+  textarea 可查。插入用于按钮点击后的异步插入（上游斜杠菜单经 bail 事件
+  `slash/input-insert-text` 走同一实现 `draftEditor.insertAsyncText`）；span 对插件
+  不透明，捕获后原样传回即可，失败重取重试是调用方约定。
+  实例：`plugins/quick-commands/src/client/insert.ts`。
 - conversation.chat.turnTail 是 chain，不适合保证多个插件并列显示。
 
 settings.section 没有 icon 字段，导航 shell 按 id 选择图标，未知 id 为齿轮。

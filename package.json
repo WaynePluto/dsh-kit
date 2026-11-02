@@ -42,6 +42,7 @@
     "@dsh-kit/dsh-plugin-notify": "workspace:*",
     "@dsh-kit/dsh-plugin-panel-toggle": "workspace:*",
     "@dsh-kit/dsh-plugin-proxy": "workspace:*",
+    "@dsh-kit/dsh-plugin-quick-commands": "workspace:*",
     "@dsh-kit/dsh-plugin-services": "workspace:*",
     "@dsh-kit/dsh-plugin-session-park": "workspace:*",
     "@dsh-kit/dsh-plugin-session-rename": "workspace:*",

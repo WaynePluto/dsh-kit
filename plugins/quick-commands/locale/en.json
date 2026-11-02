@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Quick commands",
+    "description": "A quick-command popover at the composer's bottom-left; click an entry to insert it at the caret"
+  }
+}
