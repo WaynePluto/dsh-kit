@@ -38,7 +38,12 @@ jobs:
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
 
-      - name: 创建 Release 并上传资产
+      # 同版本号重发（D21：tag 强移后 Release 已存在）时 create 失败，改用 upload
+      # --clobber 覆盖同名资产；create 失败的其余原因（网络等）在 upload 同样失败。
+      - name: 创建 Release 并上传资产（已存在则覆盖资产）
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes "release/${GITHUB_REF_NAME}/dsh-kit.tar.gz"
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes \
+            "release/${GITHUB_REF_NAME}/dsh-kit.tar.gz" \
+            || gh release upload "${GITHUB_REF_NAME}" "release/${GITHUB_REF_NAME}/dsh-kit.tar.gz" --clobber
