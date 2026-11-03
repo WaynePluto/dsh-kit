@@ -104,9 +104,10 @@ function actionable(route: RoutePreview): boolean {
   return route.additions.length > 0 || route.reclaimed.length > 0 || (route.upgradableIds?.length ?? 0) > 0
 }
 
-/** 只展示有变化、owned ids 或 no-template 的 route。 */
+/** 只展示有变化、owned ids、跟随提示或 no-template 的 route。 */
 function interesting(route: RoutePreview): boolean {
   return actionable(route) || route.ownedIds.length > 0 || route.blocked === 'no-template'
+    || route.nativeFollowing === true
 }
 
 /** 一行 route preview，展示 additions/reclaimed/owned 和 blocked 原因。 */
@@ -158,6 +159,7 @@ function RouteLine(props: {
         : null}
       {reasoning ? <div style={mutedStyle}>{t('reasoningWarning')}</div> : null}
       {route.blocked !== undefined ? <div style={mutedStyle}>{t(BLOCK_KEYS[route.blocked])}</div> : null}
+      {route.nativeFollowing === true ? <div style={mutedStyle}>{t('nativeFollowingHint')}</div> : null}
     </div>
   )
 }

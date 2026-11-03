@@ -59,6 +59,11 @@ function mount(sections: Record<string, Record<string, unknown>>): InstanceType<
         { provider: 'openai', displayName: 'OpenAI', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai'] },
         { provider: 'github-copilot', displayName: 'github-copilot', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'github-copilot'] },
         { provider: 'deepseek', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: ['providers', 'deepseek'] },
+        // 官方 API-key 路由随其行装载；行被停用（如 deepseek-official-switch）时不再出现，
+        // 与 settings 里是否存在 `llm-deepseek` 投影同步起落。
+        ...(sections['llm-deepseek'] !== undefined
+          ? [{ provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [] }]
+          : []),
       ],
     },
   } as unknown as Context
@@ -177,6 +182,47 @@ describe('applying', () => {
     const view = await service.preview()
     expect(view.routes[0]?.blocked).toBeUndefined()
     expect(view.routes[0]?.additions.map(model => model.id)).toEqual(['gpt-next'])
+  })
+})
+
+/** 配好可添加模型的 pi-ai deepseek 路由与 models.dev 的 deepseek 供应商；`official` 为官方路由 settings 投影。 */
+function deepseekSections(official: Record<string, unknown> | undefined): Record<string, Record<string, unknown>> {
+  responseBody = () => JSON.stringify({ deepseek: { models: { 'ds-new': { name: 'DS New' } } } })
+  return {
+    'llm-pi-ai': { providers: { deepseek: { api: 'openai-completions' } } },
+    ...official === undefined ? {} : { 'llm-deepseek': official },
+    'models-catalog': { overlays: {} },
+  }
+}
+
+describe('the official deepseek route following', () => {
+  it('suppresses deepseek additions while the official route natively follows', async () => {
+    const view = await mount(deepseekSections({})).preview()
+    const route = view.routes.find(item => item.route === 'deepseek')
+    expect(route?.nativeFollowing).toBe(true)
+    expect(route?.additions).toEqual([])
+    expect(writes).toEqual([])
+  })
+
+  it('offers deepseek additions again once the official row is gone', async () => {
+    const view = await mount(deepseekSections(undefined)).preview()
+    const route = view.routes.find(item => item.route === 'deepseek')
+    expect(route?.nativeFollowing).toBeUndefined()
+    expect(route?.additions.map(model => model.id)).toEqual(['ds-new'])
+  })
+
+  it('offers deepseek additions when the official route points at a gateway', async () => {
+    const view = await mount(deepseekSections({ baseURL: 'https://gw.example.test' })).preview()
+    const route = view.routes.find(item => item.route === 'deepseek')
+    expect(route?.nativeFollowing).toBeUndefined()
+    expect(route?.additions.map(model => model.id)).toEqual(['ds-new'])
+  })
+
+  it('offers deepseek additions when the official models were customized', async () => {
+    const view = await mount(deepseekSections({ models: [{ id: 'custom-model' }] })).preview()
+    const route = view.routes.find(item => item.route === 'deepseek')
+    expect(route?.nativeFollowing).toBeUndefined()
+    expect(route?.additions.map(model => model.id)).toEqual(['ds-new'])
   })
 })
 

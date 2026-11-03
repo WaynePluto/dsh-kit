@@ -6,6 +6,7 @@ import type { Context, Volatile } from '@deepseek-ai/cordis'
 import type { SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-llm'
 import { installedRoute } from './installed.js'
+import { deepseekFollowing } from './following.js'
 import type { ModelEntry, RouteFacts, RoutePlan } from './planning.js'
 import { ENTRY_ID, PI_AI_NAMESPACE } from './shared.js'
 import type { RuntimeModelSpec } from './shared.js'
@@ -99,6 +100,9 @@ function displayNames(ctx: Context): ReadonlyMap<string, string> {
 /** 合并 llm-pi-ai 行 config、provenance、内置 catalog，构造 planning 所需的 RouteFacts。 */
 export function readRouteFacts(ctx: Context, provenance: Provenance): readonly RouteFacts[] {
   const names = displayNames(ctx)
+  // 官方路由跟随中时，pi-ai `deepseek` 路由（源供应商即 DeepSeek）的建议是冗余的；
+  // 其余 route 不受官方跟随影响。
+  const following = deepseekFollowing(ctx)
   return [...configuredRoutes(ctx)].map(([route, profile]) => {
     const installed = installedRoute(route)
     const recorded = provenance.overlays[route]
@@ -116,6 +120,7 @@ export function readRouteFacts(ctx: Context, provenance: Provenance): readonly R
       installedModels: installed.models,
       installedIds: installed.ids,
       installedApis: installed.apis,
+      ...route === 'deepseek' && following ? { nativeFollowing: true } : {},
     }
   })
 }

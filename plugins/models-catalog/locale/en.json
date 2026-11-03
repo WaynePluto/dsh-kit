@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Model Catalog Update",
-    "description": "Extend the model catalog from models.dev"
+    "description": "Extend the model catalog from models.dev — mainly for third-party gateways and other providers (official-endpoint DeepSeek models are followed natively)"
   }
 }

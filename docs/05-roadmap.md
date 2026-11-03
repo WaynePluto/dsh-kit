@@ -6,6 +6,16 @@
 
 ## 已实现
 
+- [x] models-catalog 官方跟随对齐（2026-11-03，用户决策「文案重定位 + 功能识别」）：官方
+  API-key 路由（deepseek-official）原生跟随 `GET /models` 期间，组件按上游同一判定
+  （端点 origin + `isBuiltInCatalog`，新增运行时依赖 `@deepseek-ai/dsh-llm-deepseek`，
+  `@deepseek-ai/*` 仍由宿主树解析）识别跟随状态，对 pi-ai `deepseek` 路由抑制 models.dev
+  建议、面板提示「官方路由正在原生跟随」；已写入条目原样保留、撤销照常；官方行被停用、
+  端点改指网关或目录被自定义后建议恢复。面板 intro 与 README/meta 文案重定位为「第三方
+  网关与其他供应商」。dev 工作区以根 devDependencies 补 transport 包的静态 peers
+  （`autoInstallPeers: false` 前提，宿主树运行时本就提供）。60 项单测、实机装载层启停、
+  浏览器行 28/28 与模型 check 全绿；面板提示的桌面实机确认随下次套件升级。
+
 - [x] dsh 0.2.1-rc.5 适配（2026-11-03）：基线自 0.2.1-rc.3 推进至 npm latest `0.2.1-rc.5`
   （alpha 轨道 0.2.2-alpha.2 高风险未跟）。rc.4/rc.5 上游仅三处实质改动——推理展示预处理
   （`reasoningText()` 剥离 `<signature>` 块、`conversation.chat.reasoning.body` 槽 owner props
@@ -320,11 +330,6 @@
   - pnpm ≤10.17 在 Windows 把 `link:<盘符绝对路径>` 当相对路径生成坏符号链接：
     dev 栈已固定 pnpm 12.11.2 规避，官方桌面安装不受影响，仅影响 pnpm ≤10.17 用户经
     「添加插件」装本地路径套件。
-- [ ] models-catalog 与官方「DeepSeek 官方端点跟随 GET /models」部分重叠（0.2.1-rc.3 起）：
-  纯官方端点且未自定义 models 的用户不再需要本组件发现 DeepSeek 新模型；且任何来源向该
-  路由写入自定义 models 都会停掉原生跟随——插件对官方端点路由 apply DeepSeek 模型反而会
-  关闭跟随。待用户决策：精简文案定位「第三方网关与其他供应商」、补 `isBuiltInCatalog`
-  识别跳过原生跟随中的路由，或维持现状（README 三条硬规则为背景）。
 - [x] 「添加插件」Git 地址安装实测（2026-10-27）：不可行，三层原因——
   1. 仓库根包 `dsh-kit-root` 带 `prepare: husky`，pnpm 11+ 对 git 宿主包的生命周期脚本是
      致命门禁（`ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED`，需消费方工作区 allowBuilds 放行），

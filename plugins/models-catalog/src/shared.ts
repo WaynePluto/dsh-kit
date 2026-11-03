@@ -117,6 +117,8 @@ export interface RoutePreview {
   additions: readonly ModelAddition[]
   /** overlay 携带、但 dsh 已原生提供的 ids；apply 会移除它们。 */
   reclaimed: readonly string[]
+  /** 该 route 的源供应商（DeepSeek）新模型已由官方路由原生跟随；additions 已抑制，只提示不写入。 */
+  nativeFollowing?: boolean
   /** 无法添加内容时的原因。 */
   blocked?: RouteBlock
 }

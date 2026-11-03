@@ -5,7 +5,7 @@
 /** catalog panel 英文文案；同时作为 key 集合。 */
 export const en = {
   title: 'Model catalog (models.dev)',
-  intro: 'dsh ships a snapshot of models.dev. Check for models released since that snapshot and add them yourself.',
+  intro: 'dsh ships a snapshot of models.dev. Check it for models released since that snapshot and add them yourself — mainly for third-party gateways and other providers; new DeepSeek models on the official endpoint appear without this plugin.',
   snapshot: 'Built-in snapshot: {date}',
   fetched: 'Source read: {date}',
   check: 'Check models.dev',
@@ -24,6 +24,7 @@ export const en = {
   blockedNoTemplate: 'Cannot add here: dsh has no native pi-ai catalog or protocol template for this route.',
   blockedNoSource: 'The source describes no provider matching this route.',
   blockedForeign: 'Existing model entries are preserved; this plugin only appends and removes entries recorded in its own provenance.',
+  nativeFollowingHint: 'The official DeepSeek route already follows new models from the official API; nothing to add here.',
   failed: 'Failed: {message}',
   more: '+{count} more',
   handedBack: 'dsh now ships {count} model(s) on {name}; this plugin’s copies were removed.',
@@ -35,7 +36,7 @@ export type CatalogKey = keyof typeof en
 /** 中文文案，按 `en` 的 key 集合实现。 */
 export const zh: Record<CatalogKey, string> = {
   title: '更新模型目录（models.dev）',
-  intro: 'dsh 内置的是 models.dev 的一份快照。这里可以查快照之后新增的模型，并自行加进来。',
+  intro: 'dsh 内置的是 models.dev 的一份快照。这里可以查快照之后新增的模型并自行加进来；主要面向第三方网关与其他供应商——官方端点的 DeepSeek 新模型已由官方路由原生跟随，无需本插件。',
   snapshot: '内置快照：{date}',
   fetched: '源读取于：{date}',
   check: '检查 models.dev',
@@ -54,6 +55,7 @@ export const zh: Record<CatalogKey, string> = {
   blockedNoTemplate: '这里不能添加：dsh 的 pi-ai 目录里没有这条路由可用的协议模板。',
   blockedNoSource: '源里没有与这条路由对应的供应商。',
   blockedForeign: '已有模型条目会原样保留；本插件只追加并删除自己溯源记录中的条目。',
+  nativeFollowingHint: '官方 DeepSeek 路由正在原生跟随官方 API 的新模型；这里无需再添加。',
   failed: '失败：{message}',
   more: '还有 {count} 个',
   handedBack: '{name}：dsh 现在自带其中 {count} 个模型，本插件写入的那份已删除。',

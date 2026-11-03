@@ -40,6 +40,8 @@ export interface RouteFacts {
   installedIds: readonly string[]
   /** 已安装 API protocol 集合。 */
   installedApis: readonly string[]
+  /** 该 route 的源供应商（DeepSeek）新模型已由官方路由原生跟随；additions 不再建议。 */
+  nativeFollowing?: boolean
 }
 
 /** 一个 route 的 preview 以及 apply/revert 将写入的 next state。 */
@@ -196,7 +198,7 @@ export function planRoute(facts: RouteFacts, source: SourceProvider | undefined)
     ? 'no-template' as const
     : source === undefined ? 'no-source' as const : undefined
 
-  const additions = blockedReason !== undefined || source === undefined
+  const additions = blockedReason !== undefined || source === undefined || facts.nativeFollowing === true
     ? []
     : source.models.filter(model => !installed.has(model.id) && !configured.has(model.id))
   // 没有 configured API 时，runtime catalog 需要补齐 models.dev additions 的 API spec。
@@ -211,6 +213,7 @@ export function planRoute(facts: RouteFacts, source: SourceProvider | undefined)
     ...source === undefined ? {} : { source: source.id },
     ownedIds: kept,
     ...upgradableIds.length === 0 ? {} : { upgradableIds },
+    ...facts.nativeFollowing === true ? { nativeFollowing: true } : {},
     additions: additions.map(model => ({ ...model, ...derivations.effortsFor(model) === undefined
       ? {} : { reasoningUnavailable: false } })),
     reclaimed,

@@ -42,7 +42,10 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
   loader/volatile-update 监听使缓存失效。账号路由同机制（2026-09-24 起）。共享实现在
   llm-deepseek 传输包（`src/listing*.ts`，新增 `isBuiltInCatalog` 等导出），`DEFAULT_MODELS`
   的 contextWindow 已对齐官方列表 1_048_576。对插件的影响：给官方路由写自定义目录会停掉
-  原生跟随（见 models-catalog README）。
+  原生跟随（见 models-catalog README）；models-catalog 按同一判定（origin +
+  `isBuiltInCatalog`，依赖 `@deepseek-ai/dsh-llm-deepseek` 导出）识别跟随中的官方路由，
+  对 pi-ai `deepseek` 路由抑制 models.dev 建议并提示，官方行停用/端点改指网关/目录被
+  自定义后建议恢复。
 
 pi-ai 的 providers/data/<provider>.json 按 api → modelId 分组，含 input、reasoning、cost、
 contextWindow、maxTokens、thinkingLevelMap 等；.manifest.json 记录生成时间。

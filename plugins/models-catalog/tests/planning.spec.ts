@@ -295,3 +295,32 @@ describe('reverting', () => {
     expect(written(planRevert(facts()).next)).toBe('untouched')
   })
 })
+
+describe('the official-route following', () => {
+  it('suppresses additions and flags the preview while the official route follows', () => {
+    const plan = planRoute(facts({ nativeFollowing: true }), source())
+    expect(plan.preview.additions).toEqual([])
+    expect(plan.preview.nativeFollowing).toBe(true)
+    expect(written(plan.next)).toBe('untouched')
+    expect(plan.nextOwnedIds).toEqual([])
+  })
+
+  it('keeps owned entries intact while following, without touching the settings list', () => {
+    const plan = planRoute(facts({
+      nativeFollowing: true,
+      hasModelsList: true,
+      managed: true,
+      ownedIds: ['new-1'],
+      configuredEntries: [{ id: 'old-1' }, { id: 'new-1' }],
+    }), source())
+    expect(plan.preview.ownedIds).toEqual(['new-1'])
+    expect(plan.preview.additions).toEqual([])
+    expect(written(plan.next)).toBe('untouched')
+  })
+
+  it('does not flag routes the official route cannot cover', () => {
+    const plan = planRoute(facts(), source())
+    expect(plan.preview.nativeFollowing).toBeUndefined()
+    expect(plan.preview.additions.map(model => model.id)).toEqual(['new-1'])
+  })
+})

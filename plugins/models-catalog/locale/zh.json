@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "模型目录更新",
-    "description": "从 models.dev 补充模型目录"
+    "description": "从 models.dev 补充模型目录；主要面向第三方网关与其他供应商（官方端点 DeepSeek 新模型已原生跟随）"
   }
 }
