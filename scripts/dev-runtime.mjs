@@ -51,16 +51,16 @@ export async function ensureDevelopmentRuntime({
   // 原 launcher package.json 的依赖清单（launcher 退役后内联于此）：
   // dsh 运行时家族 + 常用工具，外加以 file: 链接的 plugin-ui（浏览器插件内联源）。
   const runtimeDependencies = injectedRuntimeDependencies ?? {
-    '@deepseek-ai/dsh': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-home-paths': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-llm': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-plugin-manager': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-sandbox-policy': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-terminal': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-terminal-bash': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-tool-terminal': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-tools': '0.2.1-rc.3',
-    '@deepseek-ai/dsh-user-approval': '0.2.1-rc.3',
+    '@deepseek-ai/dsh': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-home-paths': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-llm': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-plugin-manager': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-sandbox-policy': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-terminal': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-terminal-bash': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-tool-terminal': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-tools': '0.2.1-rc.5',
+    '@deepseek-ai/dsh-user-approval': '0.2.1-rc.5',
     '@deepseek-ai/schemastery': '3.18.5',
     '@dsh-kit/plugin-ui': `file:${join(root, 'packages', 'plugin-ui')}`,
     '@earendil-works/pi-ai': '1.1.0',
@@ -89,11 +89,13 @@ export async function ensureDevelopmentRuntime({
   const dshBin = join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   const installAnchor = join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
   // pnpm ≥11 的包内入口是 bin/pnpm.mjs（原生二进制布局，需配合 dev-suite.mjs 的
-  // shim 使用）；10.x 仍是 bin/pnpm.cjs。探测存在的那个。
+  // shim 使用）；10.x 仍是 bin/pnpm.cjs。探测存在的那个；首建路径安装后必须重探
+  // （安装前目录不存在，首探会错误回落到 pnpm.cjs，dev-suite 的 shim 随之失效）。
   const pnpmBin = join(runtime, 'node_modules', 'pnpm', 'bin')
-  const pnpmCli = existsSync(join(pnpmBin, 'pnpm.mjs'))
+  const probePnpmCli = () => existsSync(join(pnpmBin, 'pnpm.mjs'))
     ? join(pnpmBin, 'pnpm.mjs')
     : join(pnpmBin, 'pnpm.cjs')
+  let pnpmCli = probePnpmCli()
   if (!existsSync(dshBin) || !existsSync(installAnchor) || !existsSync(pnpmCli)) {
     const temporary = `${runtime}.${process.pid}.tmp`
     rmSync(temporary, { recursive: true, force: true })
@@ -110,6 +112,7 @@ export async function ensureDevelopmentRuntime({
     rmSync(runtime, { recursive: true, force: true })
     renameSync(temporary, runtime)
     repairRenamedLinks(join(runtime, 'node_modules'), temporary, runtime)
+    pnpmCli = probePnpmCli()
   }
   const descriptor = { fingerprint, runtime, dshBin, installAnchor, pnpmCli }
   writeBuildStamp(join(root, '.dev', 'runtime.json'), descriptor)

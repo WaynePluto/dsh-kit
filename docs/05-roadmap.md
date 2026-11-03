@@ -6,6 +6,17 @@
 
 ## 已实现
 
+- [x] dsh 0.2.1-rc.5 适配（2026-11-03）：基线自 0.2.1-rc.3 推进至 npm latest `0.2.1-rc.5`
+  （alpha 轨道 0.2.2-alpha.2 高风险未跟）。rc.4/rc.5 上游仅三处实质改动——推理展示预处理
+  （`reasoningText()` 剥离 `<signature>` 块、`conversation.chat.reasoning.body` 槽 owner props
+  新增 `rawText` 且 `text` 改为展示文本，见 [会话](dsh/conversation.md)）、View 页签 tooltip
+  溢出估算、ACP/MCP stdout 日志治理——套件组件零占用，契约核对零适配。机器侧三处同步
+  rc.5，删 lockfile 与全部 node_modules 重装后全树无多版本共存；全量静态检查 + 17 项检查表
+  脚本全绿（live dev 实例浏览器行 28/28）。顺带两项：dev-runtime 首建路径修复——fingerprint
+  换代新建 runtime 时 pnpmCli 在安装前探测、回落到不存在的 `pnpm.cjs` 使 dev-suite 的 shim
+  失效，改为安装后重探；proxy-check 的写入成功断言按 notify-check 同款精确签名豁免已知
+  CLI web 持久化缺陷（后续任务④）。
+
 - [x] 交互终端 SSH 默认保活（2026-11-03）：`interactive_terminal start` 的命令首个可执行项为
   `ssh`/`ssh.exe` 时，自动补 `ServerAliveInterval=15` 与 `ServerAliveCountMax=3`，命令显式值优先；
   `-vvv -E` 详细日志因包含连接元数据只在排障时按需开启。经其他 shell 或脚本间接启动的 SSH
@@ -331,7 +342,8 @@
 
 ## 后续任务
 
-- [ ] 0.2.1-rc.3 适配遗留（2026-10-25）：① 官方桌面实机验证待跑（重启桌面 →
+- [ ] 0.2.1-rc.3/rc.5 适配遗留（2026-10-25，rc.5 续查 2026-11-03）：① 官方桌面实机验证待跑
+  （桌面宿主已为 rc.5；重启桌面 →
   `node scripts/verify-suite-client.mjs --token <宿主打印的 token>` → 按 02-dsh-facts
   检查表点检，含 rc.3 新「更多」菜单与入口收起场景、深浅主题）；
   ② **已修复**：pnpm 10.17.0 在 Windows 把 `link:<盘符绝对路径>` 当相对路径生成坏符号
@@ -343,8 +355,8 @@
   ③ **已修复**：suite-first-enable-check 的守卫断言改为「要么守卫延迟、要么完整装载」，
   排除中间/失败态（组件包从套件自身 node_modules 解析时立即装载属合法结局）；
   ④ CLI web 宿主 `settings/mutate` 持久化缺陷（dual app-boot 实例致 bootstrapIncludes
-  miss，0.2.0-rc.2 起已知，见 docs/dsh/plugins.md）：rc.2/rc.3 复核均未修复，桌面 rc.3
-  实测正常；notify-check 按精确签名豁免，上游修复后移除豁免并复核。
+  miss，0.2.0-rc.2 起已知，见 docs/dsh/plugins.md）：rc.2/rc.3/rc.5 复核均未修复，桌面 rc.3
+  实测正常；notify-check 与 proxy-check 的写入断言均按精确签名豁免，上游修复后移除豁免并复核。
 - [ ] files-check 修复（2026-10-25，随 rc.3 适配发现并已修复）：宿主 mock 从 D16 前的
   `connection.rpc.handle` 对齐为 `connection.fetch.register` 精确路由，未认证断言改打
   同一 `/api/files` 路由（401 契约在 rc.3 完好）。

@@ -71,6 +71,17 @@ apply 对无关事件必须返回同一个引用，框架以 Object.is 判断是
   运行中、停止/错误及含中途输入的轮次保持外层展开，不妨碍局部过程组折叠。
 - 结束组摘要显示活动类别。
 
+### 推理文本展示（0.2.1-rc.4 起）
+
+出处：`packages/client/ui-chat/src/client/{reasoning-text.ts,chat/ReasoningRow.tsx,contract/slots.ts}`（0.2.1-rc.5 源码核对）。
+
+- 原生渲染前经 `reasoningText()` 预处理：剥离模型输出里的 `<signature>…</signature>` 块
+  及其后换行；剥离后无可显示内容的推理行整行隐藏。实时活动详情取同函数处理后的文本。
+- `conversation.chat.reasoning.body` 槽 owner props 为 `{ rawText, text, running }`：
+  `rawText` 是原始模型输出，`text` 是处理后的展示文本；Content Factory 入参
+  `ReasoningContentInput` 只接 `{ text, running, labels? }`，不再继承 owner props。
+  套件组件当前未占用该槽位。
+
 ## 会话统计弹窗
 
 出处：`packages/client/ui-chat/src/client/chat/{StatsPills.tsx,stat-dialog.ts}`、`locale.ts`。

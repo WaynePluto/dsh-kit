@@ -56,11 +56,9 @@ requestBody, fetch })`：在 `/api` 之下的精确 Fetch 路由，由官方 con
 `<profile>/node_modules/<name>` 一层。因此运行中首次启用套件（安装前启动的进程）时裸包名解析不到
 套件自带 `node_modules` 里的组件，loader 直接报 failed to import。守卫表达式与 loader 用同一
 baseUrl（profile 目录）`createRequire(...).resolve('<组件包>/package.json')` 探测，与真实导入同一判定，
-探测不到的行延迟到重启装载。（历史）模型屏障占位行曾用套件包子路径
-`@dsh-kit/dsh-plugin-suite/fallback` 保证首次启用当场可解析，随 D16 移除屏障行一并删除；
-子路径行不适用于有浏览器半的组件行——
+探测不到的行延迟到重启装载。子路径行不适用于有浏览器半的组件行：
 `packages/client/modules/src/client/manifest.ts` 的 `exactPackageSpecifier` 只认精确 `@scope/name`，
-子路径行会被客户端模块扫描跳过（丢浏览器半）。
+会被客户端模块扫描跳过（丢浏览器半；模型屏障占位行曾用套件包子路径保证首启可解析，已随 D16 删除）。
 
 profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖普通项目插件 config 需要更靠后的 patch，
 且目标行必须有稳定 id。用户可编辑的插件字段通过带 volatile Config 的插件行和 configForms 写入；
@@ -122,13 +120,12 @@ profile patch 执行时，末尾 overlay 插入的行还不存在，所以覆盖
   内嵌依赖的相对路径装载，并用 Bundle 选择状态跳过 HMR 卸载阶段的瞬时残留行。普通组件可以
   单独 disabled；models-catalog 与 model-capabilities 是一对运行时模型目录组件
   （共享 `modelsCatalogRuntime` 服务），不能只停一行。
-- （2026-10-14 随 D16 移除）套件 patch 曾有三条常驻覆写：`llm-pi-ai` 屏障行、connection 行
-  `inject` 扩 `[webRuntime, webServer]` 覆写与模型屏障占位行。cordis 4 的 service.ctx 经
-  shadow 解析到服务构造行、`connection.rpc.handle` 的通道归属 connection 行 fiber 是仍然成立的
-  上游事实（出处：`packages/client/connection/src/rpc-host.ts` 的 `get rpc()`），但为满足它而
-  覆写官方行不可行——套件启停重组合会重启被覆写行并级联 session-controller（file-upload
-  二次注册竞态）。私有 RPC 改走 `connection.fetch.register`（见上文），模型晚注册生效不需要
-  启动屏障。第三方 patch 层覆写官方行前必须先验证「该行随本层启停回退」的级联后果。
+- cordis 4 的 service.ctx 经 shadow 解析到服务构造行、`connection.rpc.handle` 的通道归属
+  connection 行 fiber 是仍然成立的上游事实（`packages/client/connection/src/rpc-host.ts` 的
+  `get rpc()`），但为满足它覆写官方行不可行——套件启停重组合会重启被覆写行并级联
+  session-controller（file-upload 二次注册竞态；D16 前的三条覆写行已全部移除）。
+  私有 RPC 走 `connection.fetch.register`（见上文），模型晚注册生效不需要启动屏障；
+  第三方 patch 层覆写官方行前必须先验证「该行随本层启停回退」的级联后果。
 - profile 初始化的 `allowBuilds` 逐包显式决定（缺项会让 pnpm 硬失败 ERR_PNPM_IGNORED_BUILDS）：
   开发 profile 的清单对齐官方桌面 `apps/desktop/src/project-manager.ts` 的 `workspaceFile`，
   原生模块（subprocess-local/koffi/node-pty/fs-ext）置 true，纯 JS/预编译包置 false。
@@ -169,10 +166,9 @@ always mounted）：宿主半以默认 500ms stat 轮询全部已装载组件的
 出处：`packages/client/web/src/boot-page.ts`、`src/boot.ts`、
 `packages/client/ui-renderer/src/client/index.ts`；对照 0.2.0-rc.2 发布的 Web 前端产物确认。
 
-`AppWebEntry` 构造时创建 `BootPage`（`Loading plugins…`），随后在当前浏览器文档里
-预取、加载并激活客户端插件，最后交给 `uiRenderer` 挂载工作台；没有最短展示时间。
-未看到启动提示不等于流程被跳过：热缓存下 BootPage 可能在首绘前就被替换。
-后台进程“已可进入”不代表浏览器插件已经加载完成，排查仍需看渲染进程日志。
+`AppWebEntry` 构造时创建 `BootPage`（`Loading plugins…`），随后在当前浏览器文档里预取、加载并激活
+客户端插件，最后交给 `uiRenderer` 挂载工作台；没有最短展示时间。未看到启动提示不等于流程被跳过
+（热缓存下 BootPage 可能在首绘前就被替换）；后台进程“已可进入”不代表浏览器插件已加载完成。
 
 ## index.html 注入
 
@@ -183,10 +179,9 @@ JSON 数据，serve 形态渲染进 index.html 文本，静态 worker 形态由 
 按同一顺序执行。行类型：`global`（先于后续 script 行给 globalThis 赋值）、`script`
 （内联经典脚本，text 不得含 `</script`）、`script-src`/`script-preload`、`style`、`html`。
 
-head 位置的经典脚本 parser-blocking，先于页面 combo 模块求值。行是给宿主插件的通用能力：
-当前 dsh-kit 组件没有再使用它（原先用它注入 `__DSH_TRANSPORT__.ownsHost` 与旧 WebKit 垫片，
-随远程能力删除）。如果将来要用，注意函数体 `toString()` 序列化限制：必须自包含、
-不引用模块作用域，也不能包含 `</script`。
+head 位置的经典脚本 parser-blocking，先于页面 combo 模块求值。行是给宿主插件的通用能力，
+当前 dsh-kit 组件没有使用它。将来要用须注意函数体 `toString()` 序列化限制：自包含、
+不引用模块作用域、不能含 `</script`。
 
 原生启动页承担认证交接之后的浏览器插件加载等待（见上文「原生客户端加载页」）。
 创建 DOM 不等于立即绘制；不能用 index 注入或 rAF 中看到该节点来保证用户一定看得到。
@@ -227,8 +222,10 @@ config-editor 行从 profile 的 hoisted node_modules 解析出第二份 app-boo
 `reload()` 有 `hmr === undefined → return []` 守卫，config-editor 没有——这是上游两处不对称。
 探针实测：真实 dsh 进程内 `reconcileProfilePatches(ctx.root)` 在 boot 实例上 WeakMap 命中、
 在 profile 解析实例上 miss。CLI 冒烟（scripts/notify-check.mjs 的「开关能被写入」项）按精确
-签名豁免该缺陷（桌面宿主正常），其余写入失败仍响亮报错。0.2.1-rc.2 与 0.2.1-rc.3 复核均未
-修复；官方桌面 rc.3 实测设置持久化正常（profile patch 2026-10-25 有写入），升级 dsh 时复核。
+签名豁免该缺陷（桌面宿主正常），其余写入失败仍响亮报错。0.2.1-rc.2、rc.3 与 rc.5 复核均未
+修复（rc.5 源码 app-boot/config-editor 无改动）；官方桌面 rc.3 实测设置持久化正常（profile
+patch 2026-10-25 有写入），升级 dsh 时复核。`scripts/proxy-check.mjs` 的写入成功断言自
+rc.5 起同样按精确签名豁免（notify-check 同款），其余拒绝类断言不受豁免影响。
 
 ## 槽位与导航
 
@@ -282,17 +279,15 @@ config-editor 行从 profile 的 hoisted node_modules 解析出第二份 app-boo
   实例：`plugins/quick-commands/src/client/insert.ts`。
 - conversation.chat.turnTail 是 chain，不适合保证多个插件并列显示。
 
-settings.section 没有 icon 字段，导航 shell 按 id 选择图标，未知 id 为齿轮。
-出处：`packages/client/ui-settings-general/src/client/SettingsRoot.tsx`。
-项目的代理、通知、全局提示词和浏览器日志使用局部导航标记和注入样式，不替换 React 节点。
-当前图标映射为 `IconGlobeOutlineMedium`、`IconAlarmClockOutlineMedium`、`IconListPenOutlineMedium` 和
-`IconCodeOutlineMedium`；`settings.section` 没有 icon 字段，因此插件调用这些原生 component 并将
-返回的 SVG element 序列化成导航 mask。已安装的 0.2.0-rc.2
-`@deepseek-ai/dsh-client-ui-primitives/lib/index.js` 中，这些 component 返回的 React element
-先以纯函数 Artwork 为 `type`，Artwork 再返回原生 `<svg>`；项目公共 helper 必须有界展开函数包装，
-不能只接受 `type === 'svg'`，否则四个设置页插件启动即失败。
-公共 helper 使用 dsh shell 已渲染的直接子 SVG 作为 mask 载体，并隐藏其原生子路径，避免伪元素在
-React 重建或旧 WebKit flex 布局中丢失。升级检查包含 `navCell`/`navLabel` 的局部类名；不匹配时退回默认图标。
+settings.section 没有 icon 字段，导航 shell 按 id 选择图标，未知 id 为齿轮；项目的代理、通知、
+全局提示词和浏览器日志用局部导航标记和注入样式，不替换 React 节点（出处：
+`packages/client/ui-settings-general/src/client/SettingsRoot.tsx`）。
+当前图标映射为 `IconGlobeOutlineMedium`、`IconAlarmClockOutlineMedium`、`IconListPenOutlineMedium`
+和 `IconCodeOutlineMedium`：插件调用这些原生 component 并把返回的 SVG element 序列化成导航
+mask。element 先以纯函数 Artwork 为 `type`、Artwork 再返回原生 `<svg>`（0.2.0-rc.2 产物核对），
+项目公共 helper 必须有界展开函数包装、不能只接受 `type === 'svg'`，否则四个设置页插件启动即
+失败。helper 以 dsh shell 已渲染的直接子 SVG 为 mask 载体并隐藏原生子路径；升级检查含
+`navCell`/`navLabel` 局部类名，不匹配时退回默认图标。
 
 ### 全局面板（侧边栏行 + 主列页面）
 
@@ -536,8 +531,7 @@ token 拼写和实际值是两件事，需用真实页面 getComputedStyle 检�
 
 ### 原生设置面板与桌面顶部留白
 
-出处：`packages/client/ui-settings-general/src/client/SettingsRoot.module.css`；已对照
-0.2.0-rc.2 源码核对本节公式。
+出处：`packages/client/ui-settings-general/src/client/SettingsRoot.module.css`（0.2.0-rc.2 源码核对）。
 设置 overlay 为 fixed 的居中 flex；面板高度为
 `min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top,24px))))`
 （`--dsh-frame-overlay-top` 由 `packages/client/ui-layout/src/client/AppFrame.module.css` 发布：
