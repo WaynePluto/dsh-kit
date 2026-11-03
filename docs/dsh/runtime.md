@@ -108,7 +108,9 @@ dsh 提供 PTY registry、bash/pwsh 后端、node-pty 和六个 terminal_* 实�
 项目插件直接实例化 TerminalSessionService，backend 用 ctx.plugin，wrapper 捕获上游 apply 的六次注册。
 缺少、重复或未知注册均整组失败；模型只看见 interactive_terminal 的 start/write/read/list/interrupt/close。
 start 合并创建与前台发送，write 向既有会话续发输入（submit=false 表示只敲字符不回车），
-interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。
+interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。直接以 `ssh`/`ssh.exe` 开头的 start 命令
+默认补 `ServerAliveInterval=15` 与 `ServerAliveCountMax=3`，显式值优先；`-vvv -E` 诊断日志只按需开启，
+不默认持久记录连接元数据。命令首个可执行项不是 `ssh`/`ssh.exe`（例如经其他 shell 或脚本间接启动）时不做字符串改写。
 上游 terminal_open 经 workingDirectory.ensure 解析会话目录；该服务由会话执行环境按会话提供
 （dsh 生产代码不全局 provide），套件全局作用域拿不到——wrapper 的捕获 facade 在 ctx 链上
 没有该服务时兜底进程 cwd，有则原样透传。

@@ -12,6 +12,38 @@ import {
 } from './interactive-terminal-presentation.js'
 import { requiredString, optionalNumber, optionalString, optionalBoolean } from './interactive-terminal-contract.js'
 
+/** 直接 SSH 命令的默认协议保活间隔。 */
+export const SSH_KEEPALIVE_INTERVAL_SECONDS = 15
+
+/** 连续多少次协议保活失败后由 OpenSSH 判定连接失效。 */
+export const SSH_KEEPALIVE_COUNT_MAX = 3
+
+const DIRECT_SSH_PATTERN = /^(\s*)(ssh(?:\.exe)?)(?=\s|$)/i
+
+/** 判断命令是否已显式设置一个 OpenSSH `-o` 选项。 */
+function hasSshOption(command: string, name: string): boolean {
+  const pattern = new RegExp(`(?:^|\\s)-o\\s*["']?\\s*${name}(?:\\s*=|\\s+)`, 'i')
+  return pattern.test(command)
+}
+
+/** 给直接启动的 OpenSSH 命令补默认保活；显式参数始终优先。 */
+export function withSshKeepAlive(command: string): string {
+  const match = DIRECT_SSH_PATTERN.exec(command)
+  if (match === null) return command
+
+  const options: string[] = []
+  if (!hasSshOption(command, 'ServerAliveInterval')) {
+    options.push(`-o ServerAliveInterval=${SSH_KEEPALIVE_INTERVAL_SECONDS}`)
+  }
+  if (!hasSshOption(command, 'ServerAliveCountMax')) {
+    options.push(`-o ServerAliveCountMax=${SSH_KEEPALIVE_COUNT_MAX}`)
+  }
+  if (options.length === 0) return command
+
+  const executableEnd = match[0].length
+  return `${command.slice(0, executableEnd)} ${options.join(' ')}${command.slice(executableEnd)}`
+}
+
 /** 捕获上游 terminal contract 后只注册一个组合工具。 */
 export function applyInteractiveTerminalTools(
   ctx: Context,
@@ -46,7 +78,7 @@ export function applyInteractiveTerminalTools(
       const action = actionOf(input)
       switch (action) {
         case 'start': {
-          const command = requiredString(input, 'command')
+          const command = withSshKeepAlive(requiredString(input, 'command'))
           let sessionId = optionalString(input, 'terminalId')
           let session: unknown = null
           if (sessionId === undefined) {

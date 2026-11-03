@@ -14,6 +14,11 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 模型工具有 start/write/read/list/interrupt/close；页面只能查看、发送输入和中断，不能创建或关闭终端。
 未创建终端时不显示面板。
 
+直接以 `ssh` 或 `ssh.exe` 开头的 start 命令默认补
+`ServerAliveInterval=15` 与 `ServerAliveCountMax=3`；命令显式设置任一选项时保留其值。
+排查 SSH 断线时由模型按需添加 `-vvv -E <日志路径>`，默认不持久记录包含连接元数据的详细日志。
+命令首个可执行项不是 `ssh`/`ssh.exe`（例如经其他 shell 或脚本间接启动）时不做字符串改写，应显式传入保活参数。
+
 ## 使用边界
 
 只用于预期必须让用户在可见终端直接输入的命令。普通 Git、构建、测试、脚本、长时间运行、持续输出、

@@ -45,7 +45,10 @@ export {
 export type { InteractiveTerminalAction } from './interactive-terminal-contract.js'
 
 /** interactive_terminal wrapper 的显式 re-export。 */
-export { applyInteractiveTerminalTools, interactiveTerminalTools } from './interactive-terminal-tools.js'
+export {
+  SSH_KEEPALIVE_COUNT_MAX, SSH_KEEPALIVE_INTERVAL_SECONDS,
+  applyInteractiveTerminalTools, interactiveTerminalTools, withSshKeepAlive,
+} from './interactive-terminal-tools.js'
 
 /** terminal backend public helper 的显式 re-export。 */
 export {

@@ -6,6 +6,11 @@
 
 ## 已实现
 
+- [x] 交互终端 SSH 默认保活（2026-11-03）：`interactive_terminal start` 的命令首个可执行项为
+  `ssh`/`ssh.exe` 时，自动补 `ServerAliveInterval=15` 与 `ServerAliveCountMax=3`，命令显式值优先；
+  `-vvv -E` 详细日志因包含连接元数据只在排障时按需开启。经其他 shell 或脚本间接启动的 SSH
+  不做字符串改写。新增默认补齐、显式覆盖与非直接 SSH 保持不变的回归测试。
+
 - [x] 快捷指令（quick-commands，2026-11-02，D25）：composer 工具排左侧组新组件——官方
   `conversation.input.left` list 槽（session 作用域，[+] 与 permission/plan 之后，0.2.1-rc.3
   源码核实的公开座位）注册一枚复刻原生 `.add` 样式的圆形按钮（IconListPenOutlineMedium

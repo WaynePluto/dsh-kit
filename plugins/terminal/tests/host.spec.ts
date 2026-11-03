@@ -491,6 +491,21 @@ describe('interactive terminal tool wrapper', () => {
       expect(`${tool.description}\n${sections[0]?.text}`).toContain(text)
     }
   })
+  it('sends a direct SSH start with default keepalive options', async () => {
+    const { ctx, tools } = recordingContext()
+    const calls: { name: string, args: unknown }[] = []
+    applyInteractiveTerminalTools(ctx, {}, upstreamFor(calls))
+    const tool = tools[0] as { execute: (args: unknown, exec: unknown) => Promise<Record<string, unknown>> }
+    await tool.execute({ action: 'start', command: 'ssh user@server' }, { agent: {}, signal: new AbortController().signal })
+    expect(calls[1]).toStrictEqual({
+      name: 'terminal_send',
+      args: {
+        sessionId: 'pty-1',
+        text: 'ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=3 user@server',
+        submit: true,
+      },
+    })
+  })
   it('combines start and maps the remaining actions to the upstream implementations', async () => {
     const { ctx, tools } = recordingContext()
     const calls: { name: string, args: unknown }[] = []

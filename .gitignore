@@ -4,6 +4,7 @@
 .dev/
 
 node_modules/
+.pnpm-store/
 dist/
 release/
 *.tsbuildinfo

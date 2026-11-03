@@ -25,6 +25,8 @@ export const INTERACTIVE_TERMINAL_GUIDANCE =
   + 'credential cache for later explicit commands in that task. Send follow-up commands to that same terminal with write '
    + '(submit=false types without pressing Enter) instead of opening a new one. Do not run '
   + 'sudo -i, sudo su, su root, or an equivalent persistent root shell, and do not modify sudoers or create a root control channel. '
+  + 'Direct ssh starts receive ServerAliveInterval=15 and ServerAliveCountMax=3 unless the command already sets them. For SSH diagnostics, '
+  + 'add -vvv and -E with an explicit bounded log path; verbose SSH logging is not enabled by default because it records connection metadata. '
   + 'The user supplies sensitive input through the visible terminal panel; do not put secrets in tool arguments.'
 
 /** interactive_terminal 的完整说明；英文内容是 model-facing 文案，保持不翻译。 */
@@ -37,7 +39,8 @@ export const INTERACTIVE_TERMINAL_DESCRIPTION =
   + 'non-interactive, use pwsh or bash. Use the interactive terminal for sudo even if the cache may avoid a prompt. State the exact '
   + 'command and impact before asking the user to type a password; a task may reuse the system cache in the same terminal. Once such a '
   + 'session exists, prefer write over start for follow-up commands in the same terminal instead of opening a new one; do not start '
-  + 'sudo -i, sudo su, su root, or another persistent root shell.'
+  + 'sudo -i, sudo su, su root, or another persistent root shell. Direct ssh starts receive ServerAliveInterval=15 and '
+  + 'ServerAliveCountMax=3 unless explicitly configured; use -vvv and -E with an explicit log path only while diagnosing SSH failures.'
 
 /** 已废弃别名；使用 {@link INTERACTIVE_TERMINAL_DESCRIPTION}。 */
 export const INTERACTIVE_TERMINAL_OPEN_DESCRIPTION = INTERACTIVE_TERMINAL_DESCRIPTION
