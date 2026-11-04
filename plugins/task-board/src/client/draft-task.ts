@@ -9,8 +9,9 @@
  * 卡片标题是纯展示字段，不参与任何回填。
  * 不触碰宿主半会话 API，不写会话事件。
  *
- * 上游契约（0.2.1-rc.5）：`packages/client/ui-conversation/src/client/service.ts`
- * 的 `ConversationController.createDrafts()` 与 `contract/input.ts` 的
+ * 上游契约（0.2.2-rc.1）：`packages/client/ui-conversation/src/client/service.ts`
+ * 的 `ConversationController.createDrafts()`（第三参 uploadImages 开图片预上载）与
+ * `contract/input.ts` 的
  * `SessionInput.addAttachments()`；跨 fiber 取服务走 `ctx.get('conversation')`
  * （`ui-workspace/src/client/navigation.ts` 同款）。
  *
@@ -28,7 +29,8 @@ export interface DraftAttachmentRef {
 
 /** conversation 服务上用到的最小附件面（运行时由 `ctx.get('conversation')` 提供）。 */
 export interface ConversationAttachmentFace {
-  createDrafts(sessionId: SessionId, files: readonly File[]): readonly DraftAttachmentRef[]
+  /** dsh 0.2.2 起第三参 uploadImages 决定图片草稿是否走预上载；主会话输入与原生 composer 一致取 true。 */
+  createDrafts(sessionId: SessionId, files: readonly File[], uploadImages: boolean): readonly DraftAttachmentRef[]
   releaseDraftAttachments(attachments: readonly DraftAttachmentRef[]): void
 }
 
@@ -97,7 +99,7 @@ export async function draftTaskToWorkspace(
   input.setDraft(trimmed)
   if (images.length > 0 && deps.attachments !== undefined) {
     const files = images.map(cardImageToFile)
-    const drafts = deps.attachments.createDrafts(sessionId, files)
+    const drafts = deps.attachments.createDrafts(sessionId, files, true)
     if (drafts.length > 0 && !input.addAttachments(drafts.map(draft => draft.id))) {
       // 提交期锁住或 scope 已换：不要让 object URL 与运行时附件泄漏。
       deps.attachments.releaseDraftAttachments(drafts)

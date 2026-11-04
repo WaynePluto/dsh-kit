@@ -1,7 +1,7 @@
 # 模型与代理
 
 基线见 [源码依据](../02-dsh-facts.md)。使用入口见 [插件索引](../plugins.md)。
-以下路径相对 dsh 仓库根，项目实现明确标注。
+以下路径相对 dsh 仓库根，项目实现明确标注。除另有标注外，本页结论核对于 dsh `0.2.2-rc.1`。
 
 ## Copilot 登录
 
@@ -36,6 +36,20 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
 - schemastery 会物化空 models:[]，是否显式配置要判断数组且长度大于 0。
 - listConfigurableProviders 包含未配置供应商，已配置路由应从 settings.providers 取。
 - listModels/resolveModelInfo 返回生效后的目录，不能当纯净内置快照。
+- 供应商级图片上限（0.2.2，`packages/llm/llm-pi-ai/src/config.ts`）：`maxRequestImages`
+  （默认 50）与 `imageOffloadCountQuantum`（默认 10，不大于 maxRequestImages）；请求内图片
+  occurrence 超限时报 `IMAGE_OFFLOAD_REQUIRED`，指名还需卸载多少个最旧 occurrence，宿主按
+  量子重写请求前缀后重试。未声明容量的模型回退值放大：`DEFAULT_CONTEXT_WINDOW`
+  262144 → 1_000_000、`DEFAULT_MAX_TOKENS` 32768 → 128_000。
+- 目录变化通知（0.2.2）：`llm/models-updated` 事件按 provider 广播目录变化
+  （`packages/llm/llm/src/types.ts`；llm-deepseek 在官方列表跟随刷新时 emit，
+  `llm-deepseek/src/host.ts`）；模型条目可带 `LlmModelBadge`（tone:
+  neutral/info/success/warning）驱动 UI 徽标链路。插件改运行时 map 或写配置后监听该事件
+  刷新自身缓存即可，不必轮询。
+- ui-settings-models 模型行组件重构并支持拖拽排序（`ModelRow` 带 `data-row-key`/
+  `data-dragging` 等钩子，`.modelEntry`/`.modelRow`/`.modelAdvanced` 类名保留）；
+  `settings.models.*` 三个子槽契约未变。model-capabilities 的 portal 挂点复核以新 DOM
+  钩子为准（0.2.2-rc.1 静态核对，待实机验证）。
 - **官方 DeepSeek 路由跟随 `GET /models`（0.2.1-rc.3 起，API 密钥路由）**：llm-deepseek-api-key
   仅在 origin 为 `https://api.deepseek.com` 且 `models` 等于内置目录时跟随官方列表（`x-api-key`
   鉴权）；自定义 `models` 整份优先并停止列表请求；缓存按端点与 key 指纹存内存，过期后台刷新，
@@ -47,8 +61,14 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
   对 pi-ai `deepseek` 路由抑制 models.dev 建议并提示，官方行停用/端点改指网关/目录被
   自定义后建议恢复。
 
-pi-ai 的 providers/data/<provider>.json 按 api → modelId 分组，含 input、reasoning、cost、
-contextWindow、maxTokens、thinkingLevelMap 等；.manifest.json 记录生成时间。
+pi-ai 依赖为 `@earendil-works/pi-ai@^1.3.0`（dsh `packages/llm/llm-pi-ai/package.json`）。
+1.3.0 起目录数据是生成式聚合：`providers/*.models.js` 导出与 `models.generated.js` 的
+`MODELS` 共享同一对象引用，dsh `catalogModels()` 经 `getBuiltinModels()` 读的就是这一份
+（`packages/llm/llm-pi-ai/src/catalog.ts`）；runtime map 变更语义保持，「先改同一份 map、
+再写 dsh 配置」的顺序不变。pi-ai 1.3.0 行为（包内 `src/context.ts`、`src/stream.ts`）：
+对话中途的 system 消息在目标协议不支持时改写为 user 角色的 `<system-reminder>` 块；
+工具收尾时 completed tool arguments 非法直接抛 `MALFORMED_RESPONSE`。依赖 mid-convo
+system 原样透传或容错解析工具参数的插件需复核。
 
 ### 删空模型列表会让该供应商卡片消失
 
@@ -93,15 +113,17 @@ models.dev 提供 reasoning_options，但 effort/toggle/budget_tokens 形态不�
 Copilot 中 gpt-6-astra 是 openai-completions、gpt-5.6-sol 是 openai-responses；直连 OpenAI 与 Copilot 的同名模型也可能有不同的 off/minimal 映射。
 因此不能按 GPT/Claude/Grok 前缀直接复用直连供应商的推理档位。用户覆盖优先；无可信近邻时保留无档位并提示。
 已有插件条目在源检查后仅展示可更新项，须用户显式应用才更新；官方目录收录时仍只回收插件溯源，不自动补回被用户卸载的包。
-模型同系列的事实取 pi-ai `providers/data/<route>.json`，新模型推理候选取 models.dev `reasoning_options`；dsh 解析依据为 `packages/llm/llm-pi-ai/src/{catalog,config}.ts`。
+模型同系列的事实取 pi-ai 生成式目录（1.3.0 起 `models.generated.js`/`providers/*.models.js`，
+见上文），新模型推理候选取 models.dev `reasoning_options`；dsh 解析依据为
+`packages/llm/llm-pi-ai/src/{catalog,config}.ts`。
 
 models 是持久的整份替换，卸载插件不会自动撤销配置。切回未加载该插件的官方 profile 前，
 应使用“删除本插件添加的模型”，避免未知混合协议模型无法恢复。
 
-在 dsh `0.1.7-rc.1` 中，`llm-pi-ai` 读取已存但因目录漂移而不可服务的模型配置时（`assertServiceable` 只校验新建或变更路由），会保留该路由和编辑入口，
-并在提供方目录显示诊断；只有新建或实际变更的路由仍按完整目录严格校验。项目 models-catalog 的恢复流程仍须先于
-写入校验运行，copilot-auth 使用的 `llm-pi-ai/github-copilot` 凭据格式不变。升级后的项目构建与冒烟验证见
-[源码依据](../02-dsh-facts.md)。
+`llm-pi-ai` 读取已存但因目录漂移而不可服务的模型配置时（`assertServiceable` 只校验新建或变更
+路由），会保留该路由和编辑入口，并在提供方目录显示诊断；只有新建或实际变更的路由仍按完整目录
+严格校验。项目 models-catalog 的恢复流程仍须先于写入校验运行，copilot-auth 使用的
+`llm-pi-ai/github-copilot` 凭据格式不变。升级后的项目构建与冒烟验证见 [源码依据](../02-dsh-facts.md)。
 
 ## 自定义模型能力
 
@@ -121,6 +143,24 @@ model-capabilities 编辑已有非空 models 列表的图片/推理字段；自�
 pi-ai 运行时 map，再将 api 镜像到 dsh 保留的 models/modelOverrides 字段，优先级为用户覆盖 >
 pi-ai 默认 > models-catalog 推断。使用项目 provider-card 子槽与 React portal 挂到原生模型展开行，
 保存后按 mutate 布尔结果确认；原生 DOM 不匹配时不显示附加控件，不能把字段写到错误模型。
+
+## 请求头扩展点
+
+出处：`packages/llm/llm-pi-ai/src/index.ts`（waterfall 声明与 adapter `prepareHeaders`，0.2.2）。
+
+`llm-pi-ai/request-headers` 是第三方改请求头的官方扩展点：waterfall 入参
+`(request: PiAiRequestHeaderContext, headers, next)`，返回最终 `Headers`；adapter 在每次
+请求的 `prepareHeaders` 阶段调用。需要注入鉴权头或网关标记的插件用
+`ctx.on('llm-pi-ai/request-headers', …)`，不必再包 fetch 或 dispatcher。
+
+## 请求配置与模型选择
+
+出处：`packages/core/agent/src/runtime-types.ts`、`packages/core/agent-loop/src/agent.ts`（0.2.2）。
+
+`agent/request` waterfall 标记 deprecated（保留给既有监听者，不建议新增）：模型与推理档位
+必须在 step 准备前经 `agent.model.select(selection)` 固定；waterfall 提案与已固定 selection
+不一致（provider/model/reasoningEffort 任一）直接抛错终止请求。模型选择按 step 准备时点
+冻结，每请求级控制覆写没有替代 API。
 
 ## 常用模型
 
@@ -151,13 +191,13 @@ span）；composer 行宽不足进入紧凑模式时复用 `--dsh-composer-model
 
 出处：`apps/cli/src/profile-boot.ts`、`packages/util/http-proxy/src/{policy,install}.ts`、
 `packages/web/web-fetch-http/src/index.ts`；项目实现见 `plugins/proxy/src/{dispatcher,settings,shared}.ts`。
-已安装 `0.1.7-rc.1` 产物对应 `@deepseek-ai/dsh/lib/profile-boot-*.js`、
-`@deepseek-ai/dsh-http-proxy/lib/index.js` 和 `@deepseek-ai/dsh-web-fetch-http/lib/index.js`。
 
 dsh 在 profile 插件装载前通过 `installProxyFromEnvironment` 解析启动环境中的
 HTTP_PROXY、HTTPS_PROXY、ALL_PROXY、NO_PROXY（大小写均支持），安装进程级策略与 undici 全局 dispatcher。
-原生 `web-fetch-http` 按目标 URL 调用 `proxyRouteFor`，代理路由与直连时的安全检查分别处理；
-不能把网页抓取描述成只依赖普通 `fetch` 的 dispatcher。loopback 始终绕过代理。
+0.2.2 起 `web-fetch-http` 不再自带网络层（`packages/web/web-fetch-http/src/network.ts`
+整文件删除，DNS pin、公网目标校验与 per-request dispatcher 一并移除）：抓取就是进程级
+dispatcher 上的 undici fetch。`proxyRouteFor` 仍在 `packages/util/http-proxy`，下方叠加层
+的策略/直连切换同时约束原生抓取与普通 `fetch`。loopback 始终绕过代理。
 
 项目的「设置 → 代理」在官方策略之上叠加可热更新的策略，配置保存在 profile 的 `proxy` 插件行
 volatile Config（`dsh-plugin-proxy` 是文案命名空间）：

@@ -6,12 +6,12 @@
 const STYLE_ID = 'dsh-plugin-files-styles'
 const CSS = `
 .dsh-files-native-note{flex:none;width:100%;box-sizing:border-box;padding:5px 12px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.4;border-bottom:.5px solid var(--dsw-alias-border-l1)}
-[data-files-state] [data-files-entry]>button[data-files-git-marker]{position:relative}
-[data-files-state] [data-files-entry]>button[data-files-git-marker]::after{content:attr(data-files-git-marker);display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:16px;margin-left:auto;font-family:var(--dsw-font-markdown-code-block-font-family,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11px;font-weight:650;line-height:1}
-[data-files-state] [data-files-entry]>button[data-files-git-status=modified]::after{color:var(--dsw-alias-state-warn-primary)}
-[data-files-state] [data-files-entry]>button[data-files-git-status=added]::after,[data-files-state] [data-files-entry]>button[data-files-git-status=untracked]::after,[data-files-state] [data-files-entry]>button[data-files-git-status=copied]::after{color:var(--dsw-alias-state-success-primary)}
-[data-files-state] [data-files-entry]>button[data-files-git-status=renamed]::after{color:var(--dsw-alias-state-business-primary)}
-[data-files-state] [data-files-entry]>button[data-files-git-status=deleted]::after,[data-files-state] [data-files-entry]>button[data-files-git-status=conflict]::after{color:var(--dsw-alias-state-error-primary)}
+[data-files-state] [data-files-entry] button[data-files-git-marker]{position:relative}
+[data-files-state] [data-files-entry] button[data-files-git-marker]::after{content:attr(data-files-git-marker);display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:16px;margin-left:auto;font-family:var(--dsw-font-markdown-code-block-font-family,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11px;font-weight:650;line-height:1}
+[data-files-state] [data-files-entry] button[data-files-git-status=modified]::after{color:var(--dsw-alias-state-warn-primary)}
+[data-files-state] [data-files-entry] button[data-files-git-status=added]::after,[data-files-state] [data-files-entry] button[data-files-git-status=untracked]::after,[data-files-state] [data-files-entry] button[data-files-git-status=copied]::after{color:var(--dsw-alias-state-success-primary)}
+[data-files-state] [data-files-entry] button[data-files-git-status=renamed]::after{color:var(--dsw-alias-state-business-primary)}
+[data-files-state] [data-files-entry] button[data-files-git-status=deleted]::after,[data-files-state] [data-files-entry] button[data-files-git-status=conflict]::after{color:var(--dsw-alias-state-error-primary)}
 .dsh-files-preview-tab-title{display:inline-flex;flex:1 1 auto;align-items:center;gap:5px;min-width:0;max-width:100%;overflow:hidden;line-height:1.4;white-space:nowrap}
 .dsh-files-preview-tab-title svg{display:block;flex:none}
 .dsh-files-preview-tab-title-temporary{font-style:italic}

@@ -7,10 +7,10 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import { IconGlobeOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import { CHANNEL, ENTRY_ID, NAMESPACE } from '../shared.js'
 import type { ProxySettings, ProxyTestResult } from '../shared.js'
 import { ProxySection } from './ProxySection.js'
-import { installNavGlyph } from './nav-glyph.js'
 import { en, zh } from './locales.js'
 import type { ProxyKey } from './locales.js'
 import { callKitChannel } from '@dsh-kit/plugin-rpc'
@@ -30,6 +30,9 @@ const ORDER = 60
 
 /** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。（涉及：`configForms`、`slots`、`locale`、`connection`） */
 export const inject = ['slots', 'locale', 'connection', 'remote', 'configForms']
+
+/** settings.section.icon 行渲染；dsh 0.2.2 起官方槽按 { size, active } 供应展示参数，Medium 图标族自带 16px 尺寸。 */
+const ProxyNavIcon = () => <IconGlobeOutlineMedium />
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export class ProxyChannelError extends Error {}
@@ -56,8 +59,11 @@ export function apply(ctx: Context): void {
     inject: () => ({ form, test }),
   }, ProxySection))
 
-  // shell 自己绘制导航图标且没有我们的槽位，因此从外部把
-  // 地球图标画到本行（见 nav-glyph.ts）。
-  ctx.effect(installNavGlyph, 'proxy: settings nav glyph')
+  // dsh 0.2.2 的官方导航图标槽：注册 id 与 settings.section 行同 id，id 不匹配永不渲染；
+  // 未注册时 shell 保留默认 glyph，因此停用本插件后导航图标自动回落。
+  ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+    name: 'settings.section.icon',
+    id: NAMESPACE,
+  }, ProxyNavIcon))
 }
 

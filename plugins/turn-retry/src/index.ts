@@ -7,7 +7,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { z as zod } from 'zod'
 // 仅类型：激活本插件读取的 Agent/session projection Context merge。
 import type {} from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -98,6 +98,17 @@ function isLiveRoot(ctx: Context, agent: Agent): boolean {
   return ctx.agents.roots().includes(agent)
 }
 
+// dsh 0.2.2 起投影注册返回 Promise<ProjectionHandle>，registry 级 `stateOf(session, key)` 已弃用。
+// handle 按 ctx 弱引用保存：retrySession 与 apply 共享同一注册，测试的多 ctx 互不串扰。
+const projectionHandles = new WeakMap<Context, Promise<ProjectionHandle<TurnRetryState>>>()
+
+/** 读取本插件注册的 durable projection；注册未就绪或 ctx 未注册时返回 undefined。 */
+async function readPending(ctx: Context, session: Agent['session']): Promise<TurnRetryState | undefined> {
+  const ready = projectionHandles.get(ctx)
+  if (ready === undefined) return undefined
+  return await ready.then(handle => handle.stateOf(session))
+}
+
 /**
  * 重驱动一个失败或停止的 session turn。
  * 先恢复 live agent，再检查 root、idle、pending input 和 projection；拒绝时不修改 queue。
@@ -116,7 +127,7 @@ export async function retrySession(ctx: Context, sessionId: string): Promise<Ret
   if (!isLiveRoot(ctx, agent)) return { started: false, reason: 'subagent' }
   if (agent.status !== 'idle') return { started: false, reason: 'busy' }
   // 读取 projection 作为 button 和 guard 的 single source of truth。
-  const pending = ctx.sessionProjections.stateOf(agent.session, PROJECTION_KEY)
+  const pending = await readPending(ctx, agent.session)
   if (pending === undefined || pending === null) return { started: false, reason: 'not-failed' }
   // 保护 nextTurn queue：已有普通输入时不能让 retry notice 抢先发送。
   const pendingInput = agent.inbox.nextTurn.length > 0
@@ -166,8 +177,9 @@ export async function dispatch(
 }
 
 /** 注册 durable projection 和 authenticated retry channel。 */
-export function apply(ctx: Context): void {
-  ctx.sessionProjections.register({
+export async function apply(ctx: Context): Promise<void> {
+  // 注册返回 Promise handle；发布消费方（RPC 通道）前必须先就绪，消费方一律走 handle.stateOf。
+  const ready = ctx.sessionProjections.register({
     key: PROJECTION_KEY,
     // stateVersion 变化时让 dsh 丢弃旧 shape；`view` 返回 projection 完整值而非 delta。
     stateVersion: 2,
@@ -180,6 +192,7 @@ export function apply(ctx: Context): void {
       view: state => state,
     },
   })
+  projectionHandles.set(ctx, ready)
 
   const dispose = registerKitChannel(
     ctx,
@@ -187,4 +200,5 @@ export function apply(ctx: Context): void {
     async (endpoint, requestPayload) => await dispatch(ctx, endpoint, requestPayload),
   )
   ctx.effect(() => () => void dispose(), 'turn-retry: channel')
+  await ready
 }

@@ -86,8 +86,12 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 - 原生树属于 `ui-sidebar-files`（页面 kind `files`），不是 `ui-sidebar-documentpreview`。
   树按层调用 `remote.workspaceFiles.list`，目录优先、自然排序，默认显示 dotfiles；
   点击文件通过当前 tab 的 `actions.openResource` 导航，默认落在该 tab 所在 pane。
-- 原生树的 `Entry`/`Level` 是包内组件，没有行装饰子槽或自定义 onOpen prop。
-  DOM 提供 `data-files-entry`、`data-files-path`，但这不等同于稳定的 Git 装饰 API。
+- 原生树是 `sidebar.files.tree` 工厂（0.2.2-rc.1，`packages/client/ui-sidebar-files/src/client/FileTree.tsx`）：
+  工厂 input（entries/onOpen/onToggle/canOpen/rowTriggerProps）由原生调用方
+  `workspace-tree.ts` 提供，第三方不可替换；行内提供 `accessory` 子槽
+  （props `{ entry: TreeEntry }`，`div.accessory` 容器）。DOM 行结构
+  `li[data-files-entry][data-files-path] > div.row > button + div.accessory`，
+  button 不再是行的直接子元素——行级选择器须用后代选择器。
 - 文档预览为资源 tab（kind `text`），原生负责加载、渲染器切换、换行、刷新、变更提示与行号导航；
   提供纯文本、代码、Markdown、HTML、图片、PDF。它是预览，不提供编辑/保存。
 - `sidebar.right.tab.document` 子槽用于注册正文渲染器，内容由原生 owner 准备，
@@ -237,6 +241,9 @@ component、store、inject、locale 和原生 `files` guide；文件正文由 `u
 
 - 原生树行的 `data-files-entry` / `data-files-path` 仅用于当前版本的局部增强契约：插件写入 Git
   data marker、aria-label/title，并通过外层事件委托提供右键菜单；不插入或移动原生行 DOM。
+  0.2.2-rc.1 起行按钮包在 `div.row` 内（非行的直接子元素），Git marker 的装饰样式用
+  `[data-files-entry] button[data-files-git-marker]` 后代选择器命中；原生调用方
+  不提供 `rowTriggerProps`，文件行没有原生右键菜单，插件菜单无双开风险。
 - 首次文件点击通过 `sidebarRight.split` 建立目标 pane，再以 `tab.actions.openResource` 打开原生资源；
   单击由 `previewTabs` 维护每个 session + pane 一个斜体临时 tab，下一次单击通过原生 `replaceTab` 替换；
   双击文件、页签或 title slot 使 tab 保留（chip 空白不经过插件组件，由 document 捕获级

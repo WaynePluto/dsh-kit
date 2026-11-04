@@ -47,7 +47,7 @@ describe('development runtime validated content cache', () => {
     const manifest = JSON.parse(readFileSync(join(first.runtime, 'package.json'), 'utf8'))
     // 依赖清单已内联到 dev-runtime.mjs（launcher 退役）：校验关键家族成员存在。
     expect(manifest.dependencies['@deepseek-ai/dsh']).toBe('0.2.1-rc.2')
-    expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('1.1.0')
+    expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('1.3.0')
     expect(manifest.dependencies['@dsh-kit/plugin-ui']).toContain('file:')
     expect(Object.keys(manifest.dependencies).every(name => !name.startsWith('@dsh-kit/') || name === '@dsh-kit/plugin-ui')).toBe(true)
     expect(f.run.mock.calls[0]?.[0]).toContain('--ignore-scripts')
@@ -119,7 +119,7 @@ describe('development runtime validated content cache', () => {
     const descriptor = await ensureDevelopmentRuntime(f)
     const manifest = JSON.parse(readFileSync(join(descriptor.runtime, 'package.json'), 'utf8'))
     expect(manifest.dependencies['@deepseek-ai/dsh']).toBe('0.2.1-rc.2')
-    expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('1.1.0')
+    expect(manifest.dependencies['@earendil-works/pi-ai']).toBe('1.3.0')
   })
 
   it('does not publish a failed install and retries it without reparsing unchanged valid inputs', async () => {

@@ -74,8 +74,9 @@ describe('draftTaskToWorkspace', () => {
     expect(setDraft).toHaveBeenCalledWith('正文')
   })
 
-  it('图片按官方附件契约加入草稿：createDrafts → addAttachments，不发送', async () => {
-    const createDrafts = vi.fn((_sessionId: SessionId, files: readonly File[]) => {
+  it('图片按官方附件契约加入草稿：createDrafts(含预上载) → addAttachments，不发送', async () => {
+    const createDrafts = vi.fn((_sessionId: SessionId, files: readonly File[], uploadImages: boolean) => {
+      expect(uploadImages).toBe(true)
       expect(files).toHaveLength(2)
       expect(files[0]?.type).toBe('image/png')
       expect(files[0]?.name).toBe('shot.png')
@@ -93,7 +94,7 @@ describe('draftTaskToWorkspace', () => {
       }),
       { text: '看这两张图', images },
     )
-    expect(createDrafts).toHaveBeenCalledWith(s1, expect.any(Array))
+    expect(createDrafts).toHaveBeenCalledWith(s1, expect.any(Array), true)
     expect(setDraft).toHaveBeenCalledWith('看这两张图')
     expect(addAttachments).toHaveBeenCalledWith(['draft-1', 'draft-2'])
     expect(releaseDraftAttachments).not.toHaveBeenCalled()

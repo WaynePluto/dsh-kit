@@ -44,7 +44,6 @@
     "@dsh-kit/dsh-plugin-tools-inspector": "0.1.0",
     "@dsh-kit/dsh-plugin-turn-retry": "0.1.0",
     "@dsh-kit/dsh-plugin-user-message-fork": "0.1.0",
-    "@dsh-kit/dsh-plugin-web-search-switch": "0.1.0",
     "@dsh-kit/dsh-plugin-workspace-collapse": "0.1.0",
     "@dsh-kit/dsh-plugin-workspace-path": "0.1.0"
   },

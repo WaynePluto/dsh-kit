@@ -39,7 +39,6 @@
 | [文件浏览](plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览与目录右键菜单 |
 | [常驻服务](plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务 |
 | [交互终端](plugins/terminal/README.md) | 模型工具；输入框上方 | 由用户直接输入密码、MFA 等交互内容 |
-| [网页搜索开关](plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件 |
 | [套件更新](plugins/suite-updates/README.md) | 插件 → 套件 → 套件更新 | 检查 dsh-kit 新版本，一键复制升级地址 |
 
 分组、顺序与停用粒度见 [插件索引](docs/plugins.md) 与根目录 [plugin-catalog.json](plugin-catalog.json)。

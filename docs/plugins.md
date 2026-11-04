@@ -43,12 +43,11 @@
 
 | 插件 | 使用入口 | 用途 |
 |---|---|---|
-| [网页搜索开关](../plugins/web-search-switch/README.md) | 插件 → 网页搜索开关 | 关闭或恢复 dsh 官方网页搜索插件（官方插件页没有提供开关） |
 | [套件更新](../plugins/suite-updates/README.md) | 插件 → 套件 → 套件更新 | 检查 dsh-kit 新版本；发现新版本时复制升级地址，粘贴到「添加插件」即可原地升级 |
 
 ## 分发组合
 
-28 个功能组件以 8 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
+27 个功能组件以 7 个第三方 Bundle 随 dsh-kit 提供；它们又统一收进
 `@dsh-kit/dsh-plugin-suite` 一个套件包，经官方「添加插件」一条路径安装。
 组合包是安装、卸载和升级单位；除表中注明外，其组件行仍可在插件详情中单独停用。
 
@@ -60,7 +59,6 @@
 | proxy | 独立包 | 出网代理 |
 | agents-md | 独立包 | 全局提示词 |
 | files | 独立包 | 文件浏览 |
-| web-search-switch | 独立包 | 网页搜索开关 |
 | suite-updates | 独立包 | 套件检查更新（升级地址复制，D21） |
 
 完整包名均为 `@dsh-kit/dsh-plugin-<上表名称>`（套件包为 `@dsh-kit/dsh-plugin-suite`）。

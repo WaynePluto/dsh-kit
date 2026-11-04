@@ -1,8 +1,10 @@
 # 官方桌面应用启动结构
 
-核实于 dsh-v0.2.0-rc.2（git `639ed01539`）。源码路径相对 dsh 仓库根。
+核实于 dsh-v0.2.2-rc.1（git `66491b05e3`）。源码路径相对 dsh 仓库根。
 本页记录官方桌面版（本题的主宿主）的启动时序查证结论，供插件开发与排查参考；
-行为变化在升级 dsh 时复核。
+行为变化在升级 dsh 时复核。启动骨架文件（`node-environment.ts`、`single-instance.ts`、
+`web-document.ts`）相对 0.2.1 零 diff。套件侧本版本已完成装载/单测/构建验证，
+桌面实机尚未复跑（下文新增条目均待实机验证）。
 
 ## 架构
 
@@ -32,13 +34,26 @@
    spawn 宿主进程 → 宿主 `runProfile` 装载插件树（约 150+ 行，
    Loader 以 `Promise.all` 并发 import，`vendor/loader/src/config/group.ts`）。
 4. 宿主整树 settle 后经 **IPC 主动推送** `{type:'ready', url, injections}`
-   （`apps/desktop-host/src/index.ts`）；壳用一次 loopback fetch 把
-   token URL 换成 cookie（`web-document.ts` 的 `authenticateWebHost`）。
+   （`apps/desktop-host/src/index.ts`；0.2.2 起注入收集多传 browserPeer，消息形状不变）；
+   壳用一次 loopback fetch 把 token URL 换成 cookie（`web-document.ts` 的
+   `authenticateWebHost`）。
 5. 渲染端 `dshDesktopBoot.ready()` IPC 拿注入表、resolve gate，
-   前端继续装载浏览器插件；`/api` 与 WS 由协议转发到固定端口
-   `127.0.0.1:19387`（宿主以 `--port 19387` 固定，无探测）。
+   前端继续装载浏览器插件。**宿主 spawn 参数是 `--port 0` 动态端口**
+   （`apps/desktop-host/src/index.ts`），实际地址由 ready IPC 的 `url` 回传，
+   `/api` 与 WS 由协议转发到该动态端口——旧文档「固定端口 127.0.0.1:19387」
+   表述过时（0.2.1 起已为动态端口）。
 6. 关窗即隐藏，宿主常驻；再次双击走 single-instance 只 focus
    （`main.ts` "Closing hides" 注释与 `single-instance.ts`）。
+
+## 插件操作诊断与宿主退出（0.2.2-rc.1）
+
+- 宿主安装 `installOperationDiagnostics`：插件操作经 `plugin-operation` IPC 写入
+  `userData/plugin-operations`（OperationJournal），崩溃报告附带 operation history 段。
+  安装/升级/启停类故障的实机排查先看这里，不再只靠 stderr。
+  （静态核对；待实机验证）
+- 宿主 `stop()` 末尾补 `process.exit()`：dispose 慢的插件不再拖延壳退出；
+  关窗隐藏、宿主常驻的行为不变。（待实机验证）
+- `ELECTRON_ENABLE_LOGGING` 仍有效；新版保留 DevTools 菜单与 F12 入口。
 
 ## 协议唤起（外部把桌面版带到前台）
 
@@ -71,7 +86,8 @@
 - 装插件写的是 profile 目录（asar 之外），第三方插件与官方运行时树物理分离；
   插件产物缺失或 patch 写错只会影响自己那一行，不会修改 app.asar。
 - 宿主就绪后经 IPC 把 `{type:'ready', url, injections}` 给壳，壳用一次 loopback
-  fetch 换 cookie；`/api` 与 WS 由协议转发到固定端口 `127.0.0.1:19387`。
-  排查客户端插件问题要以渲染进程 console 为准（`ELECTRON_ENABLE_LOGGING`）。
+  fetch 换 cookie；宿主以 `--port 0` 动态端口启动，`/api` 与 WS 由协议转发到
+  ready 消息回传的 URL。排查客户端插件问题要以渲染进程 console 为准
+  （`ELECTRON_ENABLE_LOGGING`；DevTools 菜单/F12 保留）。
 - 关窗即隐藏、宿主常驻；再次双击走 single-instance。重启 dsh 即彻底重启宿主进程，
   插件改动必须这样做才能生效。

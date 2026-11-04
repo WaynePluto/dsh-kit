@@ -59,12 +59,6 @@ export type {
 } from './dialog-fullscreen.js'
 
 export {
-  installNavigationGlyph,
-  navigationGlyphStylesheet,
-} from './navigation-glyph.js'
-export type { NavigationGlyph, NavigationGlyphOptions } from './navigation-glyph.js'
-
-export {
   INSPECTOR_BORDER,
   INSPECTOR_MONO,
   INSPECTOR_PRIMARY,

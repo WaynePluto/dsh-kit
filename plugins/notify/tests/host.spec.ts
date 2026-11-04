@@ -75,13 +75,21 @@ function fakeCtx(options: CtxOptions = {}): Built {
   }
 
   const services: Record<string, unknown> = {
+    // dsh 0.2.2 起注册返回 handle；用属主 title 定义自注册，读取走 handle.stateOf。
     sessionProjections: options.projections === false
       ? undefined
-      : { stateOf: (_session: unknown, key: string) => (key === 'title' ? options.title ?? null : undefined) },
+      : {
+          register: (definition: { key: string }) => {
+            if (definition.key !== 'title') throw new Error(`unexpected projection ${definition.key}`)
+            return Promise.resolve({ stateOf: () => options.title ?? null })
+          },
+        },
   }
 
   const ctx = {
     agents: { roots: () => options.roots ?? [] },
+    // cordis 注入语义：inject 声明的 service 以同名属性直挂 ctx。
+    sessionProjections: services.sessionProjections,
     connection: {
       fetch: {
         register: (route: { path: string, fetch: (request: Request) => Promise<Response> }) => {
@@ -138,22 +146,22 @@ beforeEach(() => { vi.useFakeTimers() })
 afterEach(() => { vi.useRealTimers() })
 
 describe('the settings section', () => {
-  it('is on out of the box', () => {
+  it('is on out of the box', async () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     expect(readConfig(Config(undefined as never))).toEqual({ enabled: true, waiting: true })
     expect(DEFAULT_SETTINGS).toEqual({ enabled: true, waiting: true })
   })
 
-  it('is registered under the package name', () => {
+  it('is registered under the package name', async () => {
     expect(NAMESPACE).toBe('dsh-plugin-notify')
   })
 
-  it('follows a settings hot update without remounting', () => {
+  it('follows a settings hot update without remounting', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     // Loader 热更新只改写 volatile 引用背后的值；宿主半事件时现读，立即生效。
     built.section.enabled = false
@@ -165,11 +173,11 @@ describe('the settings section', () => {
 })
 
 describe('an agent coming to rest', () => {
-  it('notifies once the agent has stayed idle', () => {
+  it('notifies once the agent has stayed idle', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent], title: '通知插件' })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     endTurn(built, agent.session, { kind: 'completed' })
     built.emit('agent/status', { agent, status: 'idle' })
@@ -181,14 +189,14 @@ describe('an agent coming to rest', () => {
     ])
   })
 
-  it('stays quiet when the agent was woken again straight away', () => {
+  it('stays quiet when the agent was woken again straight away', async () => {
     // 测试契约：此处说明本测试锁定的行为和回归边界。（涉及：`kick()`）
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`agent.ts:226-230`）
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     endTurn(built, agent.session, { kind: 'completed' })
     built.emit('agent/status', { agent, status: 'idle' })
@@ -198,13 +206,13 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toHaveLength(0)
   })
 
-  it('checks the live status again before it speaks', () => {
+  it('checks the live status again before it speaks', async () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('agent/status', { agent, status: 'idle' })
     agent.status = 'running'
@@ -213,11 +221,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toHaveLength(0)
   })
 
-  it('coalesces a burst of short turns into one notification', () => {
+  it('coalesces a burst of short turns into one notification', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     for (let i = 0; i < 5; i += 1) {
       built.emit('agent/status', { agent, status: 'idle' })
@@ -229,13 +237,13 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toHaveLength(1)
   })
 
-  it('says nothing for a subagent', () => {
+  it('says nothing for a subagent', async () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     const child = fakeAgent()
     const built = fakeCtx({ roots: [fakeAgent()] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('agent/status', { agent: child, status: 'idle' })
     vi.advanceTimersByTime(SETTLE_DEBOUNCE_MS)
@@ -243,11 +251,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toHaveLength(0)
   })
 
-  it('reports how the last turn actually ended', () => {
+  it('reports how the last turn actually ended', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     endTurn(built, agent.session, { kind: 'error', error: { code: 'TRANSPORT', message: 'x' } })
     built.emit('agent/status', { agent, status: 'idle' })
@@ -256,11 +264,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent[0]?.body).toBe('这一轮失败了（TRANSPORT），等待输入')
   })
 
-  it('stays quiet about a turn the person stopped themselves', () => {
+  it('stays quiet about a turn the person stopped themselves', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     endTurn(built, agent.session, { kind: 'aborted', reason: { kind: 'user' } })
     built.emit('agent/status', { agent, status: 'idle' })
@@ -274,12 +282,12 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toEqual([{ title: 'DSH · dsh-kit', body: '任务已完成，等待输入' }])
   })
 
-  it('keeps the ending of one session out of another', () => {
+  it('keeps the ending of one session out of another', async () => {
     const first = fakeAgent()
     const second = fakeAgent({ session: { header: { cwd: '/srv/other' } } })
     const built = fakeCtx({ roots: [first, second] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     endTurn(built, first.session, { kind: 'error', error: { code: 'TIMEOUT', message: 'x' } })
     endTurn(built, second.session, { kind: 'completed' })
@@ -289,11 +297,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent[0]).toEqual({ title: 'DSH · other', body: '任务已完成，等待输入' })
   })
 
-  it('ignores session events that are not turn endings', () => {
+  it('ignores session events that are not turn endings', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('session/event', agent.session, { type: 'user/message', data: {} })
     built.emit('agent/status', { agent, status: 'idle' })
@@ -302,11 +310,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent[0]?.body).toBe('等待输入')
   })
 
-  it('obeys the switch', () => {
+  it('obeys the switch', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent], settings: { enabled: false } })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('agent/status', { agent, status: 'idle' })
     vi.advanceTimersByTime(SETTLE_DEBOUNCE_MS)
@@ -314,11 +322,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toHaveLength(0)
   })
 
-  it('still names the machine when the title projection is not composed', () => {
+  it('still names the machine when the title projection is not composed', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent], projections: false })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('agent/status', { agent, status: 'idle' })
     vi.advanceTimersByTime(SETTLE_DEBOUNCE_MS)
@@ -326,11 +334,11 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent[0]?.title).toBe('DSH · dsh-kit')
   })
 
-  it('drops a pending notification for an agent that went away', () => {
+  it('drops a pending notification for an agent that went away', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('agent/status', { agent, status: 'idle' })
     built.emit('agent/disposed', { agent })
@@ -341,7 +349,7 @@ describe('an agent coming to rest', () => {
 })
 
 describe('a turn stalled on a person', () => {
-  it('registers ahead of the answerers, or it would never run', () => {
+  it('registers ahead of the answerers, or it would never run', async () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     const built = fakeCtx()
@@ -354,7 +362,7 @@ describe('a turn stalled on a person', () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const outcome = await built.waterfall(
       'approval/request',
@@ -371,7 +379,7 @@ describe('a turn stalled on a person', () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const answer = deferred<string>()
     const pending = built.waterfall(
@@ -391,7 +399,7 @@ describe('a turn stalled on a person', () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const answer = deferred<unknown>()
     const pending = built.waterfall(
@@ -410,7 +418,7 @@ describe('a turn stalled on a person', () => {
   it('copes with a question that named no agent', async () => {
     const built = fakeCtx()
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const answer = deferred<unknown>()
     const pending = built.waterfall(
@@ -430,7 +438,7 @@ describe('a turn stalled on a person', () => {
     const child = fakeAgent()
     const built = fakeCtx({ roots: [fakeAgent()] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const answer = deferred<string>()
     const pending = built.waterfall(
@@ -450,7 +458,7 @@ describe('a turn stalled on a person', () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent], settings: { waiting: false } })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const answer = deferred<string>()
     const pending = built.waterfall(
@@ -500,7 +508,7 @@ describe('a turn stalled on a person', () => {
 })
 
 describe('the test channel', () => {
-  it('is served on the channel this plugin owns', () => {
+  it('is served on the channel this plugin owns', async () => {
     const built = fakeCtx()
     apply(built.ctx, built.config, { notifier: recorder() })
     expect(built.handled.has(`/api${CHANNEL}`)).toBe(true)
@@ -528,7 +536,7 @@ describe('the test channel', () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     const built = fakeCtx({ settings: { enabled: false } })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     const handler = built.handled.get(`/api${CHANNEL}`)
     const response = await handler?.(new Request('http://host/api/notify', {
@@ -547,11 +555,11 @@ describe('the test channel', () => {
 })
 
 describe('unloading', () => {
-  it('leaves no timer armed', () => {
+  it('leaves no timer armed', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ roots: [agent] })
     const notifier = recorder()
-    apply(built.ctx, built.config, { notifier })
+    await apply(built.ctx, built.config, { notifier })
 
     built.emit('agent/status', { agent, status: 'idle' })
     for (const dispose of built.disposers) dispose()

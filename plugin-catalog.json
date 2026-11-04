@@ -144,16 +144,6 @@
       ]
     },
     {
-      "name": "@dsh-kit/dsh-plugin-web-search-switch",
-      "source": "plugins/web-search-switch",
-      "components": [
-        {
-          "name": "@dsh-kit/dsh-plugin-web-search-switch",
-          "rowId": "web-search-switch"
-        }
-      ]
-    },
-    {
       "name": "@dsh-kit/dsh-plugin-suite-updates",
       "source": "plugins/suite-updates",
       "components": [

@@ -82,11 +82,11 @@ function fakeCtx(options: CtxOptions = {}): Built {
       roots: () => roots,
     },
     sessionProjections: {
+      // dsh 0.2.2 起注册返回 Promise<ProjectionHandle>；读取走 handle.stateOf，registry 级 stateOf 已弃用。
       register: (definition: RegisteredProjection) => {
         registered.push(definition)
-        return () => {}
+        return Promise.resolve({ stateOf: () => options.projection ?? null })
       },
-      stateOf: () => options.projection ?? null,
     },
     connection: {
       fetch: {
@@ -111,18 +111,18 @@ function fakeCtx(options: CtxOptions = {}): Built {
 }
 
 describe('apply', () => {
-  it('registers the projection as a wire unit', () => {
+  it('registers the projection as a wire unit', async () => {
     const built = fakeCtx()
-    apply(built.ctx)
+    await apply(built.ctx)
     expect(built.registered).toHaveLength(1)
     expect(built.registered[0]).toMatchObject({ key: 'turnRetry', stateVersion: 2 })
     // 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`wire`）
     expect(built.registered[0]?.wire).toBeDefined()
   })
 
-  it('serves its channel', () => {
+  it('serves its channel', async () => {
     const built = fakeCtx()
-    apply(built.ctx)
+    await apply(built.ctx)
     expect([...built.handled.keys()]).toEqual(['/api/turn-retry'])
   })
 
@@ -131,13 +131,13 @@ describe('apply', () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     const built = fakeCtx()
-    apply(built.ctx)
+    void apply(built.ctx)
     expect(built.registered[0]?.stateSchema?.parse(state)).toEqual(state)
   })
 
-  it('does not register a live request-error prompt', () => {
+  it('does not register a live request-error prompt', async () => {
     const built = fakeCtx()
-    apply(built.ctx)
+    await apply(built.ctx)
     expect(built.listeners.has('agent/request-error')).toBe(false)
   })
 })
@@ -146,6 +146,7 @@ describe('retrySession', () => {
   it('starts a turn carrying a plugin-sourced notice, not a fake user message', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ agent, projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: true })
     expect(agent.followup).toHaveBeenCalledTimes(1)
     const message = agent.followup.mock.calls[0]?.[0] as {
@@ -161,6 +162,7 @@ describe('retrySession', () => {
   it('picks up a turn the user stopped, and says so in the notice', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ agent, projection: STOPPED })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: true })
     const message = agent.followup.mock.calls[0]?.[0] as {
       content: { type: string; text: string }[]
@@ -177,6 +179,7 @@ describe('retrySession', () => {
     const inbox = { nextTurn: [queued], nextStep: [] }
     const agent = fakeAgent({ inbox })
     const built = fakeCtx({ agent, projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1'))
       .resolves.toEqual({ started: false, reason: 'pending-input' })
     expect(agent.followup).not.toHaveBeenCalled()
@@ -187,6 +190,7 @@ describe('retrySession', () => {
     const steering = { id: 'steer-1', source: { kind: 'user' } }
     const agent = fakeAgent({ inbox: { nextTurn: [], nextStep: [steering] } })
     const built = fakeCtx({ agent, projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: true })
     expect(agent.followup).toHaveBeenCalledTimes(1)
     expect(agent.inbox.nextStep).toEqual([steering])
@@ -196,6 +200,7 @@ describe('retrySession', () => {
     const context = { id: 'context-1', source: { kind: 'turn-retry' } }
     const agent = fakeAgent({ inbox: { nextTurn: [], nextStep: [context] } })
     const built = fakeCtx({ agent, projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: true })
     expect(agent.followup).toHaveBeenCalledTimes(1)
     expect(agent.inbox.nextStep).toEqual([context])
@@ -204,6 +209,7 @@ describe('retrySession', () => {
   it('refuses when the projection says nothing is pending', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ agent, projection: null })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: false, reason: 'not-failed' })
     expect(agent.followup).not.toHaveBeenCalled()
   })
@@ -211,6 +217,7 @@ describe('retrySession', () => {
   it('refuses while the session is already running', async () => {
     const agent = fakeAgent({ status: 'running' })
     const built = fakeCtx({ agent, projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: false, reason: 'busy' })
     expect(agent.followup).not.toHaveBeenCalled()
   })
@@ -218,6 +225,7 @@ describe('retrySession', () => {
   it('refuses to drive a subagent', async () => {
     const agent = fakeAgent()
     const built = fakeCtx({ agent, roots: [], projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: false, reason: 'subagent' })
     expect(agent.followup).not.toHaveBeenCalled()
   })
@@ -227,6 +235,7 @@ describe('retrySession', () => {
     const cold = fakeAgent({ id: 'cold', inbox: { nextTurn: [queued], nextStep: [] } })
     const built = fakeCtx({ roots: [cold], projection: PENDING,
       sessionController: () => Promise.resolve({ agent: cold }) })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 'cold'))
       .resolves.toEqual({ started: false, reason: 'pending-input' })
     expect(cold.followup).not.toHaveBeenCalled()
@@ -239,6 +248,7 @@ describe('retrySession', () => {
       projection: PENDING,
       sessionController: () => Promise.resolve({ agent: cold }),
     })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 'cold')).resolves.toEqual({ started: true })
     expect(cold.followup).toHaveBeenCalledTimes(1)
   })
@@ -248,11 +258,13 @@ describe('retrySession', () => {
       projection: PENDING,
       sessionController: () => Promise.resolve({ error: { message: 'session/not-found' } }),
     })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 'gone')).resolves.toEqual({ started: false, reason: 'no-agent' })
   })
 
   it('reports a composition without a Session Controller instead of throwing', async () => {
     const built = fakeCtx({ projection: PENDING })
+    await apply(built.ctx)
     await expect(retrySession(built.ctx, 'gone')).resolves.toEqual({ started: false, reason: 'no-agent' })
   })
 })
@@ -277,8 +289,9 @@ describe('retryNoticeText', () => {
 describe('dispatch', () => {
   let built: Built
 
-  beforeEach(() => {
+  beforeEach(async () => {
     built = fakeCtx({ projection: PENDING })
+    await apply(built.ctx)
   })
 
   it('rejects an endpoint this channel does not serve', async () => {
@@ -296,6 +309,7 @@ describe('dispatch', () => {
     const queued = { id: 'queued-rpc', source: { kind: 'user' } }
     const agent = fakeAgent({ inbox: { nextTurn: [queued], nextStep: [] } })
     const queuedCtx = fakeCtx({ agent, projection: PENDING })
+    await apply(queuedCtx.ctx)
     await expect(dispatch(queuedCtx.ctx, 'retry', { sessionId: 's1' }))
       .resolves.toEqual({ ok: true, value: { started: false, reason: 'pending-input' } })
     expect(agent.followup).not.toHaveBeenCalled()

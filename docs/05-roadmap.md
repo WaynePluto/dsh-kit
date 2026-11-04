@@ -336,10 +336,12 @@
 
 - [ ] 上游缺陷盯梢（修复后回写本文并移除对应豁免）：
   - CLI web 宿主 `settings/mutate` 持久化缺陷（dual app-boot 实例致 bootstrapIncludes
-    miss，0.2.0-rc.2 起已知，见 [插件机制](dsh/plugins.md) 设置写入一节）：rc.2/rc.3/rc.5
-    复核均未修复，桌面宿主不受影响；notify-check 与 proxy-check 的写入断言按精确签名豁免；
-  - 套件在线启停的 session-controller file-upload 二次注册竞态（0.2.1 仍在）：
-    suite-toggle-check 按精确签名豁免；
+    miss，0.2.0-rc.2 起已知，见 [插件机制](dsh/plugins.md) 设置写入一节）：rc.2/rc.3/rc.5/
+    0.2.2-rc.1 复核均未修复，桌面宿主不受影响；notify-check 与 proxy-check 的写入断言按
+    精确签名豁免；
+  - ~~套件在线启停的 session-controller file-upload 二次注册竞态~~（0.2.2-rc.1 上游已修复，
+    commit 67a4ab78be：resolver 存普通 holder，dispose→再注册正常；suite-toggle-check 的
+    FAILURE_SIGNATURES 保留为哨兵，命中仍响亮报错）；
   - pnpm ≤10.17 在 Windows 把 `link:<盘符绝对路径>` 当相对路径生成坏符号链接：
     dev 栈已固定 pnpm 12.11.2 规避，官方桌面安装不受影响，仅影响 pnpm ≤10.17 用户经
     「添加插件」装本地路径套件。

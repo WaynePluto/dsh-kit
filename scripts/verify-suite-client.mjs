@@ -26,7 +26,7 @@ const EXPECTED = [
   'model-capabilities', 'model-provider', 'models-catalog', 'notify', 'panel-toggle', 'proxy',
   'quick-commands', 'services',
   'session-park', 'session-rename', 'session-workspace', 'skills-inspector', 'stats-hours', 'suite-updates',
-  'task-board', 'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork', 'web-search-switch',
+  'task-board', 'terminal', 'tools-inspector', 'turn-retry', 'user-message-fork',
   'workspace-collapse', 'workspace-path',
 ].map(id => `@dsh-kit/dsh-plugin-${id}`)
 

@@ -1,6 +1,7 @@
 # 会话、消息与通知
 
 基线见 [源码依据](../02-dsh-facts.md)。以下路径相对 dsh 仓库根，项目实现明确标注。
+除另有标注外，本页结论核对于 dsh `0.2.2-rc.1`。
 
 ## 会话起始目录
 
@@ -33,6 +34,11 @@ agent/error 是运行时事件且早于 turn/end，不适合作为持久 UI 状�
 Agent 的 send/followup/steer/inject 都要求 UserMessage，inject 不唤醒；空消息不会发模型请求。
 agents.resume 只恢复活 Agent，不执行新推理。
 
+`TurnEndReasonMap` 键集合相对 0.2.1 未变；`error` 结局的 `error.code` 新增
+`TOOL_ACTIVATION_FAILED`（工具条件激活失败）取值，非 LlmError 的其余错误仍折叠为
+`UNKNOWN`（`packages/core/session/src/types.ts`）。按上表处理结局的插件无需改动，
+该取值落在 error 行。
+
 因此事后重试必须追加一条消息，项目使用 plugin 溯源、form:notice 的短通知，显示为折叠 context 行。
 原 prompt 不重发。错误投影限 2000 字，给模型的通知限 300 字，详情在弹窗查看。
 
@@ -43,15 +49,29 @@ nextStep 保持 dsh 原生语义。入口只有输入框上方的重试栏。
 
 ## Session Projection
 
-出处：`packages/session/session-projection/src/index.ts`、
-`packages/api/session-controller/src/control.ts`、`src/client/sessions/projection-store.ts`。
+出处：`packages/session/session-projection/src/index.ts`、`src/types.ts`、
+`packages/api/session-controller/src/control.ts`、`src/client/sessions/projection-store.ts`（0.2.2-rc.1）。
 
-宿主注册 key、stateVersion、stateSchema、init、apply、wire，纯同步折叠会话事件。
-Session Controller 推送所有注册 wire key 的变化，客户端 useProjection 按 key 读取，不需另注册协议。
-apply 对无关事件必须返回同一个引用，框架以 Object.is 判断是否推送。
-形状改变才调整 stateVersion；类型合并使用 session-projection/types 纯类型出口。
+- 宿主 `sessionProjections.register(definition)` 返回 `Promise<ProjectionHandle<S>>`
+  （`stateOf(session)`、`readerFor(session)`、`dispose()`）；调用方必须 await 注册完成再发布
+  消费方。旧的可调用返回值与 registry 级 `stateOf(session, key)` 均弃用（仍可用，registry
+  形态一次性 warn）。类型表只剩 `SessionProjectionMap`（`SessionProjectionStateMap` 已删除），
+  经 session-projection/types 纯类型出口声明合并。
+- apply 纯同步折叠会话事件，对无关事件必须返回同一引用，框架以 Object.is 判断是否推送；
+  形状改变才调整 stateVersion。
+- wire 帧按提交事件发：每帧 `{type:'projection', sessionId, seq, changes:[{key,val}…]}`，
+  只在该事件至少改了一个 client-visible 视图时发送；changes 按注册序、无重复键。
+  控制流一代仍以一次 `{type:'baseline'}` 开头（`session-controller/src/control.ts`）。
+- 注册可声明 `summary: false`，类型侧用 `SessionProjectionSummaryExcluded<T>` 标记该键不进
+  会话 summary 载荷（列表行等汇总读取）；标记是纯类型，运行时事实只有注册上的
+  `summary: false`（`session-projection/src/types.ts`）。
+- released unit 仍可读：handle 的 `stateOf` 以原 unit 继续折叠并推进 `checkpoint(session)`
+  服务的 released cell，直到该 key 重新注册。
 
-外部插件不能 append 自定义会话事件，原因见 [工具与进程](runtime.md)。
+外部插件不能 append 自定义会话事件，原因见 [工具与进程](runtime.md)；0.2.2 起
+store-owned Session 的 append 另有生命周期门控（`core/session/src/index.ts` 的
+`publicationEntry`）：store 外 append、`session/created` 完成前 append、append 重入
+均直接抛错——铁律不变且更严。
 
 ## 原生工作步骤展示
 
@@ -109,6 +129,10 @@ apply 对无关事件必须返回同一个引用，框架以 Object.is 判断是
 - chat-scroll 用 requestAnimationFrame 逐帧推进消息开头定位，按帧复核真实落点；消息行等待上限 3 秒，动画/落点等待上限 1.8 秒，超时不闪线。减少动态效果同样瞬时定位后复核下一帧，读者输入或 sessionId/messageKey 变化取消待定位动作，不需要加载更早的历史。
 - chat-scroll 对原生返回底部按钮只做局部 capture：动画先停在 dsh 24px 底部跟随阈值之外，再重放仍连接的原生 click，让 ChatView 自己清理 pending jump/分页锚点并恢复跟随；按钮识别、会话/滚动容器变化或交接失败时不伪造 React 状态。
 - 原生返回底部按钮直接内联在 `ChatView.tsx` 的 `!atBottom` 分支，无独立 slot 或滚动 action；`chatScroll.save/read` 只保存阅读位置。`toBottom` 还清理 pending jump/分页锚点、更新 observedTop 并恢复跟随，不能只替换几何写入。接近底部（当前 24px 阈值 + 1px 容差）会使按钮卸载，不能假定 scrollend 后仍能点击它。
+- 0.2.2 起 `use-chat-scroll` 新增 `submissionSteers`：最新可见提交以 steer 并入运行中轮次时，
+  输入回显 instant 落尾（不做平滑动画，避免运行中轮次在回显上方继续增长把回显推下去）；
+  另有 `keepAboveClosing` 折叠保持测量（延迟折叠下收起行时维持阅读位置）。插件跟随判定
+  与原生 instant 落尾叠加时，注意动画取消窗口变窄。
 chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](../../plugins/chat-scroll/README.md)。
 - 不搬动 React 拥有的 sibling rows 来套内部滚动容器。
 
@@ -125,7 +149,12 @@ chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](
 出处：`packages/api/session-controller/src/commands.ts`、`src/client/sessions/service.ts`、
 `packages/client/ui-conversation/src/client/contract/input.ts`、`packages/client/ui-chat/src/client/chat/MessageItem.tsx`。
 
-fork(sessionId,atSeq) 找 atSeq 后的完整 turn/end 前缀，创建带 parentSession 的子会话，源会话不变。
+fork(sessionId,atSeq) 找 atSeq 后的完整 turn/end 前缀，创建带 `isSeeded` 前缀的子会话，源会话不变。
+**0.2.2 起普通 fork 不再写 `parentSession`/`parentSessionId`**：`SessionHeader.parentSession`
+语义收窄为「仅子代理会话的直接创建者」，presence 不再作为子代理判定，分类只认 `origin`；
+会话列表的血缘缩进只认 `origin==='subagent'` 且 parent 存在（`client/sessions/lineage.ts`），
+历史普通 fork 保留的旧 parent 值不再参与缩进（上游升级指南：
+`docs/upgrade-guide/v0.2.1-rc.3/independent-session-forks/`）。
 要从用户消息之前重做，传该 turn 之前最后一个已完成 turn/end 的 seq，不能传用户消息自身 seq。
 子会话通过 scoped SessionInput.setDraft 回填文本，标题由 increaseTitle 递增。
 客户端导航：0.1.6 起 ISessions 不再有 open/openSubagent（导航归 view owner），打开子会话用 ctx.uiWorkspace.openSession(id)。
@@ -158,9 +187,11 @@ fork 子会话继承源会话的 agent preset（presetForObservation），sessio
   经 `ctx.plugin` 注册在它自己的 fiber 上；`reflect.get` 按 root isolate 全局查找，因此
   其它插件 fiber 也读得到（ui-workspace/navigation.ts 的 `prepareDraft` 同款跨 fiber 用法）。
   现取而不是在 `apply` 时缓存：面板首开时该服务可能尚未激活。
-- `createDrafts(sessionId, files)`（`service.ts`）按 `isImageMediaType` 分流：只认
-  `image/png|jpeg|webp|gif`，命中即建 object URL 预览并登记运行时图片草稿（发送时才编码
-  base64）；其它 MIME 会变成文件草稿并立刻启动宿主文件上传。`ComposerBarInjected.addFiles`
+- `createDrafts(sessionId, files, uploadImages)`（`service.ts`）按 `isImageMediaType` 分流：
+  只认 `image/png|jpeg|webp|gif`，命中即建 object URL 预览并登记运行时图片草稿；第三参
+  `uploadImages` 为 true 时图片草稿也立刻启动宿主预上载（0.2.2 起；会话不接受图片上传时传
+  false，如子代理续聊——无上传的图片草稿在发送时把字节随 prompt 内联）。其它 MIME 会变成
+  文件草稿并立刻启动宿主文件上传。`ComposerBarInjected.addFiles`
   （`apply.ts`）是同一入口的原生封装，但它只在 composer 槽内注入，第三方插件不用它。
 - `conversation.input.for(scope).addAttachments(ids): boolean`（`contract/input.ts` 的
   `SessionInput`/`InputActions`）把 id 追加到输入状态并 publish；`adjudicating`/`submitting`
@@ -172,6 +203,28 @@ fork 子会话继承源会话的 agent preset（presetForObservation），sessio
 - 实例：`plugins/task-board/src/client/draft-task.ts`（2026-11-04，卡片图片随文本一起填入
   新对话草稿，卡片标题不参与）；`plugins/user-message-fork/src/shared.ts` 因 `setDraft` 无法
   表示附件而对带附件的历史消息禁用重发。
+
+## 输入框提交契约（0.2.2-rc.1 增补）
+
+出处：`packages/client/ui-conversation/src/client/contract/{input,slots}.ts`、
+`packages/client/ui-chat/src/client/contract/slots.ts`、`chat/register-node-renderers.ts`。
+
+- `InputState.phase` 新增 `'sending'`（提交已受理、出站中）；`adjudicating`/`submitting`
+  阶段拒绝 `addAttachments` 的口径不变，读 phase 判定忙碌的插件把 `sending` 一并视为
+  不可编辑窗口。
+- `SubmitAttempt` 携带 `occurrences`/`quotes`/`attachmentIds`：引用块与附件随提交一起过
+  仲裁链，监听提交事件的插件按同一形状读取。
+- `insertQuote(text): boolean`（`SessionInput` 与 `InputActions`）：把非空文本作为原子
+  引用块插入草稿，编辑器拒绝（提交锁定等）时 false；坐标语义同 `insertText` 的
+  clipboard 投影。
+- 用户消息行新增 `conversation.chat.user.before` chain 子槽（session 作用域）：渲染在
+  用户消息内容之前的装饰 seat，owner 按 durable source 与行 kind 选择组件；steering 与
+  pending 行不渲染该槽（`ui-chat/src/client/contract/slots.ts`）。
+- composer 系槽位（conversation.composer、conversation.input.dock、input.left/right、
+  composer.bar、input.activity 等）的座位处于 fixed 后代 containing block 内（composer
+  座位 z-index 9 + will-change）：fixed 覆盖层（菜单、弹层、拾取器）必须 portal 到
+  document.body，否则被 composer 卡片收缩定位（`ui-conversation/src/client/contract/slots.ts`
+  各槽 JSDoc）。会话头部的 lineage/actions 区溢出裁剪并渐隐，overlay 同样必须 portal。
 
 ## 会话重命名
 

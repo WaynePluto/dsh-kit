@@ -1,7 +1,7 @@
 /**
  * 面板停靠的判定与安装编排：面板页接管 main 视图时停靠运行中的会话，测试逐项注入依赖。
  *
- * 上游事实（0.2.1-rc.5 核实，rc.3 起一致，docs/dsh/plugins.md「全局面板」）：
+ * 上游事实（0.2.2-rc.1 复核，docs/dsh/plugins.md「全局面板」）：
  * - 侧栏面板行与「更多」菜单项都经 `layout.selectPanel(id)` 切面板，选中态在
  *   `layout.panelInfo`（defineStore 默认 sync flush，订阅同步通知）；
  * - `layout.selectPanel` 会 abort 挂起的导航（LayoutController），因此停靠发起后

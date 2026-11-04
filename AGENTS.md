@@ -75,7 +75,9 @@ CI 固定 10.17.0。TypeScript + ESM + pnpm workspace，构建 tsdown，开发 t
 
 常用检查：`pnpm check:dependencies`、`pnpm lint`、`pnpm typecheck`、`pnpm build`、`pnpm test`；
 插件产物与套件产物：`pnpm plugins:build`、`pnpm suite:build`；发布打包：`pnpm suite:pack`
-（产物 `release/dsh-kit.tar.gz`，push `v*` 标签由 `release.yml` 自动发布同一资产名）。
+（产物 `release/v<版本>/dsh-kit.tar.gz`，push `v*` 标签由 `release.yml` 自动发布同一资产名）。
+功能改动收尾一律重跑 `pnpm suite:pack` 打本地 tar（不发新版时同版本号覆盖 `release/v<版本>/`
+产物），供官方「添加插件」用本地地址安装/升级做实机验证。
 
 官方 dsh 新版本的插件适配检查加载 dsh-upgrade skill（适配基线记录在 docs/02-dsh-facts.md 开头）；
 其余依赖固定不动，升级另行决策。提交前钩子检查固定版本并清理 lockfile 内部镜像 tarball 地址。

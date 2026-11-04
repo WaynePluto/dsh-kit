@@ -1,7 +1,8 @@
 # 02 · dsh 源码依据
 
-当前插件适配基线：`@deepseek-ai/dsh@0.2.1-rc.5`（git `b830ec950f`），套件静态验证、开发栈
-冒烟与全部检查表脚本在该版本通过（2026-11-03；本机官方桌面同为 0.2.1-rc.5，桌面实机
+当前插件适配基线：`@deepseek-ai/dsh@0.2.2-rc.1`（git `66491b05e3`，vendor cordis 4.1.0 /
+loader 1.1.0 / schemastery 3.19.0 / `@earendil-works/pi-ai` 1.3.0），套件静态验证、开发栈
+冒烟与全部检查表脚本在该版本通过（2026-11-04；本机官方桌面同为 0.2.2-rc.1，桌面实机
 检查表验收待跑）。本项目不内置 dsh 运行时；
 基线 = 类型与开发栈钉住的 `@deepseek-ai` 版本 + 实机验证过的官方宿主版本，机器侧三处
 （根 `pnpm.overrides`、`scripts/dev-suite.mjs` 的 `DSH_VERSION`、各插件 devDependencies）
@@ -35,7 +36,6 @@
 | 权限与进程 | node scripts/services-check.mjs；node scripts/terminal-check.mjs |
 | 只读视图 | node scripts/tools-inspector-check.mjs；node scripts/skills-inspector-check.mjs；node scripts/files-check.mjs |
 | 全局提示词 | node scripts/agents-md-check.mjs |
-| 网页搜索开关 | node scripts/web-search-switch-check.mjs |
 
 没有独立冒烟脚本的插件运行各包 test/typecheck/build，并完成其 README 中的浏览器验收。
 插件用途与入口见 [插件索引](plugins.md)；产品边界见 [决策](01-decisions.md)。

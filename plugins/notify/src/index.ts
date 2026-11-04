@@ -8,8 +8,10 @@ import z from '@deepseek-ai/schemastery'
 // 实现说明：此处记录相关接口、边界和生命周期约束。
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-session-projection'
-import type {} from '@deepseek-ai/dsh-session-title'
+// dsh 0.2.2 起投影注册返回 handle，registry 级 `stateOf(session, key)` 弃用；
+// 复用属主包导出的 title 定义自注册拿 handle（registry 按 refs 计数，双注册合法）。
+import { titleProjectionDefinition } from '@deepseek-ai/dsh-session-title'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-questions'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -47,7 +49,7 @@ export const name = 'dsh-kit-notify'
  * 会话与投影契约：此处说明持久事件、投影状态或历史回放边界。（涉及：`sessionProjections`）
  * 实现说明：此处记录相关接口、边界和生命周期约束。
  */
-export const inject = ['agents', 'connection', 'webServer']
+export const inject = ['agents', 'connection', 'sessionProjections', 'webServer']
 
 /** 本插件行的 composition Config；两个开关全部 volatile，免重启热改。 */
 export interface Config {
@@ -101,6 +103,9 @@ export interface SessionFacts {
   title?: string | undefined
 }
 
+// title projection 的属主注册 handle；apply 完成后按 ctx 弱引用可读。注册未就绪时省略 title。
+const titleHandles = new WeakMap<Context, ProjectionHandle<string | null>>()
+
 /**
  * 实现说明：此处记录相关接口、边界和生命周期约束。
  *
@@ -116,8 +121,8 @@ export function sessionFacts(ctx: Context, session: Session | undefined): Sessio
   // 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`header`）
   // 实现说明：此处记录相关接口、边界和生命周期约束。
   const cwd = session.header.cwd
-  const projections = ctx.get('sessionProjections')
-  const title = projections?.stateOf(session, 'title')
+  const handle = titleHandles.get(ctx)
+  const title = handle?.stateOf(session) ?? undefined
   return {
     ...cwd === undefined ? {} : { cwd },
     ...typeof title === 'string' && title.length > 0 ? { title } : {},
@@ -174,10 +179,20 @@ export interface NotifyOptions {
  * 实现说明：此处记录相关接口、边界和生命周期约束。
  * 测试契约：此处说明本测试锁定的行为和回归边界。
  */
-export function apply(ctx: Context, config: Config, options: NotifyOptions = {}): void {
+export async function apply(ctx: Context, config: Config, options: NotifyOptions = {}): Promise<void> {
   const notifier = options.notifier ?? new WindowsToastNotifier()
   const settleDebounceMs = options.settleDebounceMs ?? SETTLE_DEBOUNCE_MS
   const waitingDelayMs = options.waitingDelayMs ?? WAITING_DELAY_MS
+
+  // 复用属主定义自注册 title projection（refs 计数，与 dsh 自身注册并存）；先挂 WeakMap 回填再 await，
+  // 保证 apply 返回时事件处理器读到的 handle 已就绪。sessionProjections 未组合时省略 title。
+  const titleReady = ctx.sessionProjections?.register(titleProjectionDefinition)
+  if (titleReady !== undefined) {
+    void titleReady.then((handle) => {
+      titleHandles.set(ctx, handle)
+      return handle
+    })
+  }
 
   /** 本插件拥有的全部 timer；卸载时逐一清理。 */
   const timers = new Set<ReturnType<typeof setTimeout>>()
@@ -326,8 +341,11 @@ export function apply(ctx: Context, config: Config, options: NotifyOptions = {})
     void dispose()
   }, 'notify: timers and test channel')
 
-  if (!(notifier instanceof WindowsToastNotifier) || notifier.supported) return
-  ctx.logger?.info(
-    'notify: this is not Windows, so desktop notifications are off; everything else is unaffected',
-  )
+  if (!(notifier instanceof WindowsToastNotifier) || notifier.supported) {
+    ctx.logger?.info(
+      'notify: this is not Windows, so desktop notifications are off; everything else is unaffected',
+    )
+  }
+  // 消费方（事件处理器）发布前保证 title handle 就绪。
+  if (titleReady !== undefined) await titleReady
 }

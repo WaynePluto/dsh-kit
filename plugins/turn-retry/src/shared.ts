@@ -66,14 +66,10 @@ export type TurnRetryView = FailedTurnView | StoppedTurnView
 export type TurnRetryState = TurnRetryView | null
 
 // 只从 `/types` 引入 projection type table，避免 browser program 被 Host Context.sessions merge 拖入；因此 `useProjection('turnRetry')` 在无 client registration 时也有类型。
+// dsh 0.2.2 起 `SessionProjectionStateMap` 已删除：Host 读 state 走注册返回的 `handle.stateOf(session)`。
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /** 本 session 未完成工作的完整 projection 值，或 null。 */
-    turnRetry: TurnRetryState
-  }
-
-  interface SessionProjectionStateMap {
-    /** 与 wire view 相同；fold state 本身就是完整值。 */
     turnRetry: TurnRetryState
   }
 }

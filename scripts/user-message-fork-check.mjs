@@ -30,6 +30,7 @@ function inspectBundle() {
     packageId: PACKAGE_ID,
     externalShims: new Map([
       ['react', {
+        memo: (fn) => fn,
         useCallback: NOOP,
         useEffect: NOOP,
         useId: () => 'smoke-id',
