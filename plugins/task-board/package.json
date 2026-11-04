@@ -1,7 +1,7 @@
 {
   "name": "@dsh-kit/dsh-plugin-task-board",
   "version": "0.1.0",
-  "description": "本地任务看板：卡片跨列拖拽、就地编辑，第一列任务可发送到指定工作区的新对话。",
+  "description": "本地任务看板：卡片跨列拖拽、可编辑标题与图片，第一列任务连同图片可填入指定工作区的新对话。",
   "license": "MIT",
   "private": true,
   "type": "module",

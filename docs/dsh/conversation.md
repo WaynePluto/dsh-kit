@@ -145,6 +145,34 @@ fork 子会话继承源会话的 agent preset（presetForObservation），sessio
 实例：`plugins/task-board/src/client/draft-task.ts`（2026-11-02 起只 `setDraft` 不 submit，
 发送留给用户现选模型/思考强度）。
 
+## 程序化图片草稿附件
+
+出处（0.2.1-rc.5）：`packages/client/ui-conversation/src/client/{service.ts,apply.ts,contract/input.ts}`、
+`packages/client/ui-attachment/src/client/ComposerAttachments.tsx`、
+`packages/client/ui-workspace/src/client/navigation.ts`。
+
+把浏览器 `File` 作为图片附件加入某个会话的输入框草稿，不需要 DOM 注入、不需要 composer
+已挂载、不发送。`setDraft(text)` 只接受纯文本，附件必须走下面的运行时 id 契约：
+
+- `ctx.get('conversation')` 取服务：`ConversationController` 由 ui-conversation 的 `apply`
+  经 `ctx.plugin` 注册在它自己的 fiber 上；`reflect.get` 按 root isolate 全局查找，因此
+  其它插件 fiber 也读得到（ui-workspace/navigation.ts 的 `prepareDraft` 同款跨 fiber 用法）。
+  现取而不是在 `apply` 时缓存：面板首开时该服务可能尚未激活。
+- `createDrafts(sessionId, files)`（`service.ts`）按 `isImageMediaType` 分流：只认
+  `image/png|jpeg|webp|gif`，命中即建 object URL 预览并登记运行时图片草稿（发送时才编码
+  base64）；其它 MIME 会变成文件草稿并立刻启动宿主文件上传。`ComposerBarInjected.addFiles`
+  （`apply.ts`）是同一入口的原生封装，但它只在 composer 槽内注入，第三方插件不用它。
+- `conversation.input.for(scope).addAttachments(ids): boolean`（`contract/input.ts` 的
+  `SessionInput`/`InputActions`）把 id 追加到输入状态并 publish；`adjudicating`/`submitting`
+  阶段返回 false。返回 false 必须 `releaseDraftAttachments(drafts)` 释放预览 URL 与运行时
+  附件，避免泄漏。原生附件栏读 `useInput.attachmentIds` + `resolveDraftAttachments` 渲染缩略图，
+  发送时 `serializeDraftAttachments` 产出 `{ type: 'image', mediaType, data, name }`。
+- 新建会话回填顺序不变：`sessions.create()` → `uiWorkspace.openSession()` →
+  `scope.get('conversation')`，与纯文本 `setDraft` 完全同链。
+- 实例：`plugins/task-board/src/client/draft-task.ts`（2026-11-04，卡片图片随文本一起填入
+  新对话草稿，卡片标题不参与）；`plugins/user-message-fork/src/shared.ts` 因 `setDraft` 无法
+  表示附件而对带附件的历史消息禁用重发。
+
 ## 会话重命名
 
 出处：`packages/session/session-title/src/{index,normalize}.ts`、

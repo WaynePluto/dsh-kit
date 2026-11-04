@@ -23,7 +23,7 @@ import { CHANNEL, SELF_NAMESPACE } from '../shared.js'
 import type { BoardDocument } from '../shared.js'
 import { TaskBoardPanelIcon } from './TaskBoardPanelIcon.js'
 import { TaskBoardPage } from './TaskBoardPage.js'
-import { draftTaskToWorkspace } from './draft-task.js'
+import { draftTaskToWorkspace, type ConversationAttachmentFace, type DraftTaskRequest } from './draft-task.js'
 import { en, zh } from './locales.js'
 import type { TaskBoardKey } from './locales.js'
 import { callKitChannel } from '@dsh-kit/plugin-rpc'
@@ -32,7 +32,7 @@ export { TaskBoardPage } from './TaskBoardPage.js'
 export type { TaskBoardPageProps } from './TaskBoardPage.js'
 export { TaskBoardPanelIcon } from './TaskBoardPanelIcon.js'
 export { draftTaskToWorkspace } from './draft-task.js'
-export type { DraftTaskDeps } from './draft-task.js'
+export type { DraftTaskDeps, DraftTaskRequest, ConversationAttachmentFace } from './draft-task.js'
 export type { TaskBoardKey } from './locales.js'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -87,7 +87,11 @@ export function apply(ctx: Context): void {
       }))
       : [],
     copyText: async (text: string) => await writeClipboard(text),
-    draftTask: async (text: string, workspaceId: string | undefined) => {
+    draftTask: async (request: DraftTaskRequest) => {
+      // conversation 服务由官方 ui-conversation 插件在另一个 fiber 提供；
+      // reflect.get 按 root isolate 全局查找，与 ui-workspace/navigation.ts 同款。
+      // 现取而非在 apply 时缓存：首次进入面板时该服务可能尚未激活。
+      const attachments = ctx.get('conversation') as unknown as ConversationAttachmentFace | undefined
       await draftTaskToWorkspace(
         {
           sessions: {
@@ -98,9 +102,9 @@ export function apply(ctx: Context): void {
           uiWorkspace: {
             openSession: id => { ctx.uiWorkspace.openSession(id) },
           },
+          attachments,
         },
-        text,
-        workspaceId,
+        request,
       )
     },
   }

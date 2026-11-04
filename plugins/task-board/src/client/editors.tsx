@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import type { ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /** composer 操作行的通用包装。 */
@@ -100,6 +100,52 @@ export function CardEdit({
         <Button variant="outline" size="sm" onMouseDown={preventDefault} onClick={onCancel}>{cancelLabel}</Button>
       </ComposerActions>
     </>
+  )
+}
+
+/** 从粘贴事件里挑出图片文件（不拦截普通文本粘贴）。 */
+export function pastedImageFiles(event: ReactClipboardEvent<HTMLElement>): readonly File[] {
+  return Array.from(event.clipboardData?.files ?? []).filter(file => file.type.startsWith('image/'))
+}
+
+/** 卡片标题就地编辑：单行 input，Enter/失焦提交、Escape 取消，允许清空。 */
+export function CardTitleEdit({
+  initial, placeholder, ariaLabel, onCommit, onCancel,
+}: {
+  initial: string
+  placeholder: string
+  ariaLabel: string
+  onCommit: (title: string) => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState(initial)
+  const commit = useCallback(() => { onCommit(title) }, [onCommit, title])
+  return (
+    <input
+      className="dsh-task-board-cardTitleInput"
+      value={title}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      autoFocus
+      onFocus={event => { event.target.select() }}
+      spellCheck={false}
+      // 卡片本体是 dnd-kit 拖拽项：不拦指针会把框选变成拖卡。
+      onPointerDown={event => { event.stopPropagation() }}
+      onChange={event => { setTitle(event.target.value) }}
+      onBlur={commit}
+      onKeyDown={event => {
+        if (isComposing(event)) return
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+          onCancel()
+          return
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          commit()
+        }
+      }}
+    />
   )
 }
 

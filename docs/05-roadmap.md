@@ -6,6 +6,19 @@
 
 ## 已实现
 
+- [x] 任务看板三项增强（2026-11-04，用户需求）：① **卡片图片**——回形针按钮多选或卡片聚焦时
+  粘贴截图，缩略图行支持官方 ImageLightbox 预览与悬停移除；仅 PNG/JPEG/WebP/GIF（dsh
+  `isImageMediaType` 白名单）、单图 4 MiB、单卡 8 张、整板 data URL 24 MB，图片以自包含
+  data URL 随 `task-board.json` 落盘，无独立图片文件；`isBoardDocument` 严格校验 MIME/前缀/
+  base64 字符/总量，`normalizeBoard` 逐张丢坏图并兼容旧版无图文档。② **填入新对话带图**——
+  官方 `ctx.get('conversation').createDrafts(sessionId, files)` + `SessionInput.addAttachments(ids)`
+  （0.2.1-rc.5 源码核实）把图片登记成新会话的图片草稿附件，原生附件栏显示缩略图、发送由
+  dsh 自己编码；`addAttachments` 返回 false 时 `releaseDraftAttachments` 兜底。③ **最后一列
+  「清空所有卡片」**（用户确认「需要确认弹窗」）与**卡片标题行**（用户确认放在顶部按钮行与
+  正文之间）：标题可点击自由编辑、字号 15px > 正文 13px、纯展示且不填入新对话。数据模型
+  `BoardCard.title?/images?` 向后兼容，56 项单测、lint/typecheck/构建两半产物全绿。
+  上游契约回写 [会话](dsh/conversation.md) 的「程序化图片草稿附件」。
+
 - [x] models-catalog 官方跟随对齐（2026-11-03，用户决策「文案重定位 + 功能识别」）：官方
   API-key 路由（deepseek-official）原生跟随 `GET /models` 期间，组件按上游同一判定
   （端点 origin + `isBuiltInCatalog`，新增运行时依赖 `@deepseek-ai/dsh-llm-deepseek`，

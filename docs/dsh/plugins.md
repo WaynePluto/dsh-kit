@@ -278,6 +278,7 @@ rc.5 起同样按精确签名豁免（notify-check 同款），其余拒绝类�
   不透明，捕获后原样传回即可，失败重取重试是调用方约定。
   实例：`plugins/quick-commands/src/client/insert.ts`。
 - conversation.chat.turnTail 是 chain，不适合保证多个插件并列显示。
+- 程序化把图片加入会话草稿走 `conversation.createDrafts()` + `SessionInput.addAttachments()`，契约见 [会话](conversation.md) 的「程序化图片草稿附件」。
 
 settings.section 没有 icon 字段，导航 shell 按 id 选择图标，未知 id 为齿轮；项目的代理、通知、
 全局提示词和浏览器日志用局部导航标记和注入样式，不替换 React 节点（出处：
@@ -379,14 +380,13 @@ mask。element 先以纯函数 Artwork 为 `type`、Artwork 再返回原生 `<sv
 
 - 同 kind 共存只允许一组 builtin + extension；原生 `files` 可以这样接管，guide 只列生效项，
   卸载 extension 后恢复 builtin。`text` 属于 fallback，不能用 extension 同 kind 重注册，二者会冲突。
-- `ctx.sidebarRight.split(paneId)` 返回新 pane id 或 undefined；底层 dockkit 默认预算为四个 docked pane，
-  当前 Sidebar controller 的 split 还在已有两个 docked pane 时拒绝分栏，并受空间与浮动状态约束。
-  `tab.actions.openResource(address, { paneId })` 可指定目标 pane，但分栏本身不会改变原生树“在自己的 pane 打开文件”的行为。
+- `ctx.sidebarRight.split(paneId)` 返回新 pane id 或 undefined；dockkit 默认预算四个 docked pane，
+  controller 在已有两个时拒绝分栏。`tab.actions.openResource(address, { paneId })` 可指定 pane，
+  但分栏本身不会改变原生树「在自己的 pane 打开文件」的行为。
 - `FilesBody` 与 `TextPreview` 没有从各包 client 入口导出为运行时值，两包也不在平台共享模块表；
   不能仅添加 external 就假定浏览器能 import 它们。发布 files 列表也不包含源码，不能依赖 `./src/*` 导入。
-- `slots.entries` 是登记快照，不是通用组件嵌入 API；files 增强在当前版本只把它作为版本受控的适配 seam：
+- `slots.entries` 是登记快照，不是通用组件嵌入 API；files 增强只把它作为版本受控的适配 seam：
   shadow 登记完整复用原 entry 的 component、store、inject、locale，并只在外层观察/事件委托。
-  这不是对任意 dsh 组件的稳定承诺，原生登记契约变化必须由冒烟检查响亮失败。
 - **0.2.0-rc.2 起原生 FilesBody 声明 children 并在渲染期调用 `props.renderSlot`**（`sidebar.right.tab.files.actions`，
   list/session，官方 ui-open-in-app 往里注册「打开方式」）。影子条目不声明 children 就拿不到 renderSlot prop，
   内嵌的原生组件抛 `TypeError: renderSlot is not a function`，条目被错误边界捕获后座位回退原生——增强静默丢失

@@ -29,6 +29,7 @@ description: 编写或调整 dsh 插件的主题样式，处理表单焦点、�
 | 菜单与图标 | `packages/client/ui-primitives/src/Menu.tsx`、`Menu.module.css`、`icons/index.tsx` |
 | 语言下拉（选项 hover 基准） | `packages/client/locale/src/client/LanguageRow.tsx` |
 | Dock 样式基准 | `packages/client/ui-conversation/src/client/skeleton/TodoPanel.module.css`、`TodoPanel.tsx` |
+| 原生草稿图片缩略图轨与大图预览 | `packages/client/ui-attachment/src/client/ComposerAttachments.tsx`、`AttachmentRail.tsx`、`ui-primitives/src/ImageLightbox.tsx` |
 
 当前表单结论核实于 `@deepseek-ai/dsh@0.1.5-rc.2` / `fb2c4b9e69`。升级需重新读对应源码，不能把数值当永久契约。
 
@@ -438,6 +439,21 @@ services 面板（2026-10-23 起）是侧边栏「服务」全局面板：root �
   切换下内容上下抖动。正确形态：提示行恒渲染，固定 `height` + `min-height`（如 20px
   行高 + 2px padding-top），空闲时只留空文本；出现/消失只换文字与配色，不改变布局
   高度。回归验证方式：读提示出现前后的内容区 `getBoundingClientRect().top` 应相等。
+### 插件自有的图片缩略图轨（task-board，2026-11-04）
+
+插件面板里展示本地图片时复用 primitives `ImageLightbox`（`src`/`alt`/`labels.dialog`/`labels.close`/
+`onClose`，自带 body portal、Escape/背景关闭与焦点归还），不要自绘灯箱：它解决「缩略图祖先带
+transform/filter 时 fixed 背景被困在祖先盒内」的问题。缩略图行的最小样式契约：容器
+`display:flex; gap:6px; overflow-x:auto` + `--dsh-scrollbar-width:9px`，每个格子 `flex:none` 定宽高，
+`<img>` 用 `object-fit:cover` 填满；移除按钮绝对定位在格子上、hover/`:focus-visible` 才显现
+（`opacity:0 → 1`），用 `--dsw-elevation-prominent` 抬升，危险态换
+`--dsw-alias-interactive-bg-hover-danger` + `state-error-primary`。触发文件选择的原生
+`<input type=file>` 必须零尺寸且 `position:absolute; opacity:0; pointer-events:none`
+（由图标按钮 `.click()` 触发），不能留可见的 UA 文件框；`accept` 用 dsh 白名单
+`image/png,image/jpeg,image/webp,image/gif`。卡片/拖拽项内的一切输入控件都要
+`onPointerDown` 停冒泡，否则框选文字会触发 dnd-kit 拖卡。实例
+`plugins/task-board/src/client/{Board.tsx,styles.ts}`。
+
 - 组件停用后行随槽注销消失；该面板正被选中时 layout store 自动把 activePanelId 回落 null。
 - 实例：`plugins/services/src/client/{index.tsx,ServicesPage.tsx,ServicesPanelIcon.tsx}`；
   契约细节在仓库根 `docs/dsh/plugins.md` 的「全局面板」一节。

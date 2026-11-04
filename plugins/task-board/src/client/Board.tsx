@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ClipboardEvent as ReactClipboardEvent } from 'react'
 import {
   DndContext, DragOverlay, KeyboardSensor, MeasuringStrategy, PointerSensor,
   closestCorners, pointerWithin, useDraggable, useDroppable, useSensor, useSensors,
@@ -23,17 +24,21 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Button, Menu, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  Button, ImageLightbox, Menu, Modal,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import {
   IconCheckOutlineMedium, IconCopyOutlineMedium, IconFolderCloseMedium,
-  IconPlusOutlineMedium, IconSendOutlineMedium, IconTrashOutlineMedium,
+  IconPaperclipOutlineMedium, IconPlusOutlineMedium, IconSendOutlineMedium, IconTrashOutlineMedium,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { BoardCard as BoardCardModel, BoardDocument } from '../shared.js'
+import type { BoardCard as BoardCardModel, BoardCardImage, BoardDocument } from '../shared.js'
 import {
-  addCard, deleteCard, deleteList, moveCard, moveList, renameList, updateCard,
+  addCard, admissibleImages, clearCards, deleteCard, deleteList, moveCard, moveList,
+  renameList, totalImageChars, updateCard,
 } from './board-ops.js'
-import { AddCardComposer, CardEdit, ListTitleEdit } from './editors.js'
+import { AddCardComposer, CardEdit, CardTitleEdit, ListTitleEdit, pastedImageFiles } from './editors.js'
+import { IMAGE_ACCEPT, readImageFiles } from './image-files.js'
 import { PinToTopIcon } from './PinToTopIcon.js'
 import { fill, type TaskBoardKey } from './locales.js'
 
@@ -51,8 +56,10 @@ export interface BoardDeps {
   readonly workspaces: () => readonly WorkspaceOption[]
   /** 复制文本到剪贴板；返回是否成功。 */
   readonly copyText: (text: string) => Promise<boolean>
-  /** 把卡片任务填入目标工作区新对话的输入框（不发送；失败以异常抛出）。 */
+  /** 把卡片任务文本与图片填入目标工作区新对话的输入框（不发送；失败以异常抛出）。 */
   readonly draftCard: (card: BoardCardModel) => Promise<boolean>
+  /** 页面级瞬态提示（图片被跳过等）；与保存/发送错误共用常驻状态行。 */
+  readonly notice: (text: string) => void
 }
 
 /** drag data 判别：卡片 or 列。 */
@@ -265,6 +272,7 @@ export function Board({ board, onChange, deps }: {
           key={list.id}
           list={list}
           isFirst={index === 0}
+          isLast={index === board.lists.length - 1}
           shift={columnShift(index)}
           board={board}
           onChange={onChange}
@@ -297,9 +305,11 @@ function containingListId(board: BoardDocument, cardId: string): string | undefi
 // ── 列 ──────────────────────────────────────────────────────────────────────
 
 /** 一列：头部是拖拽手柄 + 标题就地编辑；卡片区纵向排序滚动；尾部新增卡片。 */
-function BoardColumn({ list, isFirst, shift, board, onChange, deps, hoverHint }: {
+function BoardColumn({ list, isFirst, isLast, shift, board, onChange, deps, hoverHint }: {
   list: { readonly id: string, readonly title: string, readonly cards: readonly BoardCardModel[] }
   isFirst: boolean
+  /** 是否为最后一列：只有最后一列显示「清空所有卡片」。 */
+  isLast: boolean
   /** 让位位移（px）：源列之外的列在拖拽跨过时平移一个槽距。 */
   shift: number
   board: BoardDocument
@@ -314,6 +324,7 @@ function BoardColumn({ list, isFirst, shift, board, onChange, deps, hoverHint }:
   const [titleEditing, setTitleEditing] = useState(false)
   const [adding, setAdding] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [clearOpen, setClearOpen] = useState(false)
 
   return (
     <section
@@ -412,6 +423,20 @@ function BoardColumn({ list, isFirst, shift, board, onChange, deps, hoverHint }:
               {t('addCard')}
             </button>
             )}
+        {isLast ? (
+          <button
+            type="button"
+            className="dsh-task-board-textBtn dsh-task-board-clearList"
+            title={t('clearList')}
+            aria-label={t('clearList')}
+            disabled={list.cards.length === 0}
+            onClick={() => { setClearOpen(true) }}
+            onPointerDown={event => { event.stopPropagation() }}
+          >
+            <IconTrashOutlineMedium size={14} />
+            {t('clearList')}
+          </button>
+        ) : null}
       </div>
       <Modal
         open={deleteOpen}
@@ -431,6 +456,28 @@ function BoardColumn({ list, isFirst, shift, board, onChange, deps, hoverHint }:
               }}
             >
               {t('delete')}
+            </Button>
+          </>
+        )}
+      />
+      <Modal
+        open={clearOpen}
+        onClose={() => { setClearOpen(false) }}
+        title={t('clearList')}
+        closeLabel={t('cancel')}
+        description={fill(t('clearListConfirm'), { title: list.title, count: list.cards.length })}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => { setClearOpen(false) }}>{t('cancel')}</Button>
+            <Button
+              variant="outline"
+              className="dsh-task-board-confirmDanger"
+              onClick={() => {
+                setClearOpen(false)
+                onChange(clearCards(board, list.id))
+              }}
+            >
+              {t('clear')}
             </Button>
           </>
         )}
@@ -455,8 +502,11 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, data: { type: 'card' } satisfies CardDragData })
   const [editing, setEditing] = useState(false)
+  const [titleEditing, setTitleEditing] = useState(false)
+  const [preview, setPreview] = useState<BoardCardImage | null>(null)
   const [copied, setCopied] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const copyTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => {
     if (copyTimer.current !== undefined) window.clearTimeout(copyTimer.current)
@@ -476,6 +526,34 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
     ? t('workspaceDefault')
     : deps.workspaces().find(item => item.id === card.workspaceId)?.title ?? t('untitledWorkspace')
   const draftLabel = fill(t('draftCard'), { workspace: workspaceLabel })
+
+  /** 把一批浏览器文件读入并追加到本卡片；失败/超限走页面状态行提示。 */
+  const addImages = useCallback((files: readonly File[]) => {
+    if (files.length === 0) return
+    void (async () => {
+      const { images, failures } = await readImageFiles(files)
+      const usedElsewhere = totalImageChars(board) - (card.images ?? []).reduce((sum, image) => sum + image.dataUrl.length, 0)
+      const result = admissibleImages(card.images ?? [], images, usedElsewhere)
+      const dropped = failures.imageUnsupportedType + failures.imageTooLarge + result.dropped
+      if (result.images.length !== (card.images ?? []).length) {
+        onChange(updateCard(board, card.id, { images: result.images.length === 0 ? null : result.images }))
+      }
+      const reason = failures.imageUnsupportedType > 0 ? t('imageUnsupportedType')
+        : failures.imageTooLarge > 0 ? t('imageTooLarge')
+          : result.reason === 'imageLimit' ? t('imageLimit')
+            : result.reason === 'imageTotalTooLarge' ? t('imageTotalTooLarge')
+              : undefined
+      if (reason !== undefined) deps.notice(reason)
+      else if (dropped > 0) deps.notice(fill(t('imageSkipped'), { count: dropped }))
+    })()
+  }, [board, card, deps, onChange])
+
+  const onPaste = useCallback((event: ReactClipboardEvent<HTMLElement>) => {
+    const files = pastedImageFiles(event)
+    if (files.length === 0) return
+    event.preventDefault()
+    addImages(files)
+  }, [addImages])
 
   const menuEntries = (): MenuEntry[] => {
     const entries: MenuEntry[] = [{
@@ -504,7 +582,8 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`dsh-task-board-card${isDragging ? ' dsh-task-board-cardSource' : ''}`}
       data-dsh-task-board-card={card.id}
-      {...(editing ? {} : { ...attributes, ...listeners })}
+      onPaste={onPaste}
+      {...(editing || titleEditing ? {} : { ...attributes, ...listeners })}
     >
       <div className="dsh-task-board-cardMeta">
         <Menu
@@ -547,6 +626,17 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
           >
             <PinToTopIcon size={14} />
           </button>
+          {/* 卡片图片：选择或粘贴，随卡片一起填入新对话。 */}
+          <button
+            type="button"
+            className="dsh-task-board-iconBtn"
+            title={t('addImages')}
+            aria-label={t('addImages')}
+            onClick={() => { fileInputRef.current?.click() }}
+            onPointerDown={event => { event.stopPropagation() }}
+          >
+            <IconPaperclipOutlineMedium size={14} />
+          </button>
           <button
             type="button"
             className="dsh-task-board-iconBtn"
@@ -569,6 +659,74 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
           </button>
         </div>
       </div>
+      {/* 卡片标题：顶部按钮行与正文之间；纯展示，可自由编辑，不填入新对话。 */}
+      {titleEditing
+        ? (
+          <CardTitleEdit
+            initial={card.title ?? ''}
+            placeholder={t('cardTitlePlaceholder')}
+            ariaLabel={t('cardTitleLabel')}
+            onCommit={title => {
+              setTitleEditing(false)
+              onChange(updateCard(board, card.id, { title: title.trim() === '' ? null : title }))
+            }}
+            onCancel={() => { setTitleEditing(false) }}
+          />
+          )
+        : (
+          <div
+            className={`dsh-task-board-cardTitle${card.title === undefined || card.title === '' ? ' dsh-task-board-cardTitleEmpty' : ''}`}
+            title={t('cardTitleLabel')}
+            onClick={() => { setTitleEditing(true) }}
+          >
+            {card.title === undefined || card.title === '' ? t('cardTitlePlaceholder') : card.title}
+          </div>
+          )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={IMAGE_ACCEPT}
+        multiple
+        className="dsh-task-board-fileInput"
+        aria-label={t('addImages')}
+        onChange={event => {
+          const files = Array.from(event.target.files ?? [])
+          event.target.value = ''
+          addImages(files)
+        }}
+        onPointerDown={event => { event.stopPropagation() }}
+      />
+      {(card.images ?? []).length > 0 ? (
+        <div className="dsh-task-board-cardImages">
+          {(card.images ?? []).map(image => (
+            <div key={image.id} className="dsh-task-board-cardImage">
+              <button
+                type="button"
+                className="dsh-task-board-cardImageThumb"
+                title={t('openImage')}
+                aria-label={`${t('openImage')}：${image.name}`}
+                onClick={() => { setPreview(image) }}
+                onPointerDown={event => { event.stopPropagation() }}
+              >
+                <img src={image.dataUrl} alt={image.name} />
+              </button>
+              <button
+                type="button"
+                className="dsh-task-board-cardImageRemove"
+                title={t('removeImage')}
+                aria-label={`${t('removeImage')}：${image.name}`}
+                onClick={() => {
+                  const next = (card.images ?? []).filter(item => item.id !== image.id)
+                  onChange(updateCard(board, card.id, { images: next.length === 0 ? null : next }))
+                }}
+                onPointerDown={event => { event.stopPropagation() }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {editing
         ? (
           <CardEdit
@@ -604,6 +762,14 @@ function BoardCardRow({ card, listId, isFirstList, board, onChange, deps }: {
           </span>
         </div>
       )}
+      {preview !== null ? (
+        <ImageLightbox
+          src={preview.dataUrl}
+          alt={preview.name}
+          labels={{ dialog: t('imageDialog'), close: t('imageClose') }}
+          onClose={() => { setPreview(null) }}
+        />
+      ) : null}
     </article>
   )
 }
@@ -641,6 +807,18 @@ function CardFace({ card, deps }: { card: BoardCardModel, deps: BoardDeps }) {
           <span className="dsh-task-board-wsChipLabel">{label}</span>
         </span>
       </div>
+      {card.title !== undefined && card.title !== ''
+        ? <div className="dsh-task-board-cardTitle">{card.title}</div>
+        : null}
+      {(card.images ?? []).length > 0 ? (
+        <div className="dsh-task-board-cardImages">
+          {(card.images ?? []).map(image => (
+            <div key={image.id} className="dsh-task-board-cardImage">
+              <span className="dsh-task-board-cardImageThumb"><img src={image.dataUrl} alt={image.name} /></span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <p className="dsh-task-board-cardText">{card.text}</p>
     </>
   )

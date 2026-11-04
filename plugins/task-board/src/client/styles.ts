@@ -52,6 +52,23 @@ export function boardStyles(): string {
     `.${CLASS}-card:hover{border-color:var(--dsw-alias-border-l2)}`,
     `.${CLASS}-cardSource{opacity:0}`,
     `.${CLASS}-cardText{font-size:13px;line-height:1.55;color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-word;min-width:0;margin:0}`,
+    // 卡片标题：顶部按钮行与正文之间；比正文稍大，仅用于展示。空标题用占位提示引导点击编辑。
+    `.${CLASS}-cardTitle{font-size:15px;line-height:1.45;font-weight:500;color:var(--dsw-alias-label-primary);white-space:pre-wrap;word-break:break-word;min-width:0;border-radius:4px;padding:0 4px;margin:0 -4px;cursor:text}`,
+    `.${CLASS}-cardTitle:hover{background:var(--dsw-alias-interactive-bg-hover)}`,
+    `.${CLASS}-cardTitleEmpty{color:var(--dsw-alias-label-tertiary);font-weight:400;font-size:14px}`,
+    `.${CLASS}-cardTitleInput{width:100%;font:inherit;font-size:15px;line-height:1.45;font-weight:500;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-3);border:0.5px solid var(--dsw-alias-border-l4);border-radius:8px;padding:3px 8px;outline:none;box-sizing:border-box;cursor:text}`,
+    `.${CLASS}-cardTitleInput:focus{border-color:var(--dsw-alias-brand-primary)}`,
+    // 隐藏的原生 file input：靠卡片上的回形针按钮 .click() 触发，不占布局。
+    `.${CLASS}-fileInput{position:absolute;width:0;height:0;opacity:0;overflow:hidden;pointer-events:none}`,
+    // 图片缩略图轨道：固定高度、可横向滚动，删图按钮 hover 显现。
+    `.${CLASS}-cardImages{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;padding:1px 0;--dsh-scrollbar-width:9px;--dsh-scrollbar-thumb-border:2px}`,
+    `.${CLASS}-cardImage{position:relative;flex:none;width:56px;height:56px}`,
+    `.${CLASS}-cardImageThumb{display:block;width:56px;height:56px;padding:0;border:0.5px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-3);overflow:hidden;cursor:zoom-in;box-sizing:border-box}`,
+    `.${CLASS}-cardImageThumb:hover{border-color:var(--dsw-alias-border-l2)}`,
+    `.${CLASS}-cardImageThumb img{display:block;width:100%;height:100%;object-fit:cover}`,
+    `.${CLASS}-cardImageRemove{position:absolute;top:-5px;right:-5px;display:flex;align-items:center;justify-content:center;width:16px;height:16px;padding:0;border:none;border-radius:50%;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);font:14px/1 var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);cursor:pointer;box-shadow:var(--dsw-elevation-prominent,0 2px 8px rgba(0,0,0,0.16));opacity:0}`,
+    `.${CLASS}-cardImage:hover .${CLASS}-cardImageRemove,.${CLASS}-cardImageRemove:focus-visible{opacity:1}`,
+    `.${CLASS}-cardImageRemove:hover{background:var(--dsw-alias-interactive-bg-hover-danger);color:var(--dsw-alias-state-error-primary)}`,
     `.${CLASS}-cardMeta{display:flex;align-items:center;gap:6px;min-width:0}`,
     `.${CLASS}-cardActions{display:flex;align-items:center;gap:2px;flex:none;margin-left:auto;opacity:0}`,
     `.${CLASS}-card:hover .${CLASS}-cardActions,.${CLASS}-cardActions:focus-within{opacity:1}`,
@@ -92,7 +109,11 @@ export function boardStyles(): string {
     `.${CLASS}-textBtn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}`,
     `.${CLASS}-textBtn svg{display:block}`,
     // ── 添加卡片 / 添加列表（页头输入行）──
-    `.${CLASS}-addCard{flex:none;margin:0 10px 10px}`,
+    `.${CLASS}-addCard{flex:none;display:flex;align-items:center;gap:4px;margin:0 10px 10px;min-width:0}`,
+    // 最后一列「清空所有卡片」靠右，禁用态跟随原生文字按钮的次级色。
+    `.${CLASS}-clearList{margin-left:auto;flex:none;white-space:nowrap}`,
+    `.${CLASS}-clearList:disabled{opacity:0.4;cursor:default}`,
+    `.${CLASS}-clearList:disabled:hover{background:transparent;color:var(--dsw-alias-label-secondary)}`,
     `.${CLASS}-addColumnInput{font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-3);border:0.5px solid var(--dsw-alias-border-l4);border-radius:8px;padding:3px 8px;outline:none;box-sizing:border-box}`,
     `.${CLASS}-addColumnInput:focus{border-color:var(--dsw-alias-brand-primary)}`,
     // ── 空板空态 ──

@@ -7,8 +7,9 @@
  */
 
 import {
-  MAX_CARDS_PER_LIST, MAX_CARD_TEXT_LENGTH, MAX_LISTS, MAX_LIST_TITLE_LENGTH, MAX_TOTAL_CARDS,
-  type BoardCard, type BoardDocument, type BoardList,
+  MAX_CARDS_PER_LIST, MAX_CARD_TEXT_LENGTH, MAX_CARD_TITLE_LENGTH, MAX_IMAGES_PER_CARD,
+  MAX_LISTS, MAX_LIST_TITLE_LENGTH, MAX_TOTAL_CARDS, MAX_TOTAL_IMAGE_CHARS,
+  type BoardCard, type BoardCardImage, type BoardDocument, type BoardList,
 } from '../shared.js'
 
 /** 生成一个足够唯一的 id（同页内不重复即可，持久唯一性由 normalizeBoard 收敛）。 */
@@ -18,6 +19,47 @@ export function newId(prefix: string): string {
 
 function totalCards(board: BoardDocument): number {
   return board.lists.reduce((sum, list) => sum + list.cards.length, 0)
+}
+
+/** 整板已用图片 data URL 长度，用于新增图片前做总量门控。 */
+export function totalImageChars(board: BoardDocument): number {
+  return board.lists.reduce((sum, list) =>
+    sum + list.cards.reduce((cardSum, card) =>
+      cardSum + (card.images ?? []).reduce((imageSum, image) => imageSum + image.dataUrl.length, 0), 0), 0)
+}
+
+/**
+ * 新增图片的公共门控：返回本次还能接收的图片；超上限的部分直接丢弃。
+ * 页面据此给出提示，且写回的文档始终满足宿主半的严格校验。
+ * @param current - 卡片现有图片。
+ * @param incoming - 待加入的图片。
+ * @param usedElsewhere - 板上其他图片已占用的 data URL 长度。
+ * @returns 可写入的图片、被丢弃的张数与原因。
+ */
+export function admissibleImages(
+  current: readonly BoardCardImage[],
+  incoming: readonly BoardCardImage[],
+  usedElsewhere: number,
+): { images: BoardCardImage[], dropped: number, reason: 'imageLimit' | 'imageTotalTooLarge' | undefined } {
+  const images = [...current]
+  let used = usedElsewhere + images.reduce((sum, image) => sum + image.dataUrl.length, 0)
+  let dropped = 0
+  let reason: 'imageLimit' | 'imageTotalTooLarge' | undefined
+  for (const image of incoming) {
+    if (images.length >= MAX_IMAGES_PER_CARD) {
+      dropped += 1
+      reason = 'imageLimit'
+      continue
+    }
+    if (used + image.dataUrl.length > MAX_TOTAL_IMAGE_CHARS) {
+      dropped += 1
+      reason = 'imageTotalTooLarge'
+      continue
+    }
+    images.push(image)
+    used += image.dataUrl.length
+  }
+  return { images, dropped, reason }
 }
 
 /**
@@ -80,25 +122,28 @@ export function moveList(board: BoardDocument, listId: string, toIndex: number):
  * @param board - 当前文档。
  * @param listId - 目标列。
  * @param text - 卡片文本。
- * @param workspaceId - 目标工作区；缺省 = 默认落点。
+ * @param options - 可选标题、图片与目标工作区；缺省工作区 = 默认落点。
  * @returns 新文档；文本为空或列/总数超上限时返回原文档。
  */
 export function addCard(
   board: BoardDocument,
   listId: string,
   text: string,
-  workspaceId?: string,
+  options: { title?: string, images?: readonly BoardCardImage[], workspaceId?: string } = {},
 ): BoardDocument {
   const value = text.trim().slice(0, MAX_CARD_TEXT_LENGTH)
   if (value === '') return board
   const list = board.lists.find(item => item.id === listId)
   if (list === undefined || list.cards.length >= MAX_CARDS_PER_LIST) return board
   if (totalCards(board) >= MAX_TOTAL_CARDS) return board
+  const title = options.title?.trim().slice(0, MAX_CARD_TITLE_LENGTH) ?? ''
   const now = new Date().toISOString()
   const card: BoardCard = {
     id: newId('card'),
     text: value,
-    ...workspaceId === undefined || workspaceId === '' ? {} : { workspaceId },
+    ...title === '' ? {} : { title },
+    ...options.images === undefined || options.images.length === 0 ? {} : { images: options.images },
+    ...options.workspaceId === undefined || options.workspaceId === '' ? {} : { workspaceId: options.workspaceId },
     createdAt: now,
     updatedAt: now,
   }
@@ -109,15 +154,21 @@ export function addCard(
 }
 
 /**
- * 修改卡片文本与目标工作区（就地编辑的落位）。
+ * 修改卡片的标题、文本、图片与目标工作区（就地编辑的落位）。
  * @param board - 当前文档。
  * @param cardId - 目标卡片。
- * @param patch - 要改的字段；`workspaceId: null` 清除选择（回到默认落点）。
+ * @param patch - 要改的字段；`title`/`workspaceId`/`images` 为 null 时清除，
+ *   `images` 为数组时按上限裁剪后整体替换。
  */
 export function updateCard(
   board: BoardDocument,
   cardId: string,
-  patch: { text?: string, workspaceId?: string | null },
+  patch: {
+    text?: string,
+    title?: string | null,
+    images?: readonly BoardCardImage[] | null,
+    workspaceId?: string | null,
+  },
 ): BoardDocument {
   let changed = false
   const lists = board.lists.map(list => {
@@ -126,12 +177,31 @@ export function updateCard(
     const card = list.cards[index]
     if (card === undefined) return list
     let text = card.text
+    let title = card.title
+    let images = card.images
     let workspaceId = card.workspaceId
     if (patch.text !== undefined) {
       const value = patch.text.trim().slice(0, MAX_CARD_TEXT_LENGTH)
-      if (value === '' || value === card.text) return list
-      text = value
-      changed = true
+      // 空/未变化的文本只跳过这一字段，不能把同一 patch 的标题/图片改动一起丢掉。
+      if (value !== '' && value !== card.text) {
+        text = value
+        changed = true
+      }
+    }
+    if (patch.title !== undefined) {
+      const value = patch.title === null ? undefined : patch.title.trim().slice(0, MAX_CARD_TITLE_LENGTH) || undefined
+      if (value !== card.title) {
+        title = value
+        changed = true
+      }
+    }
+    if (patch.images !== undefined) {
+      const value = patch.images === null ? undefined : patch.images.slice(0, MAX_IMAGES_PER_CARD)
+      const previous = card.images ?? []
+      if (value === undefined ? previous.length > 0 : value.length !== previous.length || value.some((image, at) => image !== previous[at])) {
+        images = value
+        changed = true
+      }
     }
     if (patch.workspaceId !== undefined) {
       const value = patch.workspaceId === null || patch.workspaceId === '' ? undefined : patch.workspaceId
@@ -141,15 +211,32 @@ export function updateCard(
       }
     }
     if (!changed) return list
-    const { workspaceId: _previous, ...rest } = card
-    const next: BoardCard = workspaceId === undefined
-      ? { ...rest, text, updatedAt: new Date().toISOString() }
-      : { ...rest, text, workspaceId, updatedAt: new Date().toISOString() }
+    const { title: _oldTitle, images: _oldImages, workspaceId: _previous, ...rest } = card
+    const next: BoardCard = {
+      ...rest,
+      text,
+      ...title === undefined ? {} : { title },
+      ...images === undefined || images.length === 0 ? {} : { images },
+      ...workspaceId === undefined ? {} : { workspaceId },
+      updatedAt: new Date().toISOString(),
+    }
     const cards = [...list.cards]
     cards[index] = next
     return { ...list, cards }
   })
   return changed ? { ...board, lists } : board
+}
+
+/**
+ * 清空一列的全部卡片（最后一列「清空所有卡片」的落位）。
+ * @param board - 当前文档。
+ * @param listId - 目标列。
+ * @returns 新文档；列不存在或本来就是空列时返回原文档。
+ */
+export function clearCards(board: BoardDocument, listId: string): BoardDocument {
+  const list = board.lists.find(item => item.id === listId)
+  if (list === undefined || list.cards.length === 0) return board
+  return { ...board, lists: board.lists.map(item => item.id === listId ? { ...item, cards: [] } : item) }
 }
 
 /**

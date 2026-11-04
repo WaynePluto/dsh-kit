@@ -15,6 +15,7 @@ import { AddListForm } from './editors.js'
 import { useBoardStore } from './use-board-store.js'
 import { installBoardStyles } from './styles.js'
 import { fill, type TaskBoardKey } from './locales.js'
+import type { DraftTaskRequest } from './draft-task.js'
 
 /** 页面注入的动作面（由 client/index 的 register inject 工厂提供）。 */
 export interface TaskBoardActions {
@@ -26,8 +27,8 @@ export interface TaskBoardActions {
   workspaces: () => readonly WorkspaceOption[]
   /** 复制文本到剪贴板；返回是否成功。 */
   copyText: (text: string) => Promise<boolean>
-  /** 把任务文本填入目标工作区新对话的输入框（不发送）；失败 reject。 */
-  draftTask: (text: string, workspaceId: string | undefined) => Promise<void>
+  /** 把任务文本与图片填入目标工作区新对话的输入框（不发送）；失败 reject。 */
+  draftTask: (request: DraftTaskRequest) => Promise<void>
 }
 
 /** 页面 props：注入动作 + 文案 thunk（PropsLocale）。 */
@@ -49,6 +50,11 @@ export function TaskBoardPage(props: TaskBoardPageProps) {
   const [initial, setInitial] = useState<BoardDocument | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | undefined>(undefined)
   const [sendError, setSendError] = useState<string | undefined>(undefined)
+  const [notice, setNotice] = useState<string | undefined>(undefined)
+  const noticeTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => {
+    if (noticeTimer.current !== undefined) window.clearTimeout(noticeTimer.current)
+  }, [])
 
   useEffect(() => {
     const dispose = installBoardStyles()
@@ -72,10 +78,17 @@ export function TaskBoardPage(props: TaskBoardPageProps) {
 
   const save = useCallback((board: BoardDocument) => props.onSave(board).then(undefined), [props.onSave])
 
+  const showNotice = useCallback((text: string) => {
+    setNotice(text)
+    if (noticeTimer.current !== undefined) window.clearTimeout(noticeTimer.current)
+    noticeTimer.current = window.setTimeout(() => { setNotice(undefined) }, 4000)
+  }, [])
+
   const draftCard = useCallback(async (card: BoardCard): Promise<boolean> => {
     setSendError(undefined)
     try {
-      await props.draftTask(card.text, card.workspaceId)
+      // 卡片标题是纯展示字段，不参与回填；图片按顺序加入草稿附件。
+      await props.draftTask({ text: card.text, workspaceId: card.workspaceId, images: card.images ?? [] })
       return true
     } catch (error: unknown) {
       setSendError(fill(translate('draftFailed'), { message: error instanceof Error ? error.message : String(error) }))
@@ -96,11 +109,11 @@ export function TaskBoardPage(props: TaskBoardPageProps) {
     )
   }
 
-  return <TaskBoardLoaded initial={initial} save={save} translate={translate} workspaces={props.workspaces} copyText={props.copyText} draftCard={draftCard} sendError={sendError} />
+  return <TaskBoardLoaded initial={initial} save={save} translate={translate} workspaces={props.workspaces} copyText={props.copyText} draftCard={draftCard} sendError={sendError} notice={notice} showNotice={showNotice} />
 }
 
 /** 已装载文档后的正文；独立一层让 useBoardStore 的 initial 引用保持稳定。 */
-function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, draftCard, sendError }: {
+function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, draftCard, sendError, notice, showNotice }: {
   initial: BoardDocument
   save: (board: BoardDocument) => Promise<void>
   translate: (key: TaskBoardKey) => string
@@ -108,6 +121,8 @@ function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, draft
   copyText: (text: string) => Promise<boolean>
   draftCard: (card: BoardCard) => Promise<boolean>
   sendError: string | undefined
+  notice: string | undefined
+  showNotice: (text: string) => void
 }) {
   const { board, saveState, saveError, update } = useBoardStore(initial, save)
   // 填草稿成功后把卡片挪到第二列首位（待办 → 进行中）；失败或不足两列不移动，
@@ -121,15 +136,17 @@ function TaskBoardLoaded({ initial, save, translate, workspaces, copyText, draft
     if (next !== board) update(next)
     return true
   }, [draftCard, board, update])
-  const deps: BoardDeps = { translate, workspaces, copyText, draftCard: draftCardAndMove }
+  const deps: BoardDeps = { translate, workspaces, copyText, draftCard: draftCardAndMove, notice: showNotice }
   const boardScrollRef = useRef<HTMLDivElement | null>(null)
   const statusText = sendError !== undefined
     ? sendError
     : saveState === 'error'
       ? fill(translate('saveFailed'), { message: saveError ?? '' })
-      : saveState === 'pending' || saveState === 'saving'
-        ? translate('savedLocally')
-        : ''
+      : notice !== undefined
+        ? notice
+        : saveState === 'pending' || saveState === 'saving'
+          ? translate('savedLocally')
+          : ''
   return (
     <section className="dsh-task-board-page" data-dsh-task-board-page="" aria-label={translate('title')}>
       <header className="dsh-task-board-heading">

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addCard, addList, deleteCard, deleteList, listIndexOfCard, moveCard, moveList, renameList, updateCard,
+  addCard, addList, admissibleImages, clearCards, deleteCard, deleteList,
+  listIndexOfCard, moveCard, moveList, renameList, totalImageChars, updateCard,
 } from '../src/client/board-ops.js'
-import type { BoardDocument } from '../src/shared.js'
+import type { BoardCardImage, BoardDocument } from '../src/shared.js'
+import { MAX_IMAGES_PER_CARD, MAX_TOTAL_IMAGE_CHARS } from '../src/shared.js'
 
 /** 单列工厂：listId + 卡片 id 前缀（`l1-c1` 形式的稳定 id）。 */
 function makeList(listId: string, prefixes: string[]) {
@@ -85,7 +87,74 @@ describe('card ops', () => {
     expect(listIndexOfCard(after, 'l2-c2')).toBe(-1)
     expect(listIndexOfCard(after, 'l1-c1')).toBe(0)
   })
+
+  it('clearCards 只清空目标列；空列或未知列无操作', () => {
+    const base = board()
+    const cleared = clearCards(base, 'l1')
+    expect(ids(cleared, 'l1')).toEqual([])
+    expect(ids(cleared, 'l2')).toEqual(['l2-c1', 'l2-c2', 'l2-c3'])
+    expect(cleared.lists[0]).not.toBe(base.lists[0])
+    expect(cleared.lists[1]).toBe(base.lists[1])
+    expect(clearCards(base, 'l3')).toBe(base)
+    expect(clearCards(base, 'nope')).toBe(base)
+  })
+
+  it('addCard 支持标题与图片；updateCard 可改标题/图片/清空', () => {
+    const base = board()
+    const created = addCard(base, 'l3', '  new task  ', {
+      title: '  卡片标题  ',
+      images: [image('i1')],
+      workspaceId: 'w1',
+    })
+    const added = created.lists[2]?.cards[0]
+    expect(added?.text).toBe('new task')
+    expect(added?.title).toBe('卡片标题')
+    expect(added?.images).toEqual([image('i1')])
+    expect(added?.workspaceId).toBe('w1')
+
+    const retitled = updateCard(created, added?.id ?? '', { title: '改过的标题' })
+    expect(retitled.lists[2]?.cards[0]?.title).toBe('改过的标题')
+    const clearedTitle = updateCard(retitled, added?.id ?? '', { title: null })
+    expect(clearedTitle.lists[2]?.cards[0]?.title).toBeUndefined()
+    const replaced = updateCard(clearedTitle, added?.id ?? '', { images: [image('i2', 'b.webp', 'image/webp')] })
+    expect(replaced.lists[2]?.cards[0]?.images?.map(item => item.id)).toEqual(['i2'])
+    const removed = updateCard(replaced, added?.id ?? '', { images: null })
+    expect(removed.lists[2]?.cards[0]?.images).toBeUndefined()
+    // 重复写入相同值不产生新文档。
+    expect(updateCard(removed, added?.id ?? '', { images: null })).toBe(removed)
+  })
+
+  it('同一 patch 里文本未变化时仍可改标题/图片', () => {
+    const base = board()
+    const id = 'l1-c1'
+    const next = updateCard(base, id, { text: base.lists[0]?.cards[0]?.text ?? '', title: '新标题' })
+    expect(next.lists[0]?.cards[0]?.title).toBe('新标题')
+    expect(next.lists[0]?.cards[0]?.text).toBe(base.lists[0]?.cards[0]?.text)
+  })
+
+  it('admissibleImages 按单卡张数与整板总量双重裁剪', () => {
+    const current = [image('i1')]
+    const incoming = Array.from({ length: MAX_IMAGES_PER_CARD }, (_unused, index) => image(`n${String(index)}`))
+    const limited = admissibleImages(current, incoming, 0)
+    expect(limited.images).toHaveLength(MAX_IMAGES_PER_CARD)
+    expect(limited.dropped).toBe(1)
+    expect(limited.reason).toBe('imageLimit')
+
+    const oversized = admissibleImages([], [image('big', 'big.png', 'image/png', 'A'.repeat(MAX_TOTAL_IMAGE_CHARS))], 0)
+    expect(oversized.images).toHaveLength(0)
+    expect(oversized.reason).toBe('imageTotalTooLarge')
+  })
+
+  it('totalImageChars 累计全板图片长度', () => {
+    const withImage = addCard(board(), 'l3', 't', { images: [image('i1'), image('i2')] })
+    expect(totalImageChars(withImage)).toBe(image('i1').dataUrl.length + image('i2').dataUrl.length)
+  })
 })
+
+/** 测试用图片工厂。 */
+function image(id: string, name = 'a.png', mediaType: BoardCardImage['mediaType'] = 'image/png', payload = 'iVBORw0KGgo='): BoardCardImage {
+  return { id, name, mediaType, dataUrl: `data:${mediaType};base64,${payload}` }
+}
 
 describe('moveCard', () => {
   it('同列重排（dnd arrayMove 语义：下标按移除后的数组）', () => {
