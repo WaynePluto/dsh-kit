@@ -18,8 +18,6 @@ export interface Config {
   startupTimeoutMs: number
   /** 打开 session 失败前允许的尝试次数。 */
   startupAttempts: number
-  /** 人类输入等待正在进行的 model send 的时间；避免 `ctx.terminals` 第二个 send 直接 throw。 */
-  sendWaitMs: number
 }
 
 /** {@link Config} 的 runtime schema；schemastery 3.18 起常量不再显式注解 `zs<Config>`，类型由上方 interface 单独声明。 */
@@ -32,5 +30,4 @@ export const Config = zs.object({
   timeoutMs: zs.natural().default(300_000),
   startupTimeoutMs: zs.natural().default(20_000),
   startupAttempts: zs.natural().default(3),
-  sendWaitMs: zs.natural().default(10_000),
 })

@@ -84,6 +84,29 @@ export const inject = ['slots', 'locale', 'sessions', 'uiConversation', 'uiWorks
 /** keyed shadow priority；dsh 自己的 user renderer 位于默认 priority 0。 */
 export const USER_RENDERER_PRIORITY = -1
 
+/** pin 失败重试间隔：宿主 registry 对刚 fork 的子会话可能短暂不可见（投影/持久化同步竞态）。 */
+const PIN_RETRY_DELAYS_MS = [600, 1500] as const
+
+/**
+ * 把新会话置顶到工作区分组第一位（dsh 原生 pin，排序里优先于手动顺序与 recency；
+ * 仅侧边栏排序为「手动」时生效，默认「按更新时间」是纯 recency 不认置顶）。
+ * fork 子会话的 summary.updatedAt 继承 seed 前缀的旧时间戳，按 recency 排在工作区末尾
+ * （会话多时用户找不到）。pin 失败按 {@link PIN_RETRY_DELAYS_MS} 重试，最终失败输出
+ * console.error 便于诊断。
+ * @param ctx - client 根 context。
+ * @param sessionId - fork/create 出的子会话。
+ * @param attempt - 当前重试轮次。
+ */
+function pinToTop(ctx: Context, sessionId: SessionId, attempt = 0): void {
+  void ctx.uiWorkspace.pinSession(sessionId).then(() => undefined, (error: unknown) => {
+    if (attempt >= PIN_RETRY_DELAYS_MS.length) {
+      console.error('user-message-fork: pin failed after retries', String(sessionId), error)
+      return
+    }
+    setTimeout(() => { pinToTop(ctx, sessionId, attempt + 1) }, PIN_RETRY_DELAYS_MS[attempt])
+  })
+}
+
 /**
  * 新会话的落点：优先源会话所在工作区（新对话与源会话同组），不属于任何工作区时退回源会话目录。
  * @param ctx - client 根 context。
@@ -115,12 +138,13 @@ export function apply(ctx: Context): void {
         const source = ctx.sessions.binding(sessionId)
         if (source === undefined) throw new Error(`user-message-fork: source "${String(sessionId)}" has no binding`)
         if (request.mode === 'fresh') {
-          await createAndSeedUserMessage(
+          const createdId = await createAndSeedUserMessage(
             ctx.sessions,
             id => ctx.uiWorkspace.openSession(id),
             freshConversationTarget(ctx, sessionId),
             request.text,
           )
+          pinToTop(ctx, createdId)
           return
         }
         const chat = ctx.uiConversation.binding(source).target('chat')
@@ -134,7 +158,8 @@ export function apply(ctx: Context): void {
             return snapshot === undefined ? undefined : snapshot.timeline
           },
         )
-        await forkAndSeedUserMessage(ctx.sessions, id => ctx.uiWorkspace.openSession(id), sessionId, anchor, request.text)
+        const childId = await forkAndSeedUserMessage(ctx.sessions, id => ctx.uiWorkspace.openSession(id), sessionId, anchor, request.text)
+        pinToTop(ctx, childId)
       },
     }),
   }, UserMessageForkNodeView))

@@ -6,6 +6,52 @@
 
 ## 已实现
 
+- [x] 分叉会话置顶（2026-11-05，用户反馈「分叉后在会话列表里找不到」）：fork 子会话的
+  summary.updatedAt 继承 seed 前缀的旧时间戳，工作区按 recency 排序时落在末尾，会话多时
+  不可见。fork/create 成功后调用官方 `ctx.uiWorkspace.pinSession(childId)` 置顶到分组
+  第一位（pin 在排序里优先于手动顺序与 recency；用户可随时手动取消置顶）。21 项单测与
+  专项冒烟全绿，suite tar 重打。
+- [x] 交互终端原生级重写（2026-11-05，用户决策「与 dsh 自带终端一致的体验」）：在 2026-11-05
+  第一次 tab 化（dock → 聚合 tab + screen 文本轮询）实机验收后，用户提出四点优化（遮罩开关/
+  宽度自适应/中断按钮语义/用户关闭），评估后整体升级为原生级形态，取代第一次实现：
+  - **PTY 所有权**：`TapTerminalBackend` 组合上游公开构造的 `BashTerminalBackend`，在
+    `spawnTerminal` 注入点拦截——`terminalType` 改写 `xterm-256color`（上游默认 dumb 关彩色）
+    + 句柄按 `spec.sessionId`（registry 先铸 id，每 spawn 闭包捕获，并发安全）登记 tap。
+    模型工具链、就绪探测、busy 等待、read 分页、沙箱围栏全部上游原样，零改动。
+  - **页面**：xterm.js（@xterm/xterm 6.0.0 + FitAddon 内联 bundle 704KB/gzip 150KB；官方
+    xterm.css 内嵌注入 + 容器作用域覆盖 viewport 黑底），一个终端一个 chip（multiple: true），
+    guide 入口 spawn 全新终端（与模型同一条 backend 路径，围栏一致）；键盘 onData → 16ms 微批
+    直写 PTY（密码不回显归程序，UI 无遮罩表单）；ResizeObserver → FitAddon → resize（ConPTY
+    重排自适应）；关 chip = 杀进程树（第一次 × 抛错否决进入 4 秒确认态；模型 close 无需确认）。
+  - **数据通道**：`/api/terminal/stream` 流式响应（官方桥对响应体增量写入 + 背压，免轮询）：
+    attach 重放宿主 ring buffer（512KB，整块丢弃最旧）→ 实时帧 → exit 帧；tab 隐藏断流、
+    可见重连重放；布局恢复经 localStorage bindings（(sessionId, contentId) → terminalId，
+    `multiple` page 每次 open 铸新 uuid contentId 且永不 dedup）。底座四色随 dsh 主题 token +
+    ANSI 经典 16 色板；模型 read 经上游 sanitizer 拿干净文本（彩色字节走 tap、纯文本走模型）。
+  - **保活边界**（与官方原生终端一致）：浏览器关闭/刷新/切会话存活（进程在宿主）；宿主重启/
+    插件停用/会话卸载死亡；上游 registry 无闲置回收。多会话完全隔离（owner Agent 记账）。
+  - Config 删 sendWaitMs；guidance 补「用完主动 close 并说明、终端消失先 list 再开新的」。
+  - 51 项单测（含 live 真实 PTY：tap 配对/直写/帧接收/SEND_ACTIVE 互斥）、lint/typecheck/
+    两半产物/`terminal-check.mjs`（真实 dsh 冷启动 + 新通道面 + xterm bundle 断言）全绿，
+    suite tar 重打。新契约回写：流式响应（[插件机制](dsh/plugins.md) D16 段）、sidebar tab
+    （[Sidebar 扩展](dsh/sidebar.md)，自 plugins.md 拆分）、页面渲染与生命周期
+    （[工具与进程](dsh/runtime.md)）。桌面实机验收（四点体验 + 彩色输出 + 保活）待用户执行。实机首轮报
+  「no PTY backend registered for shell」：backend 注册写在 apply 顶层，`ctx.get('terminals')`
+  在服务 fiber 未起时返回 undefined 被可选链吞掉——改为 `ctx.inject(['terminals'])` 内注册
+  （实例仍绑宿主根 ctx，inject 派生 scope 无 sandboxPolicy 执行环境）；套件已重打。二轮实机又修三处：serveStream 按 sessionId 查 tap（应按 terminalId）致流式 attach 恒 404（missing 态）——请求改双 id 并加跨会话归属校验；tap 在就绪探测后才登记丢失启动期输出（guide 终端空白）——改 spawnTerminal 注入点立即登记（闭包持外层 spec.sessionId）；monitor 只认导航 params 识别已绑定 tab（guide 壳 tab 无 params）致重复开 tab——openTabs contentId 经 bindings 回退。画面几何：流式帧序改 size→ring→live→data/exit，客户端按 PTY 原几何重放、live 后才 fit+resize（消除 160 列字节错位重放），重连先 reset 全量重放。
+- [x] 交互终端迁右侧边栏 tab（2026-11-05，已被上方原生级重写取代）：提问/审批卡片接管 composer 席位时旧
+  dock 面板（`conversation.input.dock` 在 chain fallback 内）被整体 `display:none`，用户无法在
+  提问期间输入密码。改为右侧边栏自有 tab 类型（kind `dsh-kit-terminal`，`sidebarRightTabs` +
+  `sidebar.right.pane.tab` 两段式注册，`keepMounted: true`，guide 入口卡片）：composer 接管与
+  sidebar 互不影响，边看提问边输入。宿主半零改动（PTY、工具契约、/terminal RPC 原样）；
+  浏览器半复用 panel/polling hook，`tab.visible` 驱动 screen 轮询暂停与草稿清理；会话级
+  monitor 每 5 秒收敛视图（0→1 自动 `openTabIn`，用户手动关闭按基线抑制重开、模型开出更多
+  终端才重开，终端清零收掉空 tab）；关 tab 不杀进程（不注册 close handler）。guidance 补
+  「等待用户输入轮询 read、不发提问弹窗」。91 项单测、lint/typecheck/两半产物/suite tar 全绿，
+  `terminal-check.mjs`（真实 dsh 冷启动 + PTY + 通道）全过；桌面实机核心场景
+  （模型 start + ask_user_question 弹出时在 tab 输入密码后点选项，AI 接管）待用户验收。
+  sidebarRight tab 契约（openTabIn 跨会话、close 仅前台、openTabs 清单、useTabInfo 自动绑定、
+  关闭语义）回写 [Sidebar 扩展](dsh/sidebar.md)。
 - [x] quick-commands 弹窗闪退修复（2026-11-05，用户报告）：dsh 0.2.2-rc.1 起 composer 座位
   `will-change: transform`（`ConversationRoot.module.css`）成为 fixed 后代包含块，契约要求
   composer 内 fixed 浮层一律 portal 到 body（[会话](dsh/conversation.md) 已记录）；面板此前

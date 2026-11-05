@@ -1,8 +1,14 @@
 /* oxlint-disable no-await-in-loop -- terminal 启动重试必须串行等待上一次失败和退避。 */
 import type { Context } from '@deepseek-ai/cordis'
 import TerminalSessionService from '@deepseek-ai/dsh-terminal'
-import * as terminalBash from '@deepseek-ai/dsh-terminal-bash'
+import type {
+  TerminalBackend, TerminalBackendSession, TerminalBackendSpawnSpec,
+} from '@deepseek-ai/dsh-terminal'
+import { BashTerminalBackend } from '@deepseek-ai/dsh-terminal-bash'
+import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
+import type { SubprocessTerminalSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import type { Config } from './config.js'
+import type { TerminalTapRegistry } from './terminal-tap.js'
 
 /** 启动失败重试之间的间隔。 */
 const STARTUP_RETRY_DELAY_MS = 1500
@@ -72,11 +78,98 @@ export function backendConfig(
   }
 }
 
-/** 挂载 dsh PTY registry、shell backend 与启动补偿。 */
-export function mountTerminalBackend(ctx: Context, config: Config): void {
+/** PTY 向子进程宣告的终端类型；`xterm-256color` 让程序输出 ANSI 彩色（`dumb` 会关闭）。 */
+export const TERMINAL_TYPE = 'xterm-256color'
+
+/**
+ * 上游受控提示符（terminal-bash `sanitize.ts` 的 `CONTROLLED_PROMPT`，包入口不导出，
+ * dsh-upgrade 复核）。spawn 就绪后 tap ring 裁到它最后一次出现处：pwsh 方言的编码
+ * preamble / prompt 安装命令回显（用户手开终端满屏初始化命令）不进重放画面；bash
+ * 方言提示符由环境安装，ring 本就只有提示符，裁剪幂等。
+ */
+export const PROMPT_TAIL_MARKER = new TextEncoder().encode('dsh> ')
+
+/** `BashTerminalBackend` 构造参数第二项的类型（包入口未导出该类型别名，从构造签名推导）。 */
+type ResolvedBashConfig = ConstructorParameters<typeof BashTerminalBackend>[1]
+
+/**
+ * 显式组装 terminal-bash 的完整 backend 配置（与 `@deepseek-ai/dsh-terminal-bash`
+ * 的 `Config` z-schema 默认值一字不差）。手工构造 backend 不经过 cordis 的 schema
+ * 解析，而包入口不导出 `resolveConfig`/`validateConfig`（发布物只有主入口），
+ * 因此默认层在这里负责；shellPath 沿用上游同源解析（pwsh 走 `resolvePwshPath`）。
+ * 上游默认值变化由 dsh-upgrade 复核。
+ */
+export function fullBashConfig(config: Config, platform: string = process.platform): ResolvedBashConfig {
+  const partial = backendConfig(config, platform)
+  const shellPath = partial.shellDialect === 'pwsh' ? resolvePwshPath() : '/bin/bash'
+  const shellArgs = partial.shellArgs
+    ?? (partial.shellDialect === 'pwsh' ? ['-NoLogo', '-NoProfile'] : ['--noprofile', '--norc', '-i'])
+  const resolved: ResolvedBashConfig = {
+    backendType: 'shell',
+    shellDialect: partial.shellDialect,
+    shellPath,
+    shellArgs,
+    rows: 40,
+    cols: 160,
+    scrollbackLines: 10_000,
+    scrollbackMaxBytes: 4 * 1024 * 1024,
+    maxReadBytes: 256 * 1024,
+    pollIntervalMs: 50,
+    exactProbeAfterMs: 150,
+    idleSilenceMs: 3_000,
+    handoffGraceMs: 500,
+    promptTailGraceMs: 0,
+    timeoutMs: partial.timeoutMs,
+    disposeGraceMs: 3_000,
+  }
+  return resolved
+}
+
+/**
+ * 带 tap 的 shell backend：spawn 路径、沙箱围栏、就绪探测、read 分页全部是上游
+ * `BashTerminalBackend` 原版，只在 `spawnTerminal` 注入点拦截——把 `terminalType`
+ * 改写为 `xterm-256color` 并把句柄登记进 tap registry（挂第二个 `output` listener，
+ * 不改变上游 session 的消费）。每次 spawn 用独立闭包捕获句柄，天然并发安全；
+ * `spec.sessionId` 由 registry 先铸好传入，tap 由此与 session 精确配对。
+ */
+export class TapTerminalBackend implements TerminalBackend {
+  readonly type: string
+
+  constructor(
+    private readonly ctx: Context,
+    private readonly resolved: ResolvedBashConfig,
+    private readonly taps: TerminalTapRegistry,
+  ) {
+    this.type = resolved.backendType
+  }
+
+  async spawn(spec: TerminalBackendSpawnSpec): Promise<TerminalBackendSession> {
+    // tap 必须在句柄返回时立即登记（闭包持有外层 spec 的 sessionId）：pwsh 横幅/提示符在
+    // 后续就绪探测等待期间输出，若等 inner.spawn（含 startupSession）完成再挂 listener，
+    // 启动期输出全部丢失，guide 入口新开的终端会一片空白。
+    const inner = new BashTerminalBackend(this.ctx, this.resolved as never, async (innerSpec: SubprocessTerminalSpawnSpec) => {
+      const handle = await this.ctx.subprocess.spawnTerminal({ ...innerSpec, terminalType: TERMINAL_TYPE })
+      this.taps.bind(String(spec.sessionId), handle, { cols: innerSpec.cols, rows: innerSpec.rows })
+      return handle
+    })
+    const session = await inner.spawn(spec)
+    // 就绪探测通过（提示符已印出）后立即裁剪重放缓冲：启动期回显留在 ring 外，
+    // 手开/guide 入口的终端画面只剩一个干净的受控提示符；启动失败走 throw，不裁剪。
+    this.taps.markReady(String(spec.sessionId), PROMPT_TAIL_MARKER)
+    return session
+  }
+}
+
+/** 挂载 dsh PTY registry、tap 包装的 shell backend 与启动补偿。 */
+export function mountTerminalBackend(ctx: Context, config: Config, taps: TerminalTapRegistry): void {
   // oxlint-disable-next-line no-new -- 构造函数通过 ctx 注册 terminal service，实例本身不需要保留。
   new TerminalSessionService(ctx)
-  ctx.plugin(terminalBash, backendConfig(config))
+  // backend 注册必须等 terminals service 就绪（ctx.get 在服务 fiber 未起时返回 undefined，
+  // 曾致桌面端 "no PTY backend registered for shell"——ctx.inject 保证时序）；backend 实例
+  // 仍绑宿主根 ctx（inject 的派生 scope 只声明了 terminals，没有 sandboxPolicy 等执行环境）。
+  ctx.inject(['terminals'], scope => {
+    scope.effect(() => scope.terminals.registerBackend(new TapTerminalBackend(ctx, fullBashConfig(config), taps)), 'terminal: tap backend')
+  })
   ctx.inject(['terminals'], scope => {
     scope.effect(() => installStartupRetry(scope, config), 'terminal: startup retry')
   })

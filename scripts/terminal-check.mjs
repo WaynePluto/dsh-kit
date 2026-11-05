@@ -33,7 +33,7 @@ const TOOL_NAMES = [
 ]
 
 /** 本插件通道上的全部端点。 */
-const ENDPOINTS = ['list', 'read', 'send', 'interrupt']
+const ENDPOINTS = ['list', 'spawn', 'write', 'resize', 'close']
 
 let failures = 0
 
@@ -73,6 +73,7 @@ async function inspectHostBundle() {
   const channels = []
   const plugins = []
   const provided = []
+  const backends = []
   const mountFailures = []
   const disposers = []
   const inspection = await inspectHostArtifact({
@@ -89,9 +90,23 @@ async function inspectHostBundle() {
         fields: {
           reflect: { provide: (name) => { provided.push(name) } },
           systemPrompt: { section: (definition) => { sections.push(definition); return inspectionNoop }, getSectionOrder: () => 0 },
-          terminals: { registerBackend: () => inspectionNoop, listBackends: () => [], list: () => [] },
           jobs: undefined,
-          inject: () => inspectionNoop,
+          // cordis 语义：inject(deps, cb) 在依赖就绪后以 scope 调用 cb；fake 立即执行，
+          // scope 携带与 fields 同源的 stubs（terminals/connection）并记录 effect disposer。
+          inject: (deps, run) => {
+            const scope = {
+              effect: (runEffect) => { const d = runEffect(); if (typeof d === 'function') disposers.push(d); return inspectionNoop },
+              terminals: {
+                registerBackend: (backend) => { backends.push(backend?.type ?? '?'); return inspectionNoop },
+                listBackends: () => [], list: () => [],
+                spawn: async () => ({ sessionId: 'pty-x', type: 'shell', status: { kind: 'running' }, motd: '' }),
+              },
+              connection: { fetch: { register: () => Promise.resolve(inspectionNoop) } },
+              get: (service) => service === 'terminals' ? scope.terminals : undefined,
+            }
+            run(scope)
+            return inspectionNoop
+          },
           plugin: (plugin, config) => {
             plugins.push(plugin)
             // 这里只运行对象插件。Service CLASS（registry）带有
@@ -110,16 +125,16 @@ async function inspectHostBundle() {
           },
         },
         get: (service) => service === 'terminals'
-          ? { registerBackend: () => inspectionNoop, listBackends: () => [], list: () => [] }
+          ? { registerBackend: (backend) => { backends.push(backend?.type ?? '?'); return inspectionNoop }, listBackends: () => [], list: () => [] }
           : undefined,
       })
       return makeCtx()
     },
   })
-  return { tools, sections, channels, plugins, provided, disposers: disposers.length, mountFailures, module: inspection.module }
+  return { tools, sections, channels, plugins, provided, backends, disposers: disposers.length, mountFailures, module: inspection.module }
 }
 /**
- * 检查 terminal 浏览器构建产物的 dock 座位、命名空间和 external 图标依赖。
+ * 检查 terminal 浏览器构建产物的 sidebar tab 座位、命名空间和 external 图标依赖。
  *
  * @returns {{ seats: object[], namespaces: string[] }}
  */
@@ -128,25 +143,61 @@ function inspectClientBundle() {
   return inspectClientArtifact({
     bundle,
     packageId: PACKAGE_ID,
+    // monitor 的定时器与可见性监听在真实页面由浏览器全局提供；检查 vm 里给最小替身。
+    sandbox: {
+      setInterval,
+      clearInterval,
+      queueMicrotask,
+      navigator: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', platform: 'Win32', language: 'en', maxTouchPoints: 0 },
+      location: { href: 'http://127.0.0.1/' },
+      document: {
+        addEventListener: inspectionNoop, removeEventListener: inspectionNoop, visibilityState: 'visible',
+        createElement: () => ({ set textContent(value) { void value }, remove: inspectionNoop }),
+        head: { append: inspectionNoop },
+      },
+    },
     externalShims: new Map([
       ['react', { useState: inspectionNoop, useEffect: inspectionNoop, useCallback: inspectionNoop, useMemo: inspectionNoop, useRef: () => ({}), createElement: inspectionNoop }],
       ['react/jsx-runtime', { jsx: inspectionNoop, jsxs: inspectionNoop, Fragment: inspectionNoop }],
       ['@deepseek-ai/dsh-client-ui-primitives', {
-        IconApiOutline14: inspectionNoop,
-        IconChevronUpOutline14: inspectionNoop, IconChevronDownOutline14: inspectionNoop,
+        Button: inspectionNoop, Pill: inspectionNoop, IconApiOutlineRegular: inspectionNoop,
+      }],
+      ['@deepseek-ai/dsh-client-store', {
+        createSnapshotStore: (init) => ({
+          getSnapshot: () => init,
+          set: inspectionNoop,
+          update: inspectionNoop,
+          subscribe: () => inspectionNoop,
+        }),
       }],
     ]),
     unknownExternal: (id) => new Error('bundle 要求页面模块表之外的模块：' + id),
     buildContext: ({ exports, externals }) => {
       const seats = []
       const namespaces = []
+      const disposers = []
+      const tabRegistrations = []
       const ctx = createClientInspectionContext({
         seats,
         namespaces,
-        fields: { get: () => undefined },
+        disposers,
+        locale: { bind: () => (key) => key },
+        fields: {
+          get: () => undefined,
+          sidebarRightTabs: { register: definition => { tabRegistrations.push(definition); return inspectionNoop } },
+          sidebarRight: {
+            openTabs: { getSnapshot: () => [] },
+            openTabIn: inspectionNoop,
+            close: inspectionNoop,
+            registerCloseHandler: () => inspectionNoop,
+          },
+          uiSession: { adapter: { current: { getSnapshot: () => ({ key: undefined }) } } },
+        },
       })
       exports.apply(ctx)
-      return { seats, namespaces, externals }
+      // monitor 的 setInterval 不能带进检查进程；effect disposer 全部当场执行。
+      for (const dispose of disposers) dispose?.()
+      return { seats, namespaces, externals, tabRegistrations }
     },
   })
 }
@@ -171,9 +222,9 @@ async function main() {
     && guidance.includes('run_in_background') && guidance.includes('Use interactive_terminal for every Linux sudo command')
     && guidance.includes('sudo -i') && guidance.includes('sudo credential cache'), 'PTY 系统指引明确交互终端边界与 sudo 规则')
 
-  check(artifact.plugins.length === 1 && artifact.provided.includes('terminals'),
-    '挂载了 dsh 的 PTY registry / backend / tools（registry 是 Service，backend 是一个 ctx.plugin，tools 由 wrapper 直接捕获）',
-    `plugins=${artifact.plugins.length}；services=${artifact.provided.join('、')}`)
+  check(artifact.backends.includes('shell') && artifact.provided.includes('terminals'),
+    '挂载了 dsh 的 PTY registry 与 tap 包装的 shell backend（tools 由 wrapper 直接捕获）',
+    `backends=${artifact.backends.join('、')}；services=${artifact.provided.join('、')}`)
   check(artifact.channels.includes('/api/terminal'), '宿主产物挂上了 /api/terminal 精确路由',
     artifact.channels.join('、'))
   check(artifact.disposers >= 1, '通道注册是可撤销的（挂在 ctx.effect 上）')
@@ -190,13 +241,17 @@ async function main() {
     'bash 保持 dsh 自己的默认 argv，不被这套 Windows 修补波及')
 
   const client = inspectClientBundle()
-  check(client.seats.length === 1, '浏览器产物只占一个座位', `共 ${client.seats.length} 个`)
+  check(client.seats.length === 2, '浏览器产物占 body + title 两个座位', `共 ${client.seats.length} 个`)
   const seat = client.seats[0]
-  // list 槽靠 order 排先后；`conversation.input.dock` 不是 keyed 槽，所以不会和
-  // dsh 自己的 todo（0）、队列（20）或本仓库的服务面板（10）、重试横幅（30）抢格子。
-  check(seat?.name === 'conversation.input.dock', '座位是输入框上方那个 list 槽', String(seat?.name))
-  check(seat?.id === 'dsh-plugin-terminal', '条目 id 用的是包名后缀', String(seat?.id))
-  check(typeof seat?.order === 'number', '声明了 order，不靠注册先后决定位置', String(seat?.order))
+  // keyed 槽按 definition id 分发；tab 类型注册在 ctx.sidebarRightTabs，两者共用同一 id。
+  check(seat?.name === 'sidebar.right.pane.tab', '座位是右侧边栏的 tab body 槽', String(seat?.name))
+  check(seat?.key === '@dsh-kit/dsh-plugin-terminal', '座位 key 用的是实现 identity', String(seat?.key))
+  check(client.tabRegistrations.length === 1, '注册了一个 sidebar tab 类型', String(client.tabRegistrations.length))
+  const tabDefinition = client.tabRegistrations[0]
+  check(tabDefinition?.kind === 'dsh-kit-terminal' && tabDefinition?.keepMounted === true
+    && typeof tabDefinition?.title === 'function' && Array.isArray(tabDefinition?.guide) && tabDefinition.guide.length === 1,
+  'tab 类型是本插件自有 kind、keepMounted 且带 guide 入口',
+  JSON.stringify({ kind: tabDefinition?.kind, keepMounted: tabDefinition?.keepMounted }))
   check(client.namespaces.includes('dsh-plugin-terminal'), '文案命名空间也是包名后缀',
     client.namespaces.join('、'))
   const PLATFORM_MODULES = new Set([
@@ -224,12 +279,13 @@ async function main() {
       if (url !== null) {
         check(bundle.ok, '插件 bundle 能取到', `status ${bundle.status}`)
         check(bundleBody.includes('__ModuleLoader__.load'), 'bundle 是加载器认识的工件格式')
-        check(bundleBody.includes('conversation.input.dock'), 'bundle 里带着输入框上方的槽注册')
+        check(bundleBody.includes('sidebar.right.pane.tab'), 'bundle 里带着右侧边栏 tab body 的槽注册')
+        check(bundleBody.includes('xterm'), 'bundle 里内联了 xterm 渲染器')
+        check(bundleBody.includes('/terminal/stream'), 'bundle 里带着流式路由路径段')
         check(bundleBody.includes('/terminal'), 'bundle 里带着宿主那条私有通道的路径段')
         check(bundleBody.includes('visibilitychange'), 'bundle 里带着「页面不可见就停止轮询」的那半逻辑')
-        check(bundleBody.includes('type: "password"') && bundleBody.includes('autoComplete: "off"')
-          && bundleBody.includes('autoCorrect: "off"') && bundleBody.includes('autoCapitalize: "off"'),
-        'bundle 里的 terminal 输入默认遮罩且关闭自动输入辅助')
+        check(bundleBody.includes('term.onData') && bundleBody.includes('getReader'),
+        'bundle 里的终端是键盘直写（xterm onData → write 微批）+ 流式读取（getReader）')
       }
     },
     liveAssertions: async ({ cookie }) => {
@@ -251,7 +307,7 @@ async function main() {
         JSON.stringify(malformed.body),
       )
 
-      for (const forbidden of ['open', 'close']) {
+      for (const forbidden of ['open', 'read', 'send', 'interrupt']) {
         const attempt = await context.callChannel(forbidden, { sessionId: 'x', terminalId: 'pty-1' }, cookie)
         check(
           attempt.body?.result?.ok === false
@@ -260,7 +316,7 @@ async function main() {
           JSON.stringify(attempt.body),
         )
       }
-      check(ENDPOINTS.length === 4, '通道只有四个端点', ENDPOINTS.join('、'))
+      check(ENDPOINTS.length === 5, '通道只有五个端点', ENDPOINTS.join('、'))
 
       // kit 通道在官方 /api 共享桥下：认证与围栏由桥统一应用（D16）。
       const unauthenticated = await fetch(`${context.base}/api/terminal/list`, {

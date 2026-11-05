@@ -13,6 +13,7 @@ loader 1.1.0 / schemastery 3.19.0 / `@earendil-works/pi-ai` 1.3.0），套件静
 | 主题 | 内容 |
 |---|---|
 | [插件机制与界面](dsh/plugins.md) | Bundle/overlay 三层事实、客户端产物、设置写入、槽位、主题与 dock |
+| [Sidebar 扩展与页签](dsh/sidebar.md) | sidebar tab 类型注册、文件增强边界、页签菜单与关闭契约 |
 | [模型与代理](dsh/models.md) | Copilot、models.dev、能力声明、目录扩展与全局 dispatcher |
 | [会话与消息](dsh/conversation.md) | 重试、投影、原生过程分组、滚动、分叉与通知时序 |
 | [工具与进程](dsh/runtime.md) | 工具注册表、常驻服务、PTY、Windows 进程树 |

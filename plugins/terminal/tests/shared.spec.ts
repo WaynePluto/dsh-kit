@@ -1,103 +1,86 @@
-/** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
+/** 传输契约：kit 通道、端点、流式帧协议与 payload 守卫。 */
 
 import { describe, expect, it } from 'vitest'
 import {
-  CHANNEL, DEFAULT_READ_LINES, ENDPOINTS, MAX_READ_LINES, SELF_NAMESPACE,
-  isListRequest, isTerminalEndpoint, isTerminalRequest, revisionOf, terminalLabel,
+  CHANNEL, ENDPOINTS, MAX_COLS, MAX_ROWS, SELF_NAMESPACE, STREAM_PATH,
+  decodeStreamFrame, encodeStreamFrame, isCloseRequest, isListRequest, isResizeRequest,
+  isStreamAttachRequest, isTerminalEndpoint, isWriteRequest,
 } from '../src/shared.js'
 
 describe('channel identity', () => {
   it('derives the channel from the package suffix', () => {
     expect(SELF_NAMESPACE).toBe('dsh-plugin-terminal')
     expect(CHANNEL).toBe('/terminal')
+    expect(STREAM_PATH).toBe('/terminal/stream')
   })
 
-  it('serves exactly four endpoints, and neither open nor close', () => {
-    expect([...ENDPOINTS]).toStrictEqual(['list', 'read', 'send', 'interrupt'])
-    // 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。
-    // 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。（涉及：`interactive_terminal`）
-    // 传输契约：此处说明 RPC 端点、路径段、Host/Origin 围栏或认证边界。
+  it('serves list/spawn/write/resize/close and nothing else', () => {
+    expect([...ENDPOINTS]).toStrictEqual(['list', 'spawn', 'write', 'resize', 'close'])
+    // 创建与杀进程都经由通道（guide 入口与用户关闭），但模型侧 read/send 语义不进页面通道。
+    expect(isTerminalEndpoint('read')).toBe(false)
+    expect(isTerminalEndpoint('send')).toBe(false)
+    expect(isTerminalEndpoint('interrupt')).toBe(false)
     expect(isTerminalEndpoint('open')).toBe(false)
-    expect(isTerminalEndpoint('close')).toBe(false)
-  })
-
-  it('accepts only its own endpoints', () => {
-    for (const endpoint of ENDPOINTS) expect(isTerminalEndpoint(endpoint)).toBe(true)
-    expect(isTerminalEndpoint('')).toBe(false)
-    expect(isTerminalEndpoint('LIST')).toBe(false)
-  })
-
-  it('keeps the default page inside the hard cap', () => {
-    expect(DEFAULT_READ_LINES).toBeLessThanOrEqual(MAX_READ_LINES)
+    expect(isTerminalEndpoint('list')).toBe(true)
+    expect(isTerminalEndpoint('spawn')).toBe(true)
+    expect(isTerminalEndpoint('write')).toBe(true)
+    expect(isTerminalEndpoint('resize')).toBe(true)
+    expect(isTerminalEndpoint('close')).toBe(true)
   })
 })
 
-describe('isListRequest', () => {
-  it('requires a non-empty session id', () => {
-    expect(isListRequest({ sessionId: 'a' })).toBe(true)
+describe('payload guards', () => {
+  it('requires a non-empty sessionId for list', () => {
+    expect(isListRequest({ sessionId: 's1' })).toBe(true)
     expect(isListRequest({ sessionId: '' })).toBe(false)
     expect(isListRequest({})).toBe(false)
-    expect(isListRequest(null)).toBe(false)
-    expect(isListRequest('a')).toBe(false)
+    expect(isListRequest(undefined)).toBe(false)
+  })
+
+  it('requires session and terminal ids for stream attach', () => {
+    expect(isStreamAttachRequest({ sessionId: 's1', terminalId: 'pty-1' })).toBe(true)
+    expect(isStreamAttachRequest({ sessionId: 's1' })).toBe(false)
+    expect(isStreamAttachRequest({ terminalId: 'pty-1' })).toBe(false)
+  })
+
+  it('requires terminalId and non-empty data for write', () => {
+    expect(isWriteRequest({ sessionId: 's1', terminalId: 'pty-1', data: 'ls\r' })).toBe(true)
+    expect(isWriteRequest({ sessionId: 's1', terminalId: 'pty-1', data: '' })).toBe(false)
+    expect(isWriteRequest({ sessionId: 's1', terminalId: 'pty-1' })).toBe(false)
+    expect(isWriteRequest({ sessionId: 's1', data: 'x' })).toBe(false)
+  })
+
+  it('bounds resize to the documented grid', () => {
+    expect(isResizeRequest({ sessionId: 's1', terminalId: 'p', cols: 80, rows: 24 })).toBe(true)
+    expect(isResizeRequest({ sessionId: 's1', terminalId: 'p', cols: MAX_COLS, rows: MAX_ROWS })).toBe(true)
+    expect(isResizeRequest({ sessionId: 's1', terminalId: 'p', cols: 1, rows: 24 })).toBe(false)
+    expect(isResizeRequest({ sessionId: 's1', terminalId: 'p', cols: MAX_COLS + 1, rows: 24 })).toBe(false)
+    expect(isResizeRequest({ sessionId: 's1', terminalId: 'p', cols: 80, rows: 0 })).toBe(false)
+    expect(isResizeRequest({ sessionId: 's1', terminalId: 'p', cols: 80.5, rows: 24 })).toBe(false)
+  })
+
+  it('requires terminalId for close', () => {
+    expect(isCloseRequest({ sessionId: 's1', terminalId: 'pty-1' })).toBe(true)
+    expect(isCloseRequest({ sessionId: 's1' })).toBe(false)
   })
 })
 
-describe('isTerminalRequest', () => {
-  const base = { sessionId: 's', terminalId: 'pty-1' }
-
-  it('requires both ids', () => {
-    expect(isTerminalRequest(base)).toBe(true)
-    expect(isTerminalRequest({ sessionId: 's' })).toBe(false)
-    expect(isTerminalRequest({ terminalId: 'pty-1' })).toBe(false)
-    expect(isTerminalRequest({ ...base, terminalId: '' })).toBe(false)
+describe('stream frames', () => {
+  it('round-trips ring/data/exit frames as ndjson lines', () => {
+    const ring = encodeStreamFrame({ t: 'ring', b64: 'SGVsbG8=' })
+    expect(ring.endsWith('\n')).toBe(true)
+    expect(decodeStreamFrame(ring.trimEnd())).toStrictEqual({ t: 'ring', b64: 'SGVsbG8=' })
+    expect(decodeStreamFrame(encodeStreamFrame({ t: 'data', b64: '' }))).toStrictEqual({ t: 'data', b64: '' })
+    expect(decodeStreamFrame(encodeStreamFrame({ t: 'exit', code: 0 }))).toStrictEqual({ t: 'exit', code: 0 })
+    expect(decodeStreamFrame(encodeStreamFrame({ t: 'exit', code: null }))).toStrictEqual({ t: 'exit', code: null })
   })
 
-  it('validates every optional it accepts', () => {
-    expect(isTerminalRequest({ ...base, lines: 10 })).toBe(true)
-    expect(isTerminalRequest({ ...base, lines: 0 })).toBe(false)
-    expect(isTerminalRequest({ ...base, lines: 1.5 })).toBe(false)
-    expect(isTerminalRequest({ ...base, lines: '10' })).toBe(false)
-    expect(isTerminalRequest({ ...base, revision: 'abc' })).toBe(true)
-    expect(isTerminalRequest({ ...base, revision: 1 })).toBe(false)
-    expect(isTerminalRequest({ ...base, text: '' })).toBe(true)
-    expect(isTerminalRequest({ ...base, text: 3 })).toBe(false)
-    expect(isTerminalRequest({ ...base, submit: false })).toBe(true)
-    expect(isTerminalRequest({ ...base, submit: 'yes' })).toBe(false)
-  })
-})
-
-describe('revisionOf', () => {
-  it('is stable for the same screen', () => {
-    expect(revisionOf('hello\nworld', 2)).toBe(revisionOf('hello\nworld', 2))
-  })
-
-  it('changes when the text changes', () => {
-    expect(revisionOf('a', 1)).not.toBe(revisionOf('b', 1))
-  })
-
-  it('changes when only the retained line count changes', () => {
-    // 实现说明：此处记录相关接口、边界和生命周期约束。
-    // 实现说明：此处记录相关接口、边界和生命周期约束。
-    // 实现说明：此处记录相关接口、边界和生命周期约束。
-    expect(revisionOf('same', 10)).not.toBe(revisionOf('same', 11))
-  })
-
-  it('survives an empty screen', () => {
-    expect(revisionOf('', 0)).toMatch(/^[0-9a-f]+-0-0$/u)
-  })
-})
-
-describe('terminalLabel', () => {
-  const view = { id: 'pty-2', type: 'shell', running: true, sending: false }
-
-  it('falls back to the id when the session has no name', () => {
-    expect(terminalLabel(view)).toBe('pty-2')
-    expect(terminalLabel({ ...view, name: '' })).toBe('pty-2')
-  })
-
-  it('keeps the id visible beside a name', () => {
-    // 模型目录契约：此处说明 provider、协议、目录覆盖和用户条目保留。
-    // 实现说明：此处记录相关接口、边界和生命周期约束。
-    expect(terminalLabel({ ...view, name: 'build' })).toBe('build (pty-2)')
+  it('tolerates garbage lines without throwing', () => {
+    expect(decodeStreamFrame('')).toBeUndefined()
+    expect(decodeStreamFrame('not json')).toBeUndefined()
+    expect(decodeStreamFrame('{"t":"weird"}')).toBeUndefined()
+    expect(decodeStreamFrame('{"t":"data"}')).toBeUndefined()
+    expect(decodeStreamFrame('{"t":"exit","code":"7"}')).toBeUndefined()
+    expect(decodeStreamFrame('null')).toBeUndefined()
   })
 })

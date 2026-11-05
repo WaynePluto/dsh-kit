@@ -31,6 +31,7 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-pwsh-local": "0.2.2-rc.1",
     "@deepseek-ai/dsh-terminal": "0.2.2-rc.1",
     "@deepseek-ai/dsh-terminal-bash": "0.2.2-rc.1",
     "@deepseek-ai/dsh-tool-terminal": "0.2.2-rc.1",
@@ -46,7 +47,9 @@
     "@deepseek-ai/dsh-client-ui-primitives": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-session": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-sidebar-right": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-theme": "0.2.2-rc.1",
     "@deepseek-ai/dsh-host-webserver": "0.2.2-rc.1",
     "@deepseek-ai/dsh-output-retention": "0.2.2-rc.1",
     "@deepseek-ai/dsh-sandbox-policy": "0.2.2-rc.1",
@@ -61,6 +64,8 @@
     "@deepseek-ai/dsh-tool-terminal": "0.2.2-rc.1",
     "@dsh-kit/plugin-ui": "workspace:0.1.0",
     "@types/react": "18.3.31",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
     "react": "18.3.1",
     "vitest": "4.1.11"
   }

@@ -105,8 +105,13 @@ L1 退出后 L2 不再能从 dsh 的存活子树枚举；L2 为 pwsh 保持需�
 `packages/subprocess/subprocess-local`。
 
 dsh 提供 PTY registry、bash/pwsh 后端、node-pty 和六个 terminal_* 实现，但标准 Web Bundle 不挂这些工具。
-项目插件直接实例化 TerminalSessionService，backend 用 ctx.plugin，wrapper 捕获上游 apply 的六次注册。
-缺少、重复或未知注册均整组失败；模型只看见 interactive_terminal 的 start/write/read/list/interrupt/close。
+项目插件直接实例化 TerminalSessionService，backend 是 `TapTerminalBackend`：组合上游公开导出的
+`BashTerminalBackend`（构造函数注入 spawnTerminal），在注入点把 `terminalType` 改写为 `xterm-256color`
+（上游默认 `dumb`，会关掉程序输出彩色）并把句柄按 `spec.sessionId`（registry 先铸 id 再调 backend，
+并发安全靠每 spawn 闭包捕获）登记进 tap registry——原始字节 tap、write、resize、terminate 都从
+句柄直出；上游 `LocalPtySession` 的就绪探测、busy 等待、read 分页、signal、沙箱围栏原样保留。
+wrapper 捕获上游 apply 的六次注册，模型只看见 interactive_terminal 的
+start/write/read/list/interrupt/close，工具契约零改动。
 start 合并创建与前台发送，write 向既有会话续发输入（submit=false 表示只敲字符不回车），
 interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。直接以 `ssh`/`ssh.exe` 开头的 start 命令
 默认补 `ServerAliveInterval=15` 与 `ServerAliveCountMax=3`，显式值优先；`-vvv -E` 诊断日志只按需开启，
@@ -116,13 +121,16 @@ interrupt 固定 SIGINT，不暴露 raw send 或任意 signal。直接以 `ssh`/
 没有该服务时兜底进程 cwd，有则原样透传。
 
 Windows 上实际 spawn 的可执行文件由两段决定：插件 `shellDialect` 默认 `auto`（win32 → `pwsh`），
-插件只透传 `shellArgs` 不透传 `shellPath`；上游 `terminal-bash` 的 `resolveConfig` 对 pwsh dialect
-调 `packages/shell/pwsh-local/src/resolve.ts` 的 `resolvePwshPath`——`%ProgramFiles%\PowerShell\7\pwsh.exe`
+插件只透传 `shellArgs` 不透传 `shellPath`；pwsh 路径解析与上游同源（`resolvePwshPath`，
+`@deepseek-ai/dsh-pwsh-local` 已加进插件 devDependencies）——`%ProgramFiles%\PowerShell\7\pwsh.exe`
 优先，其次 PATH 条目的 `pwsh.exe`（含 Store 安装），最后才兜底 Windows PowerShell 5.1 的
 `powershell.exe`。装有 PowerShell 7 的机器命中的第一条候选就是 PS7 的 pwsh.exe。
 
 严格用于预期必须让用户在可见终端直接输入的命令。普通命令、构建、Git、测试、长任务与持久 shell 状态
 均使用 pwsh/bash；可改非交互的优先改非交互。持续服务使用 services。
+等待用户输入完成时模型轮询 read 观察提示符恢复，不发 ask_user_question/审批弹窗确认输入
+（弹窗接管 composer 席位；终端视图在右侧边栏 tab，两者并存，见 [Sidebar 扩展](sidebar.md)）。
+模型用完终端应主动 close 并说明；终端被用户关闭后 list 里没有它，需要时 start 新的，不写旧 id。
 
 Linux 个人用户部署允许一个窄范围例外：所有 sudo 命令都必须通过交互终端执行，即使缓存可能跳过密码提示；
 已经因 sudo 人工认证而打开的交互终端，可以在同一管理员任务内复用系统的 sudo 凭据缓存执行后续明确命令。
@@ -132,22 +140,41 @@ Linux 个人用户部署允许一个窄范围例外：所有 sudo 命令都必�
 ### Registry 契约
 
 - owner 按对象同一性比较且必须是 live Agent，恢复出的新 Agent 不等于原 owner。
-- 同一终端同时只允许一次发送，重复发送同步抛 SEND_ACTIVE。
+- 同一终端同时只允许一次模型发送，重复发送同步抛 SEND_ACTIVE；页面键盘直写走 tap 句柄
+  `handle.write`，不受此门限制（真实终端语义：多人同时打字即穿插）。
 - startSend 的 submit 只追加回车，text 原样写入，不转义控制字节。
-- 面板只有 list/read/send/interrupt，不能创建或关闭终端。
-- backend 在非 danger-full-access 下调用 ctx.sandbox.confine，插件不自己 spawn 终端。
-- sendWaitMs 默认 10 秒，等待后仍忙返回 busy:true，页面必须保留草稿。
-- 短暂 unavailable 不等于终端已关闭，轮询失败不能立即卸载面板丢草稿。
-- 浏览器输入框默认使用密码遮罩，关闭拼写检查、自动纠正、自动大写和自动填充提示；切换 conversation 或 terminal
-  时清除草稿，收起 panel 也清除不可见草稿，过时请求不能清空新 terminal 的输入。输入未作为模型工具参数保存，但目标程序回显时仍可能进入输出。
+- 页面通道（`/terminal` kit）端点：list、spawn（guide 入口新开终端，走同一条 backend 路径，
+  沙箱围栏一致）、write、resize、close（杀进程树）。没有 read/send/interrupt：读屏与模型发送
+  是模型工具的事，Ctrl+C/回车是真实按键。
+- 上游 registry 无闲置回收：终端开着就一直开着，直到模型 close、用户关 chip（二次确认后）、
+  所属会话卸载（Agent 销毁）或宿主退出（与官方原生终端一致，不跨宿主存活）。
+- 模型 close 无需确认（工具调用即意图）；用户关 chip 走二次确认（close handler 抛错否决
+  第一次 ×，居中确认弹窗内点「关闭终端」放行并杀，取消/Escape 撤回）。
+- 终端被关闭后从 list 消失，tab 随关闭语义同步移除；插件侧 monitor（每 5 秒）只做
+  「终端 → tab」视图收敛：没有 tab 的终端自动开出它的 tab，kill 失败的孤儿自愈重开。
 
-### Windows 就绪与轮询
+### 页面渲染契约（xterm + 流式）
+
+- 页面是 xterm.js（@xterm/xterm 6.0.0 + FitAddon，内联进 client bundle；官方 xterm.css 内嵌
+  注入并用容器作用域覆盖 viewport 黑底），数据通道见 [插件机制](plugins.md) 的
+  「kit 通道与流式响应」：`/api/terminal/stream` 流式响应先重放宿主 ring buffer（512KB 原始
+  字节，整块丢弃最旧；spawn 就绪后裁到最后一个受控提示符 `dsh> `，pwsh 启动回显不进画面）
+  再接实时帧；tab 隐藏断流、可见重连重放；进程退出发 exit 帧后流结束，
+  tab 保留退出态（exit code + 新建终端按钮），不自动重启。tab chip 标题固定「AI交互终端」。
+- 键盘直写：xterm onData → 16ms 微批 → `write` 端点；Ctrl+C、Tab、粘贴是真实按键；密码不回显
+  是程序行为（sudo/REPL 关闭回显），UI 无遮罩表单。
+- 尺寸：ResizeObserver → FitAddon → `resize` 端点 → ConPTY 重排；PTY 以 xterm-256color 宣告，
+  程序输出 ANSI 彩色，模型 read 经上游 sanitizer 剥离转义拿到干净文本——原始彩色字节走 tap
+  给浏览器，干净文本走模型，两路同源。
+- 主题：底座四色（背景/前景/光标/选区）随 dsh 主题 token（`theme/change` 时重读应用）；
+  16 色 ANSI 用 xterm 内置经典色板。
+- 重连重放的限制：resize 之后的重放可能存在行宽错位残影（官方原生终端重连亦有类似限制）。
+
+### Windows 就绪
 
 PSReadLine 重绘会打乱私有提示符标记与可打印尾部顺序，还会记录 bootstrap 到用户历史。
 项目在 pwsh 启动参数中移除 PSReadLine，保留 NoExit，bash 使用上游默认参数。
 每次启动使用独立 20 秒超时、最多 3 次尝试，不以一次发送的 300 秒预算等待启动。
-
-终端列表每 5 秒轮询，展开画面每 1.5 秒，发送后 4 秒内加快到 400ms。
-画面按 revision 返回变化，页面隐藏时停止轮询。真实交互由 terminal/tests/live.spec.ts 验证。
 上游默认 rows:40、cols:160、scrollbackLines:10000、scrollbackMaxBytes:4MiB、maxReadBytes:256KiB；
-read 的 offset 从最新行向前计数，count 默认 500。
+页面 resize 上限对齐（cols ≤500、rows ≤200，单次键盘写入 ≤64KiB）。
+真实交互由 terminal/tests/live.spec.ts 验证（tap 配对、直写、帧接收、send 互斥）。
