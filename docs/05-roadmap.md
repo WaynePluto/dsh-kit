@@ -6,6 +6,22 @@
 
 ## 已实现
 
+- [x] quick-commands 弹窗闪退修复（2026-11-05，用户报告）：dsh 0.2.2-rc.1 起 composer 座位
+  `will-change: transform`（`ConversationRoot.module.css`）成为 fixed 后代包含块，契约要求
+  composer 内 fixed 浮层一律 portal 到 body（[会话](dsh/conversation.md) 已记录）；面板此前
+  误用非 portal 的 `QuickCommandsPanel` 内联渲染（违背 D25 自身的 portal 声明），fixed 坐标
+  被按 composer 座位解释而闪退。改用 `QuickCommandsPortal` 后恢复；chat-scroll 的 fixed 元素
+  在消息区（非 composer 后代），不受影响。35 项单测绿。
+- [x] favorite-models 选择器对齐原生并吸收三项能力（2026-11-05，用户确认）：按
+  dsh 0.2.2-rc.1 `ui-model-selection/ModelSelect.module.css` 重译样式（行密度 34px/13px/400、
+  勾号 14×14、图标族 Regular、radius token、business-primary 焦点圈 + `data-selection-focus`
+  抑制、composer 紧凑模式变量与数据图标、固定 360px 上限）；并吸收官方能力：①收藏条目 >4 个
+  时搜索框（`rankByName` 子序列匹配、↑↓ 高亮 + Enter 接受、清除按钮，作用于收藏过滤后列表）
+  ②选中提交期间 StateDot 进度点（触发器 chevron 位 + 对应行勾号位，`state.pending` 驱动）
+  ③打开时 `scrollIntoView` 定位当前选中项、无当前模型直达列表 pane、Escape 二段式返回。
+  未吸收（清单已过用户评估）：badge、focus-follows-mouse、Tab 语义、provider 排序、移动端
+  适配、结构化错误。24 项单测与全仓检查绿；测试基建教训（MenuSurface mock 须 forwardRef、
+  jsdom 缺 scrollIntoView 需 polyfill）已并入 dsh-theme skill。
 - [x] 任务看板三项增强（2026-11-04，用户需求）：① **卡片图片**——回形针按钮多选或卡片聚焦时
   粘贴截图，缩略图行支持官方 ImageLightbox 预览与悬停移除；仅 PNG/JPEG/WebP/GIF（dsh
   `isImageMediaType` 白名单）、单图 4 MiB、单卡 8 张、整板 data URL 24 MB，图片以自包含
@@ -328,6 +344,11 @@
 
 ## 实机验收
 
+- [x] favorite-models 选择器样式与能力已在官方桌面 0.2.2-rc.1 完成（2026-11-05，用户确认）：
+  与原生并排视觉一致；搜索框（>4 条收藏出现、↑↓/Enter/清除）、选中进度点、打开定位与
+  无当前模型直达 pane、触发器紧凑模式、深浅主题均通过。
+- [x] quick-commands 弹窗已在官方桌面 0.2.2-rc.1 完成（2026-11-05，用户确认）：面板正常
+  打开不再闪退，插入/编辑/增删与点外部关闭正常。
 - [x] 全套件实机验收已在官方桌面 0.2.1-rc.5 完成（2026-11-03，用户确认）：桌面宿主验证、
   套件浏览器行图、套件升级覆盖、各组件核心场景、性能整改观察与深浅主题/中英文界面均无问题；
   chat-scroll 与 files 的原生增强此前已单独确认。新增组件时在此逐项补验收项并保留至用户确认。

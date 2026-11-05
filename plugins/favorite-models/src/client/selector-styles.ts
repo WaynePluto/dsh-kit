@@ -5,6 +5,7 @@ export const SELECTOR_STYLE_MARKER = 'data-dsh-plugin-favorite-models-selector'
 export const selectorClasses = {
   root: 'dshx-favorite-models-selector',
   trigger: 'dshx-favorite-models-selector__trigger',
+  triggerIcon: 'dshx-favorite-models-selector__trigger-icon',
   triggerLabel: 'dshx-favorite-models-selector__trigger-label',
   triggerEffort: 'dshx-favorite-models-selector__trigger-effort',
   chevron: 'dshx-favorite-models-selector__chevron',
@@ -13,14 +14,17 @@ export const selectorClasses = {
   cellLabel: 'dshx-favorite-models-selector__cell-label',
   cellValue: 'dshx-favorite-models-selector__cell-value',
   cellChevron: 'dshx-favorite-models-selector__cell-chevron',
+  searchRow: 'dshx-favorite-models-selector__search-row',
+  search: 'dshx-favorite-models-selector__search',
+  searchWithQuery: 'dshx-favorite-models-selector__search-with-query',
+  searchClear: 'dshx-favorite-models-selector__search-clear',
   status: 'dshx-favorite-models-selector__status',
   error: 'dshx-favorite-models-selector__error',
   warning: 'dshx-favorite-models-selector__warning',
   retry: 'dshx-favorite-models-selector__retry',
   groups: 'dshx-favorite-models-selector__groups',
-  group: 'dshx-favorite-models-selector__group',
-  groupTitle: 'dshx-favorite-models-selector__group-title',
   option: 'dshx-favorite-models-selector__option',
+  optionActive: 'dshx-favorite-models-selector__option-active',
   optionCopy: 'dshx-favorite-models-selector__option-copy',
   modelName: 'dshx-favorite-models-selector__model-name',
   check: 'dshx-favorite-models-selector__check',
@@ -29,7 +33,7 @@ export const selectorClasses = {
 
 const c = selectorClasses
 
-/** 原生 selector CSS 值，限定在本插件类名前缀下。 */
+/** 原生 selector CSS 值（ui-model-selection/ModelSelect.module.css，dsh 0.2.2-rc.1），限定在本插件类名前缀下。 */
 export const selectorStyles = `
 .${c.root} {
   position: relative;
@@ -41,28 +45,30 @@ export const selectorStyles = `
   align-items: center;
   gap: 4px;
   min-width: 0;
-  max-width: 220px;
-  max-width: min(360px, 45cqw);
-  max-width: min(360px, 45cqw, calc(100vw - 32px));
+  /* 原生注记：上限不能随行收缩——composer 以本 seat 的展开需求量宽，
+     行相对上限（cqw/%）会让需求随可用宽下降，展开文字就永远「放得下」。 */
+  max-width: 360px;
   height: 28px;
   padding: 0 4px 0 8px;
   border: none;
-  border-radius: 24px;
+  border-radius: var(--dsw-radius-sm);
   outline: none;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font-size: 13px;
   line-height: 20px;
-  font-weight: 500;
+  font-weight: 400;
   cursor: pointer;
 }
 
-.${c.trigger}:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
+@media (hover: hover) {
+  .${c.trigger}:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
-.${c.trigger}:focus-visible {
-  box-shadow: 0 0 0 2px var(--dsw-alias-border-l3);
+.${c.trigger}:focus-visible:not([data-selection-focus]) {
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
 }
 
 .${c.trigger}:disabled {
@@ -70,8 +76,17 @@ export const selectorStyles = `
   cursor: default;
 }
 
+.${c.triggerIcon} {
+  display: var(--dsh-composer-model-icon-display, none);
+  flex: 0 0 auto;
+}
+
+.${c.triggerLabel},
+.${c.triggerEffort} {
+  display: var(--dsh-composer-model-text-display, block);
+}
+
 .${c.triggerLabel} {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -82,7 +97,6 @@ export const selectorStyles = `
   /* 推理等级说明会在模型名或 chevron 之前让出宽度。 */
   flex-shrink: 1000;
   min-width: 0;
-  max-width: 40%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -102,6 +116,7 @@ export const selectorStyles = `
 .${c.menu} {
   /** 仅几何与层级；表面材质（半透明填充 + backdrop-filter 磨砂）由 MenuSurface 提供。
    * 自绘 background 会退回无模糊的纯透明（0.2.0 起官方菜单面是半透明磨砂设计）。 */
+  box-sizing: border-box;
   position: fixed;
   z-index: 1100;
   display: flex;
@@ -122,10 +137,10 @@ export const selectorStyles = `
 
 .${c.status},
 .${c.empty} {
-  padding: 10px;
+  padding: 8px;
   color: var(--dsw-alias-label-tertiary);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .${c.error},
@@ -133,14 +148,14 @@ export const selectorStyles = `
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-  padding: 7px 8px;
-  border-radius: 8px;
+  gap: 6px;
+  margin-bottom: 3px;
+  padding: 6px 7px;
+  border-radius: var(--dsw-radius-md);
   background: var(--dsw-alias-interactive-bg-hover-danger);
   color: var(--dsw-alias-state-error-primary);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .${c.warning} {
@@ -159,26 +174,94 @@ export const selectorStyles = `
   cursor: pointer;
 }
 
-.${c.groups} {
-  min-height: 0;
-  overflow-y: auto;
+.${c.searchRow} {
+  position: relative;
+  flex-shrink: 0;
+  margin: 2px 0 3px;
 }
 
-.${c.group} + .${c.group} {
-  margin-top: 4px;
+.${c.searchRow} .${c.search} {
+  display: flex;
+  height: auto;
+  padding: 5px 7px;
+  border: 0 solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+}
+
+.${c.searchRow} .${c.searchWithQuery} {
+  padding-right: 34px;
+}
+
+.${c.searchClear} {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.${c.searchClear}:focus-visible {
+  outline: none;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+@media (hover: hover) {
+  .${c.searchClear}:hover {
+    outline: none;
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.${c.searchRow} .${c.search}:focus-within {
+  border-color: transparent;
+}
+
+.${c.searchRow} .${c.search} input {
+  padding: 0;
+  font-size: 12px;
+  line-height: normal;
+}
+
+@media (pointer: coarse) {
+  .${c.searchRow} .${c.search} input {
+    font-size: 16px;
+  }
+}
+
+.${c.searchRow} .${c.search} input::placeholder {
+  color: var(--dsw-alias-label-caption);
+}
+
+.${c.groups}:not([hidden]) {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .${c.option} {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: auto;
   min-width: 100%;
-  min-height: 38px;
-  padding: 6px 8px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 5px 7px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--dsw-radius-md);
   outline: none;
   background: transparent;
   color: inherit;
@@ -186,9 +269,15 @@ export const selectorStyles = `
   cursor: pointer;
 }
 
-.${c.option}:hover:not(:disabled),
-.${c.option}:focus-visible {
+.${c.option}:focus-visible,
+.${c.optionActive}:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+@media (hover: hover) {
+  .${c.option}:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .${c.option}:disabled {
@@ -206,9 +295,9 @@ export const selectorStyles = `
 .${c.modelName} {
   overflow: hidden;
   color: inherit;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -216,31 +305,43 @@ export const selectorStyles = `
 .${c.check} {
   display: grid;
   place-items: center;
-  flex: 0 0 18px;
+  flex: 0 0 14px;
   color: var(--dsw-alias-label-primary);
+}
+
+.${c.check} svg {
+  width: 14px;
+  height: 14px;
 }
 
 .${c.cell} {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: auto;
   min-width: 100%;
-  height: 40px;
-  padding: 0 10px;
+  height: 34px;
+  padding: 0 8px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--dsw-radius-md);
   background: transparent;
   color: var(--dsw-alias-label-primary);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 13px;
+  line-height: 20px;
   cursor: pointer;
   text-align: left;
+  outline: none;
 }
 
-.${c.cell}:hover {
+.${c.cell}:focus-visible {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+@media (hover: hover) {
+  .${c.cell}:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .${c.cellLabel} {
@@ -260,6 +361,8 @@ export const selectorStyles = `
 
 .${c.cellChevron} {
   flex: 0 0 auto;
-  color: var(--dsw-alias-label-tertiary);
+  width: 12px;
+  height: 12px;
+  color: var(--dsw-alias-menu-icon);
 }
 `.trim()

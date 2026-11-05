@@ -3,6 +3,10 @@
  * （`InputBar.module.css` 的 `.add`，28×28、14px Medium 字形），点击开/关悬浮面板；
  * 插入失败（草稿并发变化且重试仍失败）时经官方 Toast 就地提示。
  *
+ * 面板必须走 QuickCommandsPortal（portal 到 body）：dsh 0.2.2-rc.1 起 composer
+ * seat 挂 `will-change: transform`（`ConversationRoot.module.css`），成为 fixed
+ * 后代的包含块，上游契约要求 composer 内 fixed 浮层一律 portal 到 body。
+ *
  * @module @dsh-kit/dsh-plugin-quick-commands/client/button
  */
 
@@ -14,7 +18,7 @@ import {
 import type { QuickCommandDocument } from '../shared.js'
 import { insertAtCaret } from './insert.js'
 import { classes } from './styles.js'
-import { QuickCommandsPanel } from './panel.js'
+import { QuickCommandsPortal } from './panel.js'
 
 /** 槽位 `inject` 面板注入的 RPC 面（`apply` 里经 callKitChannel 实现）。 */
 export interface QuickCommandsInjected {
@@ -68,7 +72,7 @@ export function QuickCommandsEntry({ inputActions, load, save, t }: QuickCommand
       </button>
       {open
         ? (
-          <QuickCommandsPanel
+          <QuickCommandsPortal
             load={load}
             save={save}
             insert={insert}

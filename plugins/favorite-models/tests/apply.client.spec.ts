@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
-  IconCheckOutlineMedium: () => null,
-  IconChevronDownOutlineMedium: () => null,
-  IconChevronRightOutlineMedium: () => null,
-  IconWarningOutlineMedium: () => null,
+  IconCheckOutlineRegular: () => null,
+  IconChevronDownOutlineRegular: () => null,
+  IconChevronRightOutlineRegular: () => null,
+  IconCloseFillRegular: () => null,
+  IconDataOutlineRegular: () => null,
+  IconWarningOutlineRegular: () => null,
+  Input: () => null,
+  StateDot: () => null,
+  isMobileDevice: () => false,
+  rankByName: (items: readonly unknown[]) => items,
   Toast: () => null,
 }))
 

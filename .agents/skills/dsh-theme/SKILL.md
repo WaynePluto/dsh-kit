@@ -305,6 +305,48 @@ base 与 :hover 放同一局部 stylesheet 规则，不用 inline style。若卡
   `getComputedStyle` 即可（model-provider 标签浅色 rgb(129,133,140)→深色 rgb(173,178,184)，
   背景 rgb(21,21,23)）；与原生控件的并排视觉验收仍按正常主题切换流程做。
 
+### Shadow 替换原生组件时按安装版本重译样式，防静默漂移
+
+用 priority shadow 整体替换原生组件（如 favorite-models 经 `conversation.input.model`
+替换 composer 模型座位）时，手译的样式副本会随上游改版静默漂移（2026-11-05 实测 favorite-models
+停在 0.2.0 旧数值、原生已紧凑化）。规则：对齐基准永远是**本机安装版本的上游 module.css**，
+升级 dsh 后 shadow 组件的样式要像 dsh-upgrade 一样复核；样式对齐任务收尾时按 dsh-upgrade
+技能第 10 步做一次能力吸收对比（功能差距清单交用户决定）。composer 模型座位（0.2.2-rc.1
+`ui-model-selection/ModelSelect.module.css`）的具体契约：
+
+- 触发器 `max-width: 360px` 固定值，**不能写行相对上限（cqw/%）**——上游注记：composer 以
+  seat 的展开需求量宽，行相对上限让需求随可用宽下降，展开文字就永远「放得下」，量宽机制失效。
+- 紧凑模式要接 `--dsh-composer-model-text-display` / `--dsh-composer-model-icon-display`
+  （**dsh 前缀**，composer 命名空间变量，不是 `--dsw-alias-*` token；静态断言里写错前缀
+  不会报错、只会假阴性）。座位本体接法：label/effort 用前者控显示，16px `IconDataOutlineRegular`
+  用后者控显示（默认 none，紧凑时由 composer 置 block）。
+- composer 座位的图标族是 **Regular**（勾/箭头/警告/数据，16px 族）；Medium（14px）是 dock
+  字形族。勾号原生有显式 `.check svg { width:14px; height:14px }` 约束。
+- 行密度基准（0.2.2-rc.1）：option `min-height:34px; padding:5px 7px; gap:6px`、模型名
+  13px/18px/400、圆角 `var(--dsw-radius-md)`；root cell 34px 高、13px/20px、chevron 12×12
+  用 `--dsw-alias-menu-icon`；触发器 400 字重、`--dsw-radius-sm` 圆角、焦点圈
+  `var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` 且选中返回时以
+  `:not([data-selection-focus])` 抑制。
+- 选中提交前把焦点收回触发器再禁用行，避免禁用行的 blur 提前关菜单（原生 `submit()` 同款）。
+- hover 高亮包 `@media (hover: hover)`，防触屏粘滞；`text-overflow` 系省略与
+  `flex-shrink:1000` 的 effort 让位规则照抄即可。
+- **composer 内 fixed 浮层必须 portal 到 body（0.2.2-rc.1 起硬契约）**：composer 座位挂
+  `will-change: transform`（`ui-conversation` `ConversationRoot.module.css` 的 `.composerSeat`，
+  z-index 9），是全部 fixed 后代的包含块——内联渲染的 `position: fixed` 弹层坐标会被按座位
+  解释而甩出可视区（quick-commands 闪退实例，2026-11-05）。portal 到 body 的浮层不受影响。
+  契约详情在仓库根 `docs/dsh/conversation.md` composer 槽一节。
+
+### dsh 组件的 jsdom 测试坑（2026-11-05 实测）
+
+- **MenuSurface mock 必须 forwardRef**：组件的 blur 守卫靠 `menuRef.contains(relatedTarget)`
+  区分「焦点移进菜单」与「焦点真离开」；普通函数组件 mock 接不了 ref，`menuRef.current`
+  恒为 null，pane 切换时焦点转移会误关菜单、测试假阳性失败。`Input` 同理（搜索框聚焦）。
+- **jsdom 没有 `Element.prototype.scrollIntoView`**：打开定位的 layout effect 会抛
+  TypeError 并把整棵组件树卸载（表现为「菜单静默关闭」）。spec 顶部
+  `Element.prototype.scrollIntoView = () => {}` 即可。
+- **jsdom 的 focusout relatedTarget 是正确的**（指向新焦点元素，已用引用对比实测验证），
+  不需要也不应该再 polyfill；真实浏览器的守卫语义与 jsdom 一致。
+
 
 ### 原生设置卡操作区注入（模型页 provider-card 槽）
 

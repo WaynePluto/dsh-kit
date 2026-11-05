@@ -8,8 +8,9 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
-  IconCheckOutlineMedium, IconChevronDownOutlineMedium, IconChevronRightOutlineMedium,
-  IconWarningOutlineMedium, MenuGroup, MenuSurface, observeStickyMenuGroups, Toast,
+  IconCheckOutlineRegular, IconChevronDownOutlineRegular, IconChevronRightOutlineRegular,
+  IconCloseFillRegular, IconDataOutlineRegular, IconWarningOutlineRegular, Input, isMobileDevice,
+  MenuGroup, MenuSurface, observeStickyMenuGroups, rankByName, StateDot, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { filterFavoriteGroups } from '../filter.js'
 import { DEFAULT_SETTINGS } from '../shared.js'
@@ -50,13 +51,18 @@ export function FavoriteModelSelect({
     () => favorites.getSnapshot(),
   )
   const [open, setOpen] = useState(false)
+  // 选中返回触发器后不画焦点圈，直到触发器失焦或菜单重开（与原生一致）。
+  const [selectionFocus, setSelectionFocus] = useState(false)
   const [, refreshFavorites] = useState(0)
   const [pane, setPane] = useState<Pane>('root')
+  const [query, setQuery] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null)
   const lastAction = useRef<'load' | 'select'>('load')
   const [toast, setToast] = useState<{ seq: number; text: string } | null>(null)
   const toastSeq = useRef(0)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const groupsRef = useRef<HTMLDivElement | null>(null)
   const [menuPos, setMenuPos] = useState<CSSProperties | null>(null)
@@ -70,6 +76,17 @@ export function FavoriteModelSelect({
   )
   const allChoices = useMemo(() => state.groups.flatMap(group => group.models.map(model => ({ group, model }))), [state.groups])
   const choices = useMemo(() => groups.flatMap(group => group.models.map(model => ({ group, model }))), [groups])
+  // 目录条目超过 4 个时提供搜索（原生同阈值）；搜索作用于收藏过滤后的列表。
+  const showSearch = choices.length > 4
+  const filteredGroups = useMemo(() => groups.map(group => ({
+    ...group, models: rankByName(group.models, showSearch ? query.trim() : ''),
+  })).filter(group => group.models.length > 0), [groups, query, showSearch])
+  const visibleModels = useMemo(() => filteredGroups.flatMap(group => group.models.map(model => ({
+    provider: group.id, model: model.id,
+  }))), [filteredGroups])
+  const currentVisibleIndex = visibleModels.findIndex(model =>
+    model.provider === state.current?.provider && model.model === state.current.model)
+  const activeModelIndex = Math.min(highlightedIndex ?? Math.max(0, currentVisibleIndex), visibleModels.length - 1)
   const currentChoice = state.current === null
     ? undefined
     : allChoices.find(choice => choice.group.id === state.current?.provider && choice.model.id === state.current.model)
@@ -92,7 +109,8 @@ export function FavoriteModelSelect({
         label: effort.name,
       })),
     ], [reasoning, t])
-  const busy = state.status === 'selecting'
+  const { pending } = state
+  const busy = pending !== null
 
   const reload = (): void => {
     lastAction.current = 'load'
@@ -112,8 +130,6 @@ export function FavoriteModelSelect({
   }, [available, open])
 
   // 计算菜单位置：优先放在 trigger 上方，并用 clamp 处理矮视口和窄屏。
-  // 首选位置在上方（与
-  // 原生 ModelSelect 一致）；clamp 处理矮视口和窄屏。
   useLayoutEffect(() => {
     if (!available || !open) { setMenuPos(null); return }
     const place = (): void => {
@@ -135,9 +151,6 @@ export function FavoriteModelSelect({
       }
       setMenuPos({ left: x, top: y })
     }
-    // pane 切换和异步目录更新后重新定位；滚动与 resize 继续保持绑定。
-    // 再显示。pane 切换和异步目录更新
-    // 会重新运行该 effect；之后由滚动和 resize 保持绑定。
     place()
     window.addEventListener('scroll', place, true)
     window.addEventListener('resize', place)
@@ -147,27 +160,65 @@ export function FavoriteModelSelect({
     }
   }, [available, open, pane, state])
 
-  // 深入子 pane 会替换原先获得焦点的行；把焦点放进
-  // 新 pane；返回 root 时同样把焦点留在真实
-  // 深入子 pane 会替换原先获得焦点的行；把焦点移入新 pane，返回 root 时也保留可用焦点。
-  useEffect(() => {
-    if (!available || !open) return
-    if (pane !== 'root' || rootRef.current?.contains(document.activeElement) !== true) {
-      itemRefs.current[0]?.focus()
+  // 非搜索模式重置搜索状态（列表变短后搜索框退场）。
+  useLayoutEffect(() => {
+    if (!showSearch) {
+      setQuery('')
+      setHighlightedIndex(null)
     }
-  }, [available, open, pane])
+  }, [showSearch])
+
+  // 深入子 pane / 返回 root / 搜索模式切换后，把焦点放回有意义的行：
+  // drill 优先搜索框（desktop），其次当前选中行；back 回到打开它的 cell。
+  const paneFocus = useRef<'drill' | 'model' | 'effort' | null>(null)
+  const previousShowSearch = useRef(showSearch)
+  useEffect(() => {
+    const changedSearchMode = previousShowSearch.current !== showSearch
+    previousShowSearch.current = showSearch
+    const intent = paneFocus.current ?? (changedSearchMode && pane === 'model' ? 'drill' : null)
+    paneFocus.current = null
+    if (!open || intent === null) return
+    if (intent === 'drill') {
+      if (pane === 'model' && showSearch && !isMobileDevice()) {
+        searchRef.current?.focus()
+        return
+      }
+      // 当前选中行是「在用的值」；没有选中项的 pane 打开在第一行。
+      const checked = menuRef.current?.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]:not([disabled])')
+      const target = checked ?? itemRefs.current.find(item => item !== null && !item.disabled)
+      ;(target ?? triggerRef.current)?.focus()
+      return
+    }
+    const cell = itemRefs.current[intent === 'effort' ? 1 : 0]
+    ;(cell !== null && cell !== undefined && !cell.disabled ? cell : triggerRef.current)?.focus()
+  }, [open, pane, showSearch])
+
+  // 打开时把当前选中项滚进视野。
+  useLayoutEffect(() => {
+    if (open && pane === 'model' && activeModelIndex >= 0) {
+      itemRefs.current[activeModelIndex]?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [open, pane, activeModelIndex, visibleModels])
+
   // 组头滚动到顶时由官方观察器加 data-stuck（背景从不透明填充切换）；与官方
   // ModelSelect 相同的接法，组集合或面板切换时重建观察。
   useEffect(() => {
     const viewport = groupsRef.current
     if (viewport === null) return undefined
     return observeStickyMenuGroups(viewport)
-  }, [open, pane, groups])
+  }, [open, pane, filteredGroups])
   if (!available) return null
 
   const show = (): void => {
+    setSelectionFocus(false)
+    // 收藏快照不在订阅里（getSnapshot 读取）；每次打开强制重渲染取最新收藏。
     refreshFavorites(value => value + 1)
-    setPane('root')
+    triggerRef.current?.focus()
+    setQuery('')
+    setHighlightedIndex(null)
+    // 没有当前模型时直达模型列表 pane；否则展示「模型 / 推理等级」根 pane。
+    if (currentChoice === undefined) paneFocus.current = 'drill'
+    setPane(currentChoice === undefined ? 'model' : 'root')
     setOpen(true)
     reload()
   }
@@ -175,6 +226,29 @@ export function FavoriteModelSelect({
     setOpen(false)
     setPane('root')
     if (restoreFocus) queueMicrotask(() => { triggerRef.current?.focus() })
+  }
+  const closeAfterSelection = (): void => {
+    setSelectionFocus(true)
+    close(true)
+  }
+
+  const changeQuery = (next: string): void => {
+    setQuery(next)
+    setHighlightedIndex(0)
+  }
+
+  /** 深入子 pane：清搜索状态，焦点交给子 pane 的「在用值」。 */
+  const drill = (next: Pane): void => {
+    setQuery('')
+    setHighlightedIndex(null)
+    paneFocus.current = 'drill'
+    setPane(next)
+  }
+
+  /** 离开子 pane 回根 pane，把键盘交还给打开它的 cell。 */
+  const back = (from: Exclude<Pane, 'root'>): void => {
+    paneFocus.current = from
+    setPane('root')
   }
 
   const moveFocus = (offset: number): void => {
@@ -187,13 +261,31 @@ export function FavoriteModelSelect({
     items[next]?.focus()
   }
   const onRootKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.nativeEvent.isComposing) return
     if (event.key === 'Escape' && open) {
       event.preventDefault()
-      if (pane !== 'root') setPane('root')
+      // Escape 先退出子 pane（存在当前模型时），再关闭。
+      if (pane !== 'root' && currentChoice !== undefined) back(pane)
       else close(true)
       return
     }
     if (!open) return
+    if (pane === 'model' && showSearch && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      event.preventDefault()
+      if (!busy && visibleModels.length > 0) {
+        const direction = event.key === 'ArrowDown' ? 1 : -1
+        setHighlightedIndex((activeModelIndex + direction + visibleModels.length) % visibleModels.length)
+        searchRef.current?.focus()
+      }
+      return
+    }
+    // 搜索模式下 Enter 接受高亮项。
+    if (pane === 'model' && showSearch && event.target instanceof HTMLInputElement && event.key === 'Enter') {
+      event.preventDefault()
+      const highlighted = visibleModels[activeModelIndex]
+      if (!busy && highlighted !== undefined) choose(highlighted)
+      return
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       moveFocus(event.key === 'ArrowDown' ? 1 : -1)
@@ -208,7 +300,7 @@ export function FavoriteModelSelect({
   }
   const settleSelection = (accepted: boolean): void => {
     if (accepted) {
-      if (rootRef.current !== null) close(true)
+      if (rootRef.current !== null) closeAfterSelection()
       return
     }
     const message = directory.getSnapshot().error
@@ -217,26 +309,31 @@ export function FavoriteModelSelect({
       setToast({ seq: toastSeq.current, text: fill(translate(t, 'actionError'), { message }) })
     }
   }
-  const choose = (selection: ModelSelection): void => {
-    if (state.current?.provider === selection.provider && state.current.model === selection.model) {
-      close(true)
-      return
-    }
+  const submit = (selection: ModelSelection): void => {
+    // 行在 pending 期间禁用；先把焦点收回触发器，避免禁用行的 blur 提前关菜单。
+    setSelectionFocus(true)
+    triggerRef.current?.focus()
     lastAction.current = 'select'
     void select(selection).then(settleSelection)
+  }
+  const choose = (selection: ModelSelection): void => {
+    if (state.current?.provider === selection.provider && state.current.model === selection.model) {
+      closeAfterSelection()
+      return
+    }
+    submit(selection)
   }
   const chooseEffort = (effort: string | undefined): void => {
     if (state.current === null) return
     if (effectiveEffort === effort) {
-      close(true)
+      closeAfterSelection()
       return
     }
-    lastAction.current = 'select'
-    void select({
+    submit({
       provider: state.current.provider,
       model: state.current.model,
       ...effort === undefined ? {} : { reasoningEffort: effort },
-    }).then(settleSelection)
+    })
   }
 
   const waiting = state.current === null && state.status === 'loading'
@@ -254,6 +351,7 @@ export function FavoriteModelSelect({
         : fill(translate(t, 'triggerAriaEffort'), { model: modelLabel, effort: effortLabel })
   itemRefs.current = []
   let itemIndex = 0
+  let modelIndex = 0
   const itemRef = () => {
     const at = itemIndex++
     return (node: HTMLButtonElement | null) => { itemRefs.current[at] = node }
@@ -276,13 +374,17 @@ export function FavoriteModelSelect({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
+        aria-busy={busy}
         title={triggerLabel}
+        data-selection-focus={selectionFocus ? '' : undefined}
+        onBlur={() => { setSelectionFocus(false) }}
         disabled={locked}
         onClick={() => { if (open) close(); else show() }}
       >
+        <IconDataOutlineRegular className={selectorClasses.triggerIcon} size={16} />
         <span className={selectorClasses.triggerLabel}>{modelLabel}</span>
         {effortLabel !== undefined ? <span className={selectorClasses.triggerEffort}>{effortLabel}</span> : null}
-        <span className={selectorClasses.chevron}><IconChevronDownOutlineMedium /></span>
+        {busy ? <StateDot state="ongoing" /> : <IconChevronDownOutlineRegular className={selectorClasses.chevron} />}
       </button>
 
       {open && createPortal(
@@ -293,24 +395,24 @@ export function FavoriteModelSelect({
           id={`${id}-menu`}
           className={selectorClasses.menu}
           style={menuPos ?? MEASURE_STYLE}
-          role="menu"
+          role={pane === 'model' ? 'group' : 'menu'}
           aria-label={translate(t, 'menuAria')}
           aria-busy={state.status === 'loading' || busy}
         >
             {pane === 'root'
               ? (
                 <>
-                  <button ref={itemRef()} type="button" role="menuitem" className={selectorClasses.cell} onClick={() => { setPane('model') }}>
+                  <button ref={itemRef()} type="button" role="menuitem" className={selectorClasses.cell} onClick={() => { drill('model') }}>
                     <span className={selectorClasses.cellLabel}>{translate(t, 'menuModel')}</span>
                     <span className={selectorClasses.cellValue}>{modelLabel}</span>
-                    <span className={selectorClasses.cellChevron}><IconChevronRightOutlineMedium /></span>
+                    <IconChevronRightOutlineRegular className={selectorClasses.cellChevron} />
                   </button>
                   {reasoning !== undefined
                     ? (
-                      <button ref={itemRef()} type="button" role="menuitem" className={selectorClasses.cell} onClick={() => { setPane('effort') }}>
+                      <button ref={itemRef()} type="button" role="menuitem" className={selectorClasses.cell} onClick={() => { drill('effort') }}>
                         <span className={selectorClasses.cellLabel}>{translate(t, 'menuEffort')}</span>
                         <span className={selectorClasses.cellValue}>{effortLabel}</span>
-                        <span className={selectorClasses.cellChevron}><IconChevronRightOutlineMedium /></span>
+                        <IconChevronRightOutlineRegular className={selectorClasses.cellChevron} />
                       </button>
                     )
                     : null}
@@ -320,6 +422,38 @@ export function FavoriteModelSelect({
             {pane === 'model'
               ? (
                 <>
+                  {showSearch
+                    ? (
+                      <div className={selectorClasses.searchRow}>
+                        <Input
+                          ref={searchRef}
+                          className={query !== '' ? `${selectorClasses.search} ${selectorClasses.searchWithQuery}` : selectorClasses.search}
+                          type="text"
+                          role="searchbox"
+                          aria-label={translate(t, 'searchPlaceholder')}
+                          aria-controls={`${id}-models`}
+                          aria-activedescendant={activeModelIndex < 0 ? undefined : `${id}-model-${activeModelIndex}`}
+                          placeholder={translate(t, 'searchPlaceholder')}
+                          value={query}
+                          readOnly={busy}
+                          onChange={event => { changeQuery(event.target.value) }}
+                        />
+                        {query !== ''
+                          ? (
+                            <button
+                              type="button"
+                              className={selectorClasses.searchClear}
+                              aria-label={translate(t, 'searchClear')}
+                              disabled={busy}
+                              onClick={() => { changeQuery(''); searchRef.current?.focus() }}
+                            >
+                              <IconCloseFillRegular />
+                            </button>
+                          )
+                          : null}
+                      </div>
+                    )
+                    : null}
                   {state.status === 'loading' ? <div className={selectorClasses.status}>{translate(t, 'statusLoading')}</div> : null}
                   {state.error !== null && lastAction.current === 'load'
                     ? (
@@ -335,10 +469,18 @@ export function FavoriteModelSelect({
                       <button type="button" className={selectorClasses.retry} onClick={reload}>{translate(t, 'retry')}</button>
                     </div>
                   ))}
-                  <div className={selectorClasses.groups} ref={groupsRef}>
-                    {groups.map(group => (
+                  <div
+                    ref={groupsRef}
+                    id={`${id}-models`}
+                    className={selectorClasses.groups}
+                    role="menu"
+                    aria-label={translate(t, 'menuModel')}
+                    hidden={filteredGroups.length === 0}
+                  >
+                    {filteredGroups.map(group => (
                       <MenuGroup label={group.name} key={group.id}>
                         {group.models.map(model => {
+                          const index = modelIndex++
                           const selected = state.current?.provider === group.id && state.current.model === model.id
                           return (
                             <button
@@ -346,21 +488,33 @@ export function FavoriteModelSelect({
                               type="button"
                               role="menuitemradio"
                               aria-checked={selected}
-                              className={selectorClasses.option}
+                              id={`${id}-model-${index}`}
+                              tabIndex={showSearch ? -1 : 0}
+                              onFocus={() => { setHighlightedIndex(index) }}
+                              data-highlighted={index === activeModelIndex ? '' : undefined}
+                              className={index === activeModelIndex
+                                ? `${selectorClasses.option} ${selectorClasses.optionActive}`
+                                : selectorClasses.option}
                               key={model.id}
                               title={model.name}
                               disabled={busy}
                               onClick={() => { choose({ provider: group.id, model: model.id }) }}
                             >
                               <span className={selectorClasses.optionCopy}><span className={selectorClasses.modelName}>{model.name}</span></span>
-                              <span className={selectorClasses.check}>{selected ? <IconCheckOutlineMedium /> : null}</span>
+                              <span className={selectorClasses.check}>
+                                {pending?.provider === group.id && pending.model === model.id
+                                  ? <StateDot state="ongoing" />
+                                  : selected ? <IconCheckOutlineRegular /> : null}
+                              </span>
                             </button>
                           )
                         })}
                       </MenuGroup>
                     ))}
                   </div>
-                  {state.status === 'ready' && choices.length === 0 ? <div className={selectorClasses.empty}>{translate(t, 'emptyModels')}</div> : null}
+                  {state.status === 'ready' && filteredGroups.length === 0
+                    ? <div className={selectorClasses.empty} role="status">{translate(t, choices.length === 0 ? 'emptyModels' : 'noMatches')}</div>
+                    : null}
                 </>
               )
               : null}
@@ -389,7 +543,12 @@ export function FavoriteModelSelect({
                         onClick={() => { chooseEffort(level.effort) }}
                       >
                         <span className={selectorClasses.optionCopy}><span className={selectorClasses.modelName}>{level.label}</span></span>
-                        <span className={selectorClasses.check}>{effectiveEffort === level.effort ? <IconCheckOutlineMedium /> : null}</span>
+                        <span className={selectorClasses.check}>
+                          {pending !== null && pending.provider === state.current?.provider
+                            && pending.model === state.current.model && pending.reasoningEffort === level.effort
+                            ? <StateDot state="ongoing" />
+                            : effectiveEffort === level.effort ? <IconCheckOutlineRegular /> : null}
+                        </span>
                       </button>
                     ))}
                 </>
@@ -403,7 +562,7 @@ export function FavoriteModelSelect({
           <Toast
             key={toast.seq}
             text={toast.text}
-            icon={<IconWarningOutlineMedium />}
+            icon={<IconWarningOutlineRegular />}
             anchor={rootRef.current?.closest<HTMLElement>('[data-composer-card]') ?? null}
             onDone={() => { setToast(null) }}
           />
