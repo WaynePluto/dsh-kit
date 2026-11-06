@@ -9,10 +9,11 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 - 一个终端一个 tab chip（`kind: 'dsh-kit-terminal'`，标题固定「AI交互终端」）；
   guide 页的「新终端」卡片为当前会话 spawn 全新终端（与模型 start 走同一条 backend 路径，
   沙箱围栏一致）。
-- 模型 `start` 出终端后，monitor（会话级，5 秒）自动打开它的 tab；用户关掉的终端从
-  registry 消失，kill 失败的孤儿会被 monitor 重新开出 tab（自愈）。
+- 模型 `start` 出终端后，monitor（会话级，5 秒）自动打开它的 tab；用户确认关闭的终端在
+  kill 生效前不复活（关闭意图屏蔽，终端离开 registry 即清除标记）。
 - 关闭 chip = 杀进程树：第一次点 × 弹出**居中确认弹窗**（官方 Modal），点「关闭终端」才真杀，
-  取消/Escape 撤回；模型侧 `close` action 无需确认（工具调用本身即意图）。
+  取消/Escape 撤回；模型侧 `close` action 无需确认（工具调用本身即意图）。关闭解析与 monitor
+  同源（params → localStorage 绑定），monitor 开出的 tab 也能正确杀掉。
 - 终端被模型 `close` 或 shell 退出后，tab 保留显示退出态（exit code）与「新建终端」按钮，
   不自动重启。
 
@@ -21,13 +22,16 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 - xterm.js（@xterm/xterm 6.0.0 + FitAddon，内联进 client bundle）+ 官方 xterm.css 内嵌注入。
 - 输出走 `POST /api/terminal/stream` 的**流式响应**（官方 /api 桥对响应体增量写入 + 背压，
   无轮询）：attach 先重放宿主侧有界 ring buffer（512KB 原始字节），再接实时帧；进程退出
-  发 exit 帧。tab 隐藏即断流，可见即重连重放。spawn 就绪后 ring 裁到最后一个受控提示符
-  （`dsh> `），pwsh 启动回显（编码 preamble、prompt 安装命令）不进画面。
+  发 exit 帧。tab 隐藏即断流，可见即重连重放。pwsh 方言 spawn 完成后宿主经会话发送一条
+  `Clear-Host` 清掉 ConPTY 缓冲的启动回显，ring 再裁到最后一个受控提示符（`dsh> `）——
+  浏览器重放与 ConPTY 内部缓冲逐行对齐（逐键回显是绝对定位，错位会把输入行画歪）。
 - 键盘直写：xterm `onData` → 16ms 微批 → `write` 端点 → PTY；Ctrl+C、Tab、粘贴都是真实按键。
   密码不回显是程序行为（sudo/REPL 关闭回显），UI 不做遮罩。
-- 尺寸自适应：ResizeObserver → FitAddon → `resize` 端点 → ConPTY 重排；PTY 以
-  `xterm-256color` 宣告（上游默认 `dumb`），程序输出 ANSI 彩色，模型 `read` 经上游
-  sanitizer 剥离转义序列拿到干净文本。
+- 尺寸自适应：ResizeObserver（120ms 防抖）→ FitAddon → `resize` 端点。ConPTY 对 resize
+  **不重绘**（字节捕获实测），客户端只重排网格、不清屏；PTY 已与面板同尺寸时不重发；新输出
+  按新宽度的绝对定位到达，画面自然收敛。PTY 以 `xterm-256color` 宣告（上游默认 `dumb`）并
+  删除上游 pwsh 专属的 `NO_COLOR`（bash 方言本就没有），程序输出 ANSI 彩色，模型 `read` 经
+  上游 sanitizer 剥离转义序列拿到干净文本。
 - 主题：底座四色（背景/前景/光标/选区）跟随 dsh 主题 token（深浅自动切换）；16 色 ANSI
   用 xterm 内置经典色板（彩色输出）。
 

@@ -149,9 +149,14 @@ Linux 个人用户部署允许一个窄范围例外：所有 sudo 命令都必�
 - 上游 registry 无闲置回收：终端开着就一直开着，直到模型 close、用户关 chip（二次确认后）、
   所属会话卸载（Agent 销毁）或宿主退出（与官方原生终端一致，不跨宿主存活）。
 - 模型 close 无需确认（工具调用即意图）；用户关 chip 走二次确认（close handler 抛错否决
-  第一次 ×，居中确认弹窗内点「关闭终端」放行并杀，取消/Escape 撤回）。
+  第一次 ×，居中确认弹窗内点「关闭终端」放行并杀，取消/Escape 撤回）。handler 解析终端
+  与 monitor 同源（params → bindings）：monitor 开出的 tab 只有 params，只查 bindings 会
+  漏杀，终端活着被 monitor 复活成「关不掉又弹出来」的循环。用户确认关闭即标记关闭意图：
+  kill 在途期间 monitor 不为它复活 tab，终端离开 list（kill 确认）清除标记；kill 失败
+  （终端仍在 list）保持无 tab 并 console.warn 暴露原因。
 - 终端被关闭后从 list 消失，tab 随关闭语义同步移除；插件侧 monitor（每 5 秒）只做
-  「终端 → tab」视图收敛：没有 tab 的终端自动开出它的 tab，kill 失败的孤儿自愈重开。
+  「终端 → tab」视图收敛：没有 tab 的终端自动开出它的 tab（用户确认关闭的除外，见上）。
+  上游 registry 在 backend spawn 完成后才登记 session，启动期不可见，无重复开 tab 竞态。
 
 ### 页面渲染契约（xterm + 流式）
 
@@ -163,12 +168,20 @@ Linux 个人用户部署允许一个窄范围例外：所有 sudo 命令都必�
   tab 保留退出态（exit code + 新建终端按钮），不自动重启。tab chip 标题固定「AI交互终端」。
 - 键盘直写：xterm onData → 16ms 微批 → `write` 端点；Ctrl+C、Tab、粘贴是真实按键；密码不回显
   是程序行为（sudo/REPL 关闭回显），UI 无遮罩表单。
-- 尺寸：ResizeObserver → FitAddon → `resize` 端点 → ConPTY 重排；PTY 以 xterm-256color 宣告，
-  程序输出 ANSI 彩色，模型 read 经上游 sanitizer 剥离转义拿到干净文本——原始彩色字节走 tap
-  给浏览器，干净文本走模型，两路同源。
+- 尺寸与同步：pwsh 方言 spawn 完成后宿主经会话 send 一条 `Clear-Host`（进命令历史，可接受），
+  清掉 ConPTY 缓冲前几行的启动回显——提示符回到第 1 行——随后 tap ring trim 到最后一个受控
+  提示符：**浏览器重放与 ConPTY 内部缓冲逐行对齐**。这是硬约束：ConPTY 的逐键回显是绝对定位
+  （`\e[r;cH`，DSR `\e[6n` 应答同样基于其内部缓冲），两边错位会把输入行画错位/重复（字节
+  捕获实测）。resize 时 ConPTY **不重绘**（同一捕获验证）：客户端 fit（120ms 防抖）只重排
+  网格并发 `resize` 端点、不清屏；fit 以宿主上报的 PTY 实际几何为对齐守卫，已与面板同尺寸
+  不重发；新输出按新宽度的绝对定位到达，画面自然收敛。PTY 以 xterm-256color 宣告且子环境删除
+  上游 pwsh 专属的 `NO_COLOR`（bash 方言本就没有，parity），程序输出 ANSI 彩色，模型 read 经
+  上游 sanitizer 剥离转义拿到干净文本——原始彩色字节走 tap 给浏览器，干净文本走模型，两路同源。
 - 主题：底座四色（背景/前景/光标/选区）随 dsh 主题 token（`theme/change` 时重读应用）；
   16 色 ANSI 用 xterm 内置经典色板。
-- 重连重放的限制：resize 之后的重放可能存在行宽错位残影（官方原生终端重连亦有类似限制）。
+- 重连重放的限制：重放与 ConPTY 缓冲的对齐以「pwsh Clear-Host + trim」为前提（见尺寸与同步）；
+  resize 之后的旧行可能与 ConPTY 内部重排后的行宽有残影，新输出按绝对定位到达后收敛
+  （POSIX 同样保留残影，官方原生终端重连亦有类似限制）。
 
 ### Windows 就绪
 

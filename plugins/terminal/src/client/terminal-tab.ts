@@ -73,6 +73,33 @@ export function clearArmed(): void {
   if (armedStore.getSnapshot().size > 0) armedStore.set(new Set<string>())
 }
 
+/**
+ * 用户已确认关闭、kill 在途（或失败留守）的终端 id。monitor 在此期间不为它们复活
+ * tab——kill 生效需要时间，且 params 绑定的 tab 关闭路径曾经漏杀导致「关不掉又弹出
+ * 来」的循环；终端离开 list（kill 确认）即清除标记，kill 失败则留守并保持无 tab。
+ */
+const closedIntent = new Set<string>()
+
+/** 标记一个终端为「用户已确认关闭」；随后的 monitor tick 不再为它开 tab。 */
+export function markClosedIntent(terminalId: string): void {
+  closedIntent.add(terminalId)
+}
+
+/** 读取关闭意图（测试与 monitor 共用）。 */
+export function isClosedIntent(terminalId: string): boolean {
+  return closedIntent.has(terminalId)
+}
+
+/** 清除单个关闭意图（终端已离开 list，kill 确认）。 */
+export function clearClosedIntent(terminalId: string): void {
+  closedIntent.delete(terminalId)
+}
+
+/** 清空全部关闭意图（插件卸载）。 */
+export function clearAllClosedIntent(): void {
+  closedIntent.clear()
+}
+
 /** monitor 对宿主服务的最小操作面；测试用假实现替换。 */
 export interface TerminalMonitorHost {
   /** 当前前台会话；无会话时为 undefined。 */
@@ -139,8 +166,18 @@ export class TerminalTabMonitor {
       const terminalId = this.host.terminalIdOfTab(sessionId, tab.tabId)
       if (terminalId !== undefined) bound.add(terminalId)
     }
+    const listed = new Set<string>()
     for (const terminal of snapshotValue.terminals) {
-      if (!bound.has(terminal.id)) this.host.openTab(sessionId, terminal.id)
+      listed.add(terminal.id)
+      if (bound.has(terminal.id)) continue
+      // 用户确认关闭的终端不复活：kill 在途窗口内 monitor 不抢先开 tab，kill 失败
+      // （终端仍在 list）时保持无 tab，由 console.warn 暴露原因。
+      if (closedIntent.has(terminal.id)) continue
+      this.host.openTab(sessionId, terminal.id)
+    }
+    // kill 已确认（离开 list）的意图项清除，防长期驻留。
+    for (const id of closedIntent) {
+      if (!listed.has(id)) closedIntent.delete(id)
     }
   }
 }

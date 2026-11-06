@@ -148,12 +148,27 @@ export class TapTerminalBackend implements TerminalBackend {
     // 后续就绪探测等待期间输出，若等 inner.spawn（含 startupSession）完成再挂 listener，
     // 启动期输出全部丢失，guide 入口新开的终端会一片空白。
     const inner = new BashTerminalBackend(this.ctx, this.resolved as never, async (innerSpec: SubprocessTerminalSpawnSpec) => {
-      const handle = await this.ctx.subprocess.spawnTerminal({ ...innerSpec, terminalType: TERMINAL_TYPE })
+      // 上游给 pwsh 方言的子环境写死 NO_COLOR=1（渲染安静），bash 方言没有——删掉它恢复
+      // ANSI 彩色（parity）：TERM 由 subprocess-local 用 terminalType 强制覆盖，无需改。
+      const env = innerSpec.env === undefined
+        ? undefined
+        : Object.fromEntries(Object.entries(innerSpec.env).filter(([key]) => key !== 'NO_COLOR'))
+      const handle = await this.ctx.subprocess.spawnTerminal({ ...innerSpec, env, terminalType: TERMINAL_TYPE })
       this.taps.bind(String(spec.sessionId), handle, { cols: innerSpec.cols, rows: innerSpec.rows })
       return handle
     })
     const session = await inner.spawn(spec)
-    // 就绪探测通过（提示符已印出）后立即裁剪重放缓冲：启动期回显留在 ring 外，
+    // Windows：ConPTY 的逐键回显是绝对定位（\e[r;cH，DSR 应答同样基于它的内部缓冲），
+    // 浏览器重放必须与该缓冲逐行对齐，否则输入行画错位/重复。启动噪声（编码 preamble +
+    // prompt 安装命令的回显）占据 ConPTY 缓冲前几行——经会话 send 一条 Clear-Host 清掉，
+    // 提示符回到第 1 行，再 trim ring 到最后一个受控提示符：两边同步且画面干净。
+    // 实测 ConPTY 对 resize 不重绘（字节捕获验证），「重放裁剪 + 事后清屏」没有别的路。
+    // POSIX bash 的回显是行内式，无此问题，trim 即可。
+    if (this.resolved.shellDialect === 'pwsh') {
+      const clear = session.startSend({ text: 'Clear-Host', submit: true })
+      await clear.done
+    }
+    // 就绪探测通过（提示符已印出）后裁剪重放缓冲：启动期回显留在 ring 外，
     // 手开/guide 入口的终端画面只剩一个干净的受控提示符；启动失败走 throw，不裁剪。
     this.taps.markReady(String(spec.sessionId), PROMPT_TAIL_MARKER)
     return session

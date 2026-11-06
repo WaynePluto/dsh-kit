@@ -1,11 +1,11 @@
 /** 测试：tap registry（ring/扇出/退出）、关闭确认臂、monitor 视图收敛、tab 定义与 bindings。 */
 
 import { EventEmitter } from 'node:events'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   MONITOR_POLL_MS, TERMINAL_TAB_ID, TERMINAL_TAB_KIND, TerminalTabMonitor,
-  armedStore, armClose, closeArmDecision, disarmClose,
-  terminalTabDefinition,
+  armedStore, armClose, clearAllClosedIntent, closeArmDecision, disarmClose,
+  isClosedIntent, markClosedIntent, terminalTabDefinition,
 } from '../src/client/terminal-tab.js'
 import { BoundedRing, TerminalTapRegistry } from '../src/terminal-tap.js'
 import { getBinding, removeBinding, setBinding } from '../src/client/terminal-bindings.js'
@@ -173,6 +173,10 @@ function fakeHost(terminals: readonly string[] = []): TerminalMonitorHost & {
 }
 
 describe('terminal tab monitor', () => {
+  beforeEach(() => {
+    clearAllClosedIntent()
+  })
+
   it('opens tabs for terminals without one, exactly once each', async () => {
     const host = fakeHost(['t1', 't2'])
     const monitor = new TerminalTabMonitor(host)
@@ -180,6 +184,27 @@ describe('terminal tab monitor', () => {
     expect(host.opened).toStrictEqual([[SESSION, 't1'], [SESSION, 't2']])
     await monitor.tick()
     expect(host.opened).toHaveLength(2)
+  })
+
+  it('does not resurrect a user-closed terminal while the kill is in flight', async () => {
+    const host = fakeHost(['t1'])
+    const monitor = new TerminalTabMonitor(host)
+    markClosedIntent('t1')
+    await monitor.tick()
+    expect(host.opened).toStrictEqual([])
+    expect(isClosedIntent('t1')).toBe(true)
+  })
+
+  it('clears the closed intent once the terminal leaves the list (kill confirmed)', async () => {
+    const ids: string[] = ['t1']
+    const host = fakeHost(ids)
+    const monitor = new TerminalTabMonitor(host)
+    markClosedIntent('t1')
+    await monitor.tick()
+    ids.length = 0
+    await monitor.tick()
+    expect(isClosedIntent('t1')).toBe(false)
+    expect(host.opened).toStrictEqual([])
   })
 
   it('does not let another session\'s tab suppress the foreground session', async () => {

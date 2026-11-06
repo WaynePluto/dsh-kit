@@ -75,6 +75,19 @@ describe('stream frames', () => {
     expect(decodeStreamFrame(encodeStreamFrame({ t: 'exit', code: null }))).toStrictEqual({ t: 'exit', code: null })
   })
 
+  it('carries the platform semantic on size frames', () => {
+    expect(decodeStreamFrame(encodeStreamFrame({ t: 'size', cols: 160, rows: 40, platform: 'windows' })))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'windows' })
+    expect(decodeStreamFrame(encodeStreamFrame({ t: 'size', cols: 160, rows: 40, platform: 'posix' })))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'posix' })
+    // 旧宿主没有 platform 字段（或值不认识）时按 POSIX 兜底（不清屏），几何坏值拒帧。
+    expect(decodeStreamFrame('{"t":"size","cols":160,"rows":40}'))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'posix' })
+    expect(decodeStreamFrame('{"t":"size","cols":160,"rows":40,"platform":"win32"}'))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'posix' })
+    expect(decodeStreamFrame('{"t":"size","cols":1,"rows":40,"platform":"windows"}')).toBeUndefined()
+  })
+
   it('tolerates garbage lines without throwing', () => {
     expect(decodeStreamFrame('')).toBeUndefined()
     expect(decodeStreamFrame('not json')).toBeUndefined()

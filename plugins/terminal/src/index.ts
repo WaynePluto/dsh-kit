@@ -31,7 +31,7 @@ export {
 } from './shared.js'
 export type {
   Endpoint, ListRequest, SpawnRequest, StreamFrame, TerminalCloseRequest,
-  TerminalOpResult, TerminalResizeRequest, TerminalSpawnView, TerminalView,
+  TerminalOpResult, TerminalPlatform, TerminalResizeRequest, TerminalSpawnView, TerminalView,
   TerminalWriteRequest, TerminalsSnapshot, TerminalsUnavailable,
 } from './shared.js'
 
@@ -123,9 +123,13 @@ export async function serveStream(ctx: Context, request: Request, taps: Terminal
           closed = true
         }
       }
-      // 1) size 几何帧；2) ring 重放；3) live 标记（客户端此后才 fit + resize PTY）；
+      // 1) size 几何帧（含平台语义：Windows 客户端 resize 前清屏让 ConPTY 重绘成为唯一
+      // 内容源）；2) ring 重放；3) live 标记（客户端此后才 fit + resize PTY）；
       // 4) 已退出则补 exit 帧收尾；5) 接实时帧，退出后收尾。
-      push({ t: 'size', cols: entry.size.cols, rows: entry.size.rows })
+      push({
+        t: 'size', cols: entry.size.cols, rows: entry.size.rows,
+        platform: process.platform === 'win32' ? 'windows' : 'posix',
+      })
       const snapshot = entry.ring.snapshot()
       if (snapshot.length > 0) push({ t: 'ring', b64: bufferToBase64(snapshot) })
       if (entry.exited) {

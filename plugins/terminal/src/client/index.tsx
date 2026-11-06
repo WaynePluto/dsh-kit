@@ -26,8 +26,8 @@ import { CHANNEL, SELF_NAMESPACE } from '../shared.js'
 import type { TerminalsSnapshot } from '../shared.js'
 import {
   TERMINAL_TAB_ID, TERMINAL_TAB_KIND, TerminalTabMonitor,
-  armedStore, clearArmed, closeArmDecision, armClose, disarmClose,
-  terminalTabDefinition,
+  armedStore, clearArmed, clearAllClosedIntent, closeArmDecision, armClose, disarmClose,
+  markClosedIntent, terminalTabDefinition,
 } from './terminal-tab.js'
 import { TerminalTab, TerminalTabTitle } from './TerminalTab.js'
 import { clearBindings, getBinding, removeBinding } from './terminal-bindings.js'
@@ -37,7 +37,7 @@ import type { TerminalKey } from './locales.js'
 import type { TerminalTabInjected } from './terminal-tab.types.js'
 import { callKitChannel } from '@dsh-kit/plugin-rpc'
 
-export { MONITOR_POLL_MS, TERMINAL_TAB_ID, TERMINAL_TAB_KIND, TerminalTabMonitor, armClose, closeArmDecision, disarmClose, installTerminalMonitor, terminalTabDefinition } from './terminal-tab.js'
+export { MONITOR_POLL_MS, TERMINAL_TAB_ID, TERMINAL_TAB_KIND, TerminalTabMonitor, armClose, clearAllClosedIntent, closeArmDecision, disarmClose, installTerminalMonitor, markClosedIntent, terminalTabDefinition } from './terminal-tab.js'
 export type { TerminalMonitorHost } from './terminal-tab.js'
 export { TerminalTab as TerminalTabBody, TerminalTabTitle } from './TerminalTab.js'
 export type { TerminalTabBodyProps, TerminalTitleProps } from './TerminalTab.js'
@@ -141,10 +141,11 @@ export function apply(ctx: Context): void {
 
   // 关闭 = 杀进程，二次确认防误触：第一次 × 进入 armed 并抛错否决（官方契约：handler
   // 抛错则 tab 保留），body 据 armed 打开居中确认弹窗；弹窗确认放行并杀进程，取消撤销。
-  // 未绑定终端的壳 tab 直接放行。
+  // terminalId 与 monitor 同源解析（params → bindings）：monitor 开出的 tab 只有 params，
+  // 只查 bindings 会漏杀——终端活着被 monitor 复活，形成「关不掉又弹出来」的循环。
   ctx.effect(() => ctx.sidebarRight.registerCloseHandler(TERMINAL_TAB_KIND, (sessionId, tab) => {
     const sid = String(sessionId)
-    const terminalId = getBinding(sid, tab.contentId)
+    const terminalId = terminalIdOfTab(ctx, sid, tab.id)
     if (terminalId === undefined) return
     if (closeArmDecision(armedStore.getSnapshot(), tab.id) === 'arm') {
       armClose(tab.id)
@@ -152,7 +153,11 @@ export function apply(ctx: Context): void {
     }
     disarmClose(tab.id)
     removeBinding(sid, tab.contentId)
-    void call('close', { sessionId: sid, terminalId }).catch(() => undefined)
+    // 关闭意图先行：kill 是异步的，monitor 在生效窗口内不复活这个终端的 tab。
+    markClosedIntent(terminalId)
+    void call('close', { sessionId: sid, terminalId }).catch((error: unknown) => {
+      console.warn('terminal: close failed; the terminal stays alive without a tab', error)
+    })
   }), 'terminal: close confirm')
 
   ctx.effect(() => {
@@ -187,6 +192,7 @@ export function apply(ctx: Context): void {
 
   ctx.effect(() => () => {
     clearArmed()
+    clearAllClosedIntent()
     clearBindings()
   }, 'terminal: client state')
 }

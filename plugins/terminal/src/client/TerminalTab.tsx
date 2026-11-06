@@ -39,6 +39,19 @@ const WRITE_FLUSH_MS = 16
 /** 断流后的重连间隔（tab 可见期间）。 */
 const RECONNECT_DELAY_MS = 1500
 
+/** 面板尺寸变化的 fit 防抖：拖拽宽度时不逐帧 resize PTY（每次都是 ConPTY 全屏重绘）。 */
+const FIT_DEBOUNCE_MS = 120
+
+/** 浏览器是否在 Windows 上；宿主半较旧（size 帧无 platform 字段）时的自愈判定——
+ * 桌面端宿主与浏览器同机，OS 一致，按 Windows 清屏避免 ConPTY 重绘与 reflow 叠加。 */
+const NAVIGATOR_WINDOWS = navigator.userAgent.includes('Windows')
+
+/** 本次页面生命周期内是否已打过就绪标记（诊断用，一行）。 */
+let loggedReady = false
+
+/** 客户端产物标记；改客户端行为时同步更新，供实机 Console 核对生效版本。 */
+const CLIENT_BUILD = '2026-11-06.5'
+
 /** sidebar tab 槽收到的完整 props。 */
 export type TerminalTabBodyProps = PropsRuntime<'sidebar.right.pane.tab'>
   & PropsLocale<'dsh-plugin-terminal'>
@@ -86,23 +99,36 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
   const abortRef = useRef<AbortController | undefined>(undefined)
   const writeBufRef = useRef<string[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const lastSizeRef = useRef<{ cols: number; rows: number } | undefined>(undefined)
+  const fitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // PTY 侧的实际几何（size 帧上报，resize 成功后前移）：fit 的对齐守卫。PTY 已与面板
+  // 同尺寸时不重复发送。
+  const ptySizeRef = useRef<{ cols: number; rows: number } | undefined>(undefined)
   // 重放门控：attach 期间按 PTY 原几何渲染 ring；重放结束（live 帧）后才 fit + resize PTY，
   // 避免 160 列字节被重放进窄面板产生错位残影。
   const replayGateRef = useRef(false)
 
-  /** 按当前面板几何 fit 并把新尺寸发给 PTY；重放未结束（门控关闭）时不执行。 */
+  /**
+   * 按当前面板几何 fit 并把新尺寸发给 PTY；重放未结束（门控关闭）或 PTY 已对齐时不执行。
+   * 不清屏：实测 ConPTY 对 resize 不重绘（字节捕获验证），reset 会让画面永久空白；
+   * 新输出按 ConPTY 新宽度的绝对定位到达，画面自然收敛。
+   */
   const fitNow = (): void => {
     const handle = termRef.current
     const element = containerRef.current
     if (handle === undefined || element === null || !tab.visible) return
     if (element.clientWidth === 0 || element.clientHeight === 0) return
-    handle.fit.fit()
-    const next = { cols: handle.term.cols, rows: handle.term.rows }
-    const previous = lastSizeRef.current
-    if (previous !== undefined && previous.cols === next.cols && previous.rows === next.rows) return
-    lastSizeRef.current = next
-    void verbs.onResize(handle.terminalId, next.cols, next.rows).catch(() => undefined)
+    const proposal = handle.fit.proposeDimensions()
+    if (proposal === undefined || proposal.cols < 2 || proposal.rows < 1) return
+    const next = { cols: proposal.cols, rows: proposal.rows }
+    const pty = ptySizeRef.current
+    if (pty !== undefined && pty.cols === next.cols && pty.rows === next.rows) return
+    handle.term.resize(next.cols, next.rows)
+    void verbs.onResize(handle.terminalId, next.cols, next.rows).then(() => {
+      ptySizeRef.current = next
+      return undefined
+    }).catch((error: unknown) => {
+      console.warn('terminal: resize failed; retrying on the next layout change', error)
+    })
   }
 
   // 解析 terminalId：导航 params → bindings → spawn 全新终端。每个 occurrence 一次。
@@ -144,19 +170,25 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
     term.loadAddon(fit)
     term.open(container)
     termRef.current = { terminalId, term, fit, dataDisposable: term.onData(data => enqueueWrite(data)) }
-    lastSizeRef.current = undefined
+    ptySizeRef.current = undefined
     replayGateRef.current = false
-    // 面板尺寸 → FitAddon → resize 端点。rAF 合并，避免 ResizeObserver 回环告警。
-    // 重放期间门控关闭：ring 按 PTY 原几何渲染，重放结束才允许 fit。
+    // 面板尺寸 → FitAddon → resize 端点。防抖（trailing）合并拖拽期间的逐帧变化，避免
+    // resize 风暴；重放期间门控关闭：ring 按 PTY 原几何渲染，重放结束才允许 fit。
     const observer = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
+      if (fitTimerRef.current !== undefined) clearTimeout(fitTimerRef.current)
+      fitTimerRef.current = setTimeout(() => {
+        fitTimerRef.current = undefined
         if (!replayGateRef.current) return
         fitNow()
-      })
+      }, FIT_DEBOUNCE_MS)
     })
     observer.observe(container)
     return () => {
       observer.disconnect()
+      if (fitTimerRef.current !== undefined) {
+        clearTimeout(fitTimerRef.current)
+        fitTimerRef.current = undefined
+      }
       abortRef.current?.abort()
       abortRef.current = undefined
       termRef.current?.dataDisposable.dispose()
@@ -222,7 +254,17 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
             const frame = decodeStreamFrame(line)
             if (frame === undefined) continue
             if (frame.t === 'size') {
-              // 按 PTY 原几何重建画面（重连时先清掉旧内容，ring 全量重放）。
+              // 按 PTY 原几何重建画面（重连时先清掉旧内容，ring 全量重放）。宿主上报的
+              // 几何是 fit 对齐守卫的权威值；platform 仅用于就绪诊断（宿主半较旧时无此
+              // 字段，解码回退 posix）。
+              ptySizeRef.current = { cols: frame.cols, rows: frame.rows }
+              if (!loggedReady) {
+                loggedReady = true
+                // host 字段原样展示：host=windows = 宿主半已更新；host=posix（Windows 浏览器）
+                // = 宿主半仍旧版（字段缺失回退），提示需要重新升级并重启。
+                const resolved = frame.platform === 'posix' && NAVIGATOR_WINDOWS ? 'windows' : frame.platform
+                console.info(`[dsh-kit] terminal tab ready: pty=${resolved} (host=${frame.platform}) client=${CLIENT_BUILD}`)
+              }
               const live = termRef.current
               if (live !== undefined) {
                 live.term.resize(frame.cols, frame.rows)
