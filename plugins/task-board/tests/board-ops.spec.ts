@@ -57,12 +57,18 @@ describe('list ops', () => {
 })
 
 describe('card ops', () => {
-  it('addCard 追加到列尾并修剪空白', () => {
+  it('addCard 插入列首并修剪空白', () => {
     const base = board()
     const after = addCard(base, 'l3', '  new task  ')
     expect(ids(after, 'l3').length).toBe(1)
     expect(after.lists[2]?.cards[0]?.text).toBe('new task')
     expect(addCard(base, 'l3', '   ')).toBe(base)
+    // 已有卡片的列：新卡片出现在最前面，原卡片顺延。
+    const stacked = addCard(base, 'l2', 'top task')
+    const newId = ids(stacked, 'l2')[0] ?? ''
+    expect(newId).not.toBe('')
+    expect(ids(stacked, 'l2')).toEqual([newId, 'l2-c1', 'l2-c2', 'l2-c3'])
+    expect(stacked.lists[1]?.cards[0]?.text).toBe('top task')
   })
 
   it('updateCard 修改文本/工作区；无实际变化时同一引用', () => {

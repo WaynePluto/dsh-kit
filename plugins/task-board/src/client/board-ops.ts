@@ -118,7 +118,7 @@ export function moveList(board: BoardDocument, listId: string, toIndex: number):
 }
 
 /**
- * 新建卡片（列尾追加）。
+ * 新建卡片（插入列首）。
  * @param board - 当前文档。
  * @param listId - 目标列。
  * @param text - 卡片文本。
@@ -149,7 +149,7 @@ export function addCard(
   }
   return {
     ...board,
-    lists: board.lists.map(item => item.id === listId ? { ...item, cards: [...item.cards, card] } : item),
+    lists: board.lists.map(item => item.id === listId ? { ...item, cards: [card, ...item.cards] } : item),
   }
 }
 
