@@ -259,6 +259,17 @@ line-height:1.4; white-space:nowrap`，SVG `display:block; flex:none`。这样�
 14.9..32.5，中心差约 0.3px，无需额外 `translateY`。若换字体/字号或出现新的 CJK 残差，仍按 flex-centering 的截图量法复核，
 不要直接加 margin/top。
 
+### Sidebar tab chip 标题的淡出遮罩：短标题末字会被裁半
+
+dockkit 的 tab chip（`ui-dockkit/src/components/dockkit.module.css`）对 `.tabTitle` 容器尾部施加
+渐变 mask 而不是 ellipsis：被裁短时（`data-dockkit-tab-clipped`）最后 16px 淡出；chip 激活/悬停/聚焦时
+（× 关闭钮区域）`black calc(100% - 30px) → transparent calc(100% - 14px)`。chip 按 shrink-to-fit 取宽
+（min 80px / max 170px、左右 padding 10px），**标题恰好占满 chip 时最后一个 CJK 字形正好落进 mask**，
+表现为「末字显示一半」。插件自有 title slot（无原生图标前缀的短标题）给标题 span 留
+`padding-right: 30px`（≥ mask 起点），文字停在完全不透明区，chip 略宽但末字完整；实例是
+`plugins/terminal/src/client/TerminalTab.tsx` 的 `TerminalTabTitle`。换标题文案或字号后，用 chip 激活态
+（点开 tab）目测末字，不要只看未激活态（未激活且未裁短时无 mask，看不出问题）。
+
 ### Sidebar tab body 的高度
 
 右侧 Sidebar 的 tab body 不能默认当作普通 flex 子项：上游 `ui-dockkit/src/components/TabPanel.tsx` 的 `paneBody` 子节点通过 `display: contents` wrapper 放入，`ui-dockkit/src/components/dockkit.module.css` 的 `.paneBody` 自身是带 `overflow:auto` 的 flex item，但不是 flex 容器。现象是 body 根节点若写 `height:0; flex:1`，实际页面中会得到零高度，内容只能溢出到不可滚动的区域。

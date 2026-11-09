@@ -183,7 +183,10 @@ export const stylesheet = `
   white-space: nowrap;
 }
 
-/* 行尾动作簇：hover 或键盘聚焦行内任一元素时显现。 */
+/* 行尾动作簇：hover 或键盘导航聚焦行内元素时显现。判定用 :has(:focus-visible) 而非
+   :focus-within——面板打开时首行接受程序化 focus（方向键/Enter 即刻可用），鼠标打开
+   场景下它不匹配 :focus-visible，动作簇与其它行一致保持隐藏；键盘打开/方向键移动时
+   匹配，动作簇随键盘焦点显现（Tab 可达）。 */
 .${c.rowActions} {
   display: inline-flex;
   flex: none;
@@ -192,7 +195,7 @@ export const stylesheet = `
 }
 
 .${c.row}:hover .${c.rowActions},
-.${c.row}:focus-within .${c.rowActions} {
+.${c.row}:has(:focus-visible) .${c.rowActions} {
   opacity: 1;
 }
 

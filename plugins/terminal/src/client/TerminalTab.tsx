@@ -50,7 +50,7 @@ const NAVIGATOR_WINDOWS = navigator.userAgent.includes('Windows')
 let loggedReady = false
 
 /** 客户端产物标记；改客户端行为时同步更新，供实机 Console 核对生效版本。 */
-const CLIENT_BUILD = '2026-11-06.5'
+const CLIENT_BUILD = '2026-11-08.2'
 
 /** sidebar tab 槽收到的完整 props。 */
 export type TerminalTabBodyProps = PropsRuntime<'sidebar.right.pane.tab'>
@@ -109,8 +109,10 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
 
   /**
    * 按当前面板几何 fit 并把新尺寸发给 PTY；重放未结束（门控关闭）或 PTY 已对齐时不执行。
-   * 不清屏：实测 ConPTY 对 resize 不重绘（字节捕获验证），reset 会让画面永久空白；
-   * 新输出按 ConPTY 新宽度的绝对定位到达，画面自然收敛。
+   * 不清屏：真实栈（dsh 宿主自带的 node-pty）对 resize 不重绘（真实栈字节捕获实测，
+   * 实机验证：清屏后无重绘、画面永久空白），清屏只会在 ConPTY 无重绘时抹掉视口；
+   * 新输出按 ConPTY 新宽度的绝对定位到达，画面自然收敛。输入行「重复自动输入」的根因
+   * 不在渲染对齐，而在查询双重应答污染 PTY 输入（宿主半 tap 剥离查询，见 terminal-tap）。
    */
   const fitNow = (): void => {
     const handle = termRef.current
@@ -254,7 +256,7 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
             const frame = decodeStreamFrame(line)
             if (frame === undefined) continue
             if (frame.t === 'size') {
-              // 按 PTY 原几何重建画面（重连时先清掉旧内容，ring 全量重放）。宿主上报的
+              // 按 PTY 当前几何重建画面（重连时先清掉旧内容，ring 全量重放）。宿主上报的
               // 几何是 fit 对齐守卫的权威值；platform 仅用于就绪诊断（宿主半较旧时无此
               // 字段，解码回退 posix）。
               ptySizeRef.current = { cols: frame.cols, rows: frame.rows }
@@ -393,11 +395,13 @@ export type TerminalTitleProps = PropsRuntime<'sidebar.right.pane.tab.title'>
   & PropsLocale<'dsh-plugin-terminal'>
 
 /**
- * tab chip 的静态标题（「AI交互终端」）。
+ * tab chip 的静态标题（「AI交互终端」）。chip（dockkit）在激活/悬停时对标题容器末尾
+ * 30px→14px 做淡出遮罩（× 钮区域），标题恰好占满 chip 时最后一个 CJK 字形正好落进
+ * 遮罩被裁半；尾部留白让文字停在遮罩起点之前，短标题的末字保持完整。
  * @param props - title slot 的框架 props。
  * @returns 标题文字。
  */
 export function TerminalTabTitle(props: TerminalTitleProps): ReactNode {
   const { t } = props
-  return <span data-dsh-terminal-title="">{t('title')}</span>
+  return <span style={{ paddingRight: '30px' }} data-dsh-terminal-title="">{t('title')}</span>
 }

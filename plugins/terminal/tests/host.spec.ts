@@ -252,6 +252,8 @@ describe('kit channel dispatch', () => {
     )
     expect(result.ok).toBe(true)
     expect(handle.resized).toStrictEqual([[120, 30]])
+    // size 帧契约：resize 成功后 tap 几何前移，重连重放不再拿到 spawn 时的过期几何。
+    expect(taps.entryOf('pty-r')?.size).toStrictEqual({ cols: 120, rows: 30 })
     taps.remove('pty-r')
   })
 

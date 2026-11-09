@@ -103,6 +103,8 @@ async function resizeTerminal(
   if (entry === undefined) return refused(NOTES.noTerminal)
   if (entry.exited) return refused(NOTES.terminalExited)
   await entry.handle.resize(request.cols, request.rows)
+  // 几何与 PTY 同步前移：size 帧（重连重放）以它为准，停留 spawn 值会让重放错位。
+  taps.setGeometry(request.terminalId, { cols: request.cols, rows: request.rows })
   return { ok: true }
 }
 

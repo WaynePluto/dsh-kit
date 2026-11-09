@@ -38,7 +38,7 @@
     （[工具与进程](dsh/runtime.md)）。桌面实机验收（四点体验 + 彩色输出 + 保活）待用户执行。实机首轮报
   「no PTY backend registered for shell」：backend 注册写在 apply 顶层，`ctx.get('terminals')`
   在服务 fiber 未起时返回 undefined 被可选链吞掉——改为 `ctx.inject(['terminals'])` 内注册
-  （实例仍绑宿主根 ctx，inject 派生 scope 无 sandboxPolicy 执行环境）；套件已重打。二轮实机又修三处：serveStream 按 sessionId 查 tap（应按 terminalId）致流式 attach 恒 404（missing 态）——请求改双 id 并加跨会话归属校验；tap 在就绪探测后才登记丢失启动期输出（guide 终端空白）——改 spawnTerminal 注入点立即登记（闭包持外层 spec.sessionId）；monitor 只认导航 params 识别已绑定 tab（guide 壳 tab 无 params）致重复开 tab——openTabs contentId 经 bindings 回退。画面几何：流式帧序改 size→ring→live→data/exit，客户端按 PTY 原几何重放、live 后才 fit+resize（消除 160 列字节错位重放），重连先 reset 全量重放。
+  （实例仍绑宿主根 ctx，inject 派生 scope 无 sandboxPolicy 执行环境）；套件已重打。二轮实机又修三处：serveStream 按 sessionId 查 tap（应按 terminalId）致流式 attach 恒 404（missing 态）——请求改双 id 并加跨会话归属校验；tap 在就绪探测后才登记丢失启动期输出（guide 终端空白）——改 spawnTerminal 注入点立即登记（闭包持外层 spec.sessionId）；monitor 只认导航 params 识别已绑定 tab（guide 壳 tab 无 params）致重复开 tab——openTabs contentId 经 bindings 回退。画面几何：流式帧序改 size→ring→live→data/exit，客户端按 PTY 原几何重放、live 后才 fit+resize（消除 160 列字节错位重放），重连先 reset 全量重放。三轮实机（2026-11-08，用户报「首开后/变宽后命令重复自动输入、chip 末字截半、开始页叫新终端」）：先用简化栈（工作区 node-pty 1.2.0-beta.15）字节捕获得出「ConPTY 每次 resize 都全屏重绘」并据此清屏+几何前移（resize 端点成功后 tap 几何前移——这条保留，size 帧不再停留 spawn 值），**但实机复验推翻重绘前提（真实栈=dsh 宿主自带 node-pty，resize 不重绘，清屏即永久白屏）**，清屏回退。随后在真实栈（cordis + subprocess-local + sandbox-policy + 本插件 backend）复刻完整链路捕获 PTY 输入侧，**抓到真凶：pwsh/conhost 发 DSR/DA 查询（`\e[6n`/`\e[c`），上游会话 headless 模拟器应答之外，浏览器 xterm 也经 onData 自动应答写回 PTY——双重应答进输入行，pwsh 按行读应答时吞掉后续回车，命令文本残留输入行**（复现用户全部症状：直接回车显示 `Clear-Host`、命令执行后被自动重输）。修法：tap 加 `TerminalQueryStripper`（跨 chunk 状态机，剥 `\e[6n` 与 DA 族查询，OSC/DCS 字符串态负载不误伤），浏览器侧不再应答；上游模拟器不经 tap，应答通道不变。真实栈实验复验：直接回车干净、命令单次执行、resize 画面保留。chip 末字截半是 dockkit 标题遮罩（激活态末 30→14px 渐变 mask）吃掉恰好占满 chip 的末个 CJK 字形——title span 尾部留白 30px；开始页文案 guideTitle 改「AI交互终端」。61 项单测、lint/typecheck/两半产物/suite tar 全绿，client=2026-11-08.2；桌面实机复验（Console 核对 client 版本 + 首开/变宽输入 + 直接回车 + chip 末字 + 开始页文案）待用户执行。
 - [x] 交互终端迁右侧边栏 tab（2026-11-05，已被上方原生级重写取代）：提问/审批卡片接管 composer 席位时旧
   dock 面板（`conversation.input.dock` 在 chain fallback 内）被整体 `display:none`，用户无法在
   提问期间输入密码。改为右侧边栏自有 tab 类型（kind `dsh-kit-terminal`，`sidebarRightTabs` +
@@ -120,7 +120,10 @@
   `/quick-commands` get/put RPC（缺文件回空文档零播种、put 全量校验），浏览器半乐观
   更新 + 每次提交立即整份写回（提交粒度有界，无防抖），写失败亮错误保留本地。组件总数
   28（口径与 plugin-catalog.json 对齐）；随 conversation-enhancements 分发；上游契约
-  （input.left 槽位 + inputActions 插入面）回写 docs/dsh/plugins.md。
+  （input.left 槽位 + inputActions 插入面）回写 docs/dsh/plugins.md。2026-11-08 修：面板
+  打开时首行接受程序化 focus（方向键/Enter 即刻可用），`:focus-within` 让首行的编辑/
+  删除钮常显而其它行 hover 才显——动作簇显隐改 `:has(:focus-visible)`（鼠标打开的程序
+  化 focus 不匹配，行为与其它行一致；键盘导航焦点仍显现，Tab 可达）。
 
 - [x] 切屏停靠扩展·面板停靠（session-park，2026-11-02，D24）：点击侧栏面板菜单项
   （插件/自动化任务/服务/任务看板与「更多」菜单项）把 main 视图换成面板页且当前

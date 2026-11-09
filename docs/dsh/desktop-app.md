@@ -45,6 +45,30 @@
 6. 关窗即隐藏，宿主常驻；再次双击走 single-instance 只 focus
    （`main.ts` "Closing hides" 注释与 `single-instance.ts`）。
 
+## 欢迎连接 cookie 堆积 → 启动死锁（0.2.2-rc.1 官方缺陷，实机确诊）
+
+出处：`packages/client/connection/src/browser-auth.ts`（`authorizeIndex`/`cookieName`）、
+`packages/host/webserver/src/index.ts`（裸 `createServer`，未调 `maxHeaderSize`）、
+`apps/desktop/src/main.ts`（`connectDesktopWelcome` 用 `net.fetch` + `credentials:'include'`）。
+
+- 每次启动宿主以 `--port 0` 随机端口监听，token 换 cookie 时按
+  `dsh-auth-<sha256(127.0.0.1:端口)>` 命名——**cookie 名含端口**，Chromium cookie
+  按 host 匹配不看端口，于是每次启动在 jar 里净增一条（30 天有效、互不覆盖），
+  且所有历史 cookie 全量附加到对任意 127.0.0.1 端口的请求上。
+- Node HTTP `maxHeaderSize` 默认 16 KiB 且按**全部 header 累计**：cookie 数到达
+  ~71 条（Cookie 头约 15.96 KiB，叠加 UA 等 header）即越限，宿主对带 cookie 的
+  请求回 431。`connectDesktopWelcome` 跟随 303 后的最终 GET 非 2xx，抛
+  `desktop welcome: Web authentication failed`，壳启动崩溃（`crash-*-host.log`）。
+  壳首请求（Node fetch 无 jar）不受影响，故 token 换 cookie 总能成功——每次失败
+  启动又净存一条，形成**死循环：崩一次多一条，永不自愈**。2026-11-08 本机实机
+  确诊（70 条 200 / 71 条 431 复现），与插件无关；用户侧表象为「装了套件后打不开」
+  时先查这里。
+- 恢复：关闭桌面版后清理 jar（备份后删行即可，jar 位于
+  `~/AppData/Roaming/@deepseek-ai/dsh-desktop/Network/Cookies`）：
+  `DELETE FROM cookies WHERE host_key='127.0.0.1' AND name LIKE 'dsh-auth-%'`。
+  每次启动约 +226 B，清完后约 70 次启动后会再次触顶；根治需官方修
+  （cookie 名去端口化改为覆盖写，或启动前清 stale cookie，或调大 `maxHeaderSize`）。
+
 ## 插件操作诊断与宿主退出（0.2.2-rc.1）
 
 - 宿主安装 `installOperationDiagnostics`：插件操作经 `plugin-operation` IPC 写入

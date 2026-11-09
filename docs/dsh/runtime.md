@@ -171,12 +171,22 @@ Linux 个人用户部署允许一个窄范围例外：所有 sudo 命令都必�
 - 尺寸与同步：pwsh 方言 spawn 完成后宿主经会话 send 一条 `Clear-Host`（进命令历史，可接受），
   清掉 ConPTY 缓冲前几行的启动回显——提示符回到第 1 行——随后 tap ring trim 到最后一个受控
   提示符：**浏览器重放与 ConPTY 内部缓冲逐行对齐**。这是硬约束：ConPTY 的逐键回显是绝对定位
-  （`\e[r;cH`，DSR `\e[6n` 应答同样基于其内部缓冲），两边错位会把输入行画错位/重复（字节
-  捕获实测）。resize 时 ConPTY **不重绘**（同一捕获验证）：客户端 fit（120ms 防抖）只重排
-  网格并发 `resize` 端点、不清屏；fit 以宿主上报的 PTY 实际几何为对齐守卫，已与面板同尺寸
-  不重发；新输出按新宽度的绝对定位到达，画面自然收敛。PTY 以 xterm-256color 宣告且子环境删除
-  上游 pwsh 专属的 `NO_COLOR`（bash 方言本就没有，parity），程序输出 ANSI 彩色，模型 read 经
-  上游 sanitizer 剥离转义拿到干净文本——原始彩色字节走 tap 给浏览器，干净文本走模型，两路同源。
+  （`\e[r;cH`），两边错位会把输入行画错位/重复（字节捕获实测）。resize 时真实栈（dsh 宿主自带
+  的 node-pty）ConPTY **不重绘**（真实栈字节捕获 + 实机验证：清屏后无重绘、画面永久空白），
+  客户端 fit（120ms 防抖）只重排网格并发 `resize` 端点、不清屏；fit 以宿主上报的 PTY 实际几何为
+  对齐守卫，已与面板同尺寸不重发；新输出按新宽度的绝对定位到达，画面自然收敛。resize 端点成功
+  后 tap 几何前移——size 帧（重连重放的建画面几何）始终是 PTY 当前值，停留 spawn 值会让重放在
+  过期几何上错位。PTY 以 xterm-256color 宣告且子环境删除上游 pwsh 专属的 `NO_COLOR`
+  （bash 方言本就没有，parity），程序输出 ANSI 彩色，模型 read 经上游 sanitizer 剥离转义拿到
+  干净文本——原始彩色字节走 tap 给浏览器，干净文本走模型，两路同源。
+- **终端查询必须只有一个应答者（幽灵输入根因，真实栈字节捕获实证）**：pwsh/conhost 会向终端
+  发 DSR 光标查询（`\e[6n`）与 DA 族请求（`\e[c`/`\e[>c`…）并按行读回应答；上游会话的
+  headless 模拟器从自己的 output listener 看到原始流并应答（宿主内 1:1 闭环）。浏览器 xterm
+  收到查询也会经 onData 自动应答并写回 PTY——**双重应答进入 shell 输入行：pwsh 的按行读取把
+  多余应答当正文、吞掉随后的回车，命令文本残留输入行**（现象：打开后直接回车显示 `Clear-Host`、
+  命令执行后被「自动重复输入一次」）。tap 的 `TerminalQueryStripper` 在 ring 与实时帧进浏览器
+  之前剥掉这两类查询字节（跨 chunk 挂起、OSC/DCS 字符串态负载不误伤）；上游模拟器不经 tap，
+  应答通道不变。
 - 主题：底座四色（背景/前景/光标/选区）随 dsh 主题 token（`theme/change` 时重读应用）；
   16 色 ANSI 用 xterm 内置经典色板。
 - 重连重放的限制：重放与 ConPTY 缓冲的对齐以「pwsh Clear-Host + trim」为前提（见尺寸与同步）；

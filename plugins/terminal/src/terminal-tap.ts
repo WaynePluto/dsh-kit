@@ -26,8 +26,8 @@ export interface TapEntry {
   readonly ring: BoundedRing
   /** 实时帧订阅者；流式路由 attach/detach。 */
   readonly listeners: Set<(frame: TapFrame) => void>
-  /** spawn 时的 PTY 几何（上游 spec 上报）。 */
-  readonly size: TapSize
+  /** PTY 当前几何：spawn 时由上游 spec 上报，此后随 resize 端点前移（size 帧契约）。 */
+  size: TapSize
   /** 顶层进程是否已退出。 */
   exited: boolean
   /** 退出码；未知为 null。 */
@@ -120,6 +120,89 @@ export class BoundedRing {
   }
 }
 
+/**
+ * 浏览器侧流量的「终端查询」剥离器：丢弃 CSI 6 n（DSR 光标查询）与 CSI … c
+ * （DA/DA2/DA3 请求）两种字节序列，其余原样放行（含跨 chunk 的不完整序列与
+ * OSC/DCS 字符串态——字符串负载里的 ESC 不会被误判成新序列）。
+ *
+ * 背景（真实栈字节捕获实证）：pwsh/conhost 会向终端发这些查询并按行读回应答；上游
+ * 会话的 headless 模拟器从自己的 output listener 看到原始流并应答（1:1，宿主内闭环）。
+ * 浏览器 xterm 收到查询也会自动应答（onData → write 端点），形成第二份应答写入 PTY
+ * 输入——pwsh 的按行读取把多余的应答当正文、并吞掉随后的回车，命令文本残留输入行
+ * （「幽灵输入」：直接回车显示 Clear-Host、命令执行后被自动重输一次）。tap 在 ring
+ * 与实时帧进浏览器之前剥掉查询字节；上游模拟器不经 tap，应答通道不受影响。
+ */
+export class TerminalQueryStripper {
+  /** CSI 参数区最长保持字节数；超过按非查询放行（防御性，避免异常流挂死）。 */
+  private static readonly MAX_CSI = 16
+
+  private state: 'normal' | 'esc' | 'csi' | 'string' | 'string-esc' = 'normal'
+  private carry: number[] = []
+
+  /**
+   * 喂入一段原始输出字节；返回过滤后的字节（整段都是挂起中的序列时为空）。
+   * @param chunk - PTY 原始输出。
+   * @returns 剥掉查询后的字节；挂起的不完整序列留待下一段判定。
+   */
+  feed(chunk: Uint8Array): Uint8Array {
+    const out: number[] = []
+    for (const byte of chunk) {
+      if (this.state === 'normal') {
+        if (byte === 0x1b) { this.carry = [byte]; this.state = 'esc'; continue }
+        out.push(byte)
+        continue
+      }
+      if (this.state === 'esc') {
+        if (byte === 0x5b) { this.carry.push(byte); this.state = 'csi'; continue }
+        // OSC/DCS/APC/PM 字符串 opener：整对放行后进入字符串态，负载原样透传直到终止符。
+        if (byte === 0x5d || byte === 0x50 || byte === 0x58 || byte === 0x5e || byte === 0x5f) {
+          out.push(this.carry[0]!, byte)
+          this.carry = []
+          this.state = 'string'
+          continue
+        }
+        // 其它 ESC 序列（SS3、字符集、单字符转义…）：整对放行。
+        out.push(this.carry[0]!, byte)
+        this.carry = []
+        this.state = 'normal'
+        continue
+      }
+      if (this.state === 'string') {
+        if (byte === 0x07) { out.push(byte); this.state = 'normal'; continue }
+        if (byte === 0x1b) { this.state = 'string-esc'; continue }
+        out.push(byte)
+        continue
+      }
+      if (this.state === 'string-esc') {
+        out.push(0x1b, byte)
+        // ESC \ 是字符串终止符（ST）；其余 ESC x 视为字符串内的字节，留在字符串态。
+        this.state = byte === 0x5c ? 'normal' : 'string'
+        continue
+      }
+      // csi：参数/私标字节累积，终止字节按查询或整段放行。
+      if (byte >= 0x30 && byte <= 0x3f) {
+        this.carry.push(byte)
+        if (this.carry.length <= TerminalQueryStripper.MAX_CSI) continue
+        out.push(...this.carry)
+        this.carry = []
+        this.state = 'normal'
+        continue
+      }
+      const sequence = String.fromCharCode(...this.carry, byte)
+      this.carry = []
+      this.state = 'normal'
+      // 查询形态：DSR 光标（ESC[6n）与 DA 族（ESC[…c，参数区允许 ? > = 私标）。正则不写
+      // ESC 字面控制字符（lint 禁止），先按前后缀截出参数区再校验。
+      const isQuery = sequence === '\x1b[6n'
+        || (sequence.startsWith('\x1b[') && sequence.endsWith('c')
+          && /^[?>=]?[0-9;]*$/u.test(sequence.slice(2, -1)))
+      if (isQuery) continue
+      out.push(...Array.from(sequence, char => char.charCodeAt(0)))
+    }
+    return Uint8Array.from(out)
+  }
+}
+
 /** sessionId → tap 记录。生命周期：spawn 登记，registry close（用户/模型关闭）移除。 */
 export class TerminalTapRegistry {
   private readonly entries = new Map<string, TapEntry>()
@@ -138,9 +221,12 @@ export class TerminalTapRegistry {
     }
     this.entries.set(sessionId, entry)
     // Readable 的 'data' listener 让流进入 flowing 模式；上游 session 已挂自己的
-    // listener，这里追加即广播，不改变上游消费。exit 后保留 entry 供重放 exit 帧。
+    // listener（原始流，不经 stripper——它要替 pwsh 应答查询），这里追加即广播，不改变
+    // 上游消费。exit 后保留 entry 供重放 exit 帧。
+    const stripper = new TerminalQueryStripper()
     handle.output.on('data', (chunk: Buffer) => {
-      const bytes = new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+      const bytes = stripper.feed(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength))
+      if (bytes.length === 0) return
       entry.ring.append(bytes)
       for (const listener of entry.listeners) listener({ kind: 'data', bytes })
     })
@@ -164,6 +250,15 @@ export class TerminalTapRegistry {
   /** 取一个终端的 tap 记录；未登记或已移除返回 undefined。 */
   entryOf(sessionId: string): TapEntry | undefined {
     return this.entries.get(sessionId)
+  }
+
+  /**
+   * 前移一个终端的当前几何。resize 端点在 `handle.resize` 成功后调用；size 帧
+   * （重连重放的建画面几何）从这里读，停留 spawn 值会让重放在过期几何上错位。
+   */
+  setGeometry(sessionId: string, size: TapSize): void {
+    const entry = this.entries.get(sessionId)
+    if (entry !== undefined) entry.size = { cols: size.cols, rows: size.rows }
   }
 
   /**

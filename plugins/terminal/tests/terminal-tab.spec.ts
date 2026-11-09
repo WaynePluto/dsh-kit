@@ -7,7 +7,7 @@ import {
   armedStore, armClose, clearAllClosedIntent, closeArmDecision, disarmClose,
   isClosedIntent, markClosedIntent, terminalTabDefinition,
 } from '../src/client/terminal-tab.js'
-import { BoundedRing, TerminalTapRegistry } from '../src/terminal-tap.js'
+import { BoundedRing, TerminalQueryStripper, TerminalTapRegistry } from '../src/terminal-tap.js'
 import { getBinding, removeBinding, setBinding } from '../src/client/terminal-bindings.js'
 import type { TerminalMonitorHost } from '../src/client/terminal-tab.js'
 import type { TerminalsSnapshot } from '../src/shared.js'
@@ -48,6 +48,11 @@ function dataListener(seen: number[][]): (frame: { kind: string, bytes?: Uint8Ar
   return (frame) => {
     if (frame.kind === 'data' && frame.bytes !== undefined) seen.push([...frame.bytes])
   }
+}
+
+/** 字节解码为 utf8 文本（stripper 断言用）。 */
+function text(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes)
 }
 
 describe('bounded ring', () => {
@@ -103,6 +108,64 @@ describe('tap registry', () => {
     expect(exits).toStrictEqual([3])
     taps.remove('pty-2')
     expect(taps.entryOf('pty-2')).toBeUndefined()
+  })
+
+  it('advances the entry geometry on setGeometry (size frame contract)', () => {
+    const taps = new TerminalTapRegistry()
+    const handle = fakeHandle()
+    const entry = taps.bind('pty-g', handle as never, { cols: 160, rows: 40 })
+    expect(entry.size).toStrictEqual({ cols: 160, rows: 40 })
+    taps.setGeometry('pty-g', { cols: 96, rows: 28 })
+    expect(taps.entryOf('pty-g')?.size).toStrictEqual({ cols: 96, rows: 28 })
+    // 未知终端静默忽略（resize 竞 close 时不抛错）。
+    taps.setGeometry('pty-missing', { cols: 80, rows: 24 })
+    expect(taps.entryOf('pty-missing')).toBeUndefined()
+  })
+
+  it('strips terminal queries from the browser-bound stream but not the raw handle stream', () => {
+    const taps = new TerminalTapRegistry()
+    const handle = fakeHandle()
+    const entry = taps.bind('pty-q', handle as never, { cols: 160, rows: 40 })
+    // 输出含 DSR 查询、DA 请求与普通字节；浏览器订阅者不应看到查询（否则 xterm 自动应答，
+    // 双重应答污染 PTY 输入——幽灵输入根因）。绝对定位等非查询序列原样保留。
+    handle.output.emit('data', Buffer.from('A\x1b[6nB\x1b[>0cC\x1b[cD', 'binary'))
+    handle.output.emit('data', Buffer.from('E\x1b[2;10HF', 'binary'))
+    expect(new TextDecoder().decode(entry.ring.snapshot())).toBe('ABCDE\x1b[2;10HF')
+    const seen: string[] = []
+    entry.listeners.add(frame => { if (frame.kind === 'data') seen.push(new TextDecoder().decode(frame.bytes)) })
+    handle.output.emit('data', Buffer.from('x\x1b[6ny', 'binary'))
+    expect(seen.join('')).toBe('xy')
+    taps.remove('pty-q')
+  })
+})
+
+describe('terminal query stripper', () => {
+  it('drops DSR cursor and DA-family queries, passes everything else through', () => {
+    const stripper = new TerminalQueryStripper()
+    expect(text(stripper.feed(new TextEncoder().encode('A\x1b[6nB\x1b[cC\x1b[>0cD\x1b[=cE')))).toBe('ABCDE')
+  })
+
+  it('holds a partial escape sequence across chunks and resolves it with the next chunk', () => {
+    const stripper = new TerminalQueryStripper()
+    // 查询序列被 chunk 边界切开：挂起部分不吐出，下一片判定后丢弃。
+    expect(stripper.feed(new TextEncoder().encode('A\x1b')).length).toBe(1)
+    expect(stripper.feed(new TextEncoder().encode('[6')).length).toBe(0)
+    expect(stripper.feed(new TextEncoder().encode('nB'))).toStrictEqual(new TextEncoder().encode('B'))
+    // 非 CSI 的 ESC 序列（OSC 标题等）整对放行，负载里的伪查询字节不受影响。
+    expect(text(stripper.feed(new TextEncoder().encode('\x1b]0;t\x1b[6n;\x07x')))).toBe('\x1b]0;t\x1b[6n;\x07x')
+  })
+
+  it('passes cursor-position reports and normal escapes through untouched', () => {
+    const stripper = new TerminalQueryStripper()
+    // 应答/重绘类序列（绝对定位、颜色、DSR 应答形状）不是查询，必须原样保留。
+    const passthrough = '\x1b[2;10Hhi\x1b[1;33H\x1b[?25h\x1b[38;6R\r\nOK'
+    expect(text(stripper.feed(new TextEncoder().encode(passthrough)))).toBe(passthrough)
+  })
+
+  it('flushes a defensively overlong parameter run instead of stalling', () => {
+    const stripper = new TerminalQueryStripper()
+    const long = `\x1b[${'0'.repeat(20)}m`
+    expect(text(stripper.feed(new TextEncoder().encode(`x${long}y`)))).toBe(`x${long}y`)
   })
 })
 

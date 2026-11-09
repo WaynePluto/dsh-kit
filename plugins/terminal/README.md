@@ -6,9 +6,9 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 
 ## 形态
 
-- 一个终端一个 tab chip（`kind: 'dsh-kit-terminal'`，标题固定「AI交互终端」）；
-  guide 页的「新终端」卡片为当前会话 spawn 全新终端（与模型 start 走同一条 backend 路径，
-  沙箱围栏一致）。
+- 一个终端一个 tab chip（`kind: 'dsh-kit-terminal'`，标题固定「AI交互终端」，尾部留白避开
+  chip 激活态的淡出遮罩，末字不裁半）；guide 页的「AI交互终端」卡片为当前会话 spawn 全新终端
+  （与模型 start 走同一条 backend 路径，沙箱围栏一致）。
 - 模型 `start` 出终端后，monitor（会话级，5 秒）自动打开它的 tab；用户确认关闭的终端在
   kill 生效前不复活（关闭意图屏蔽，终端离开 registry 即清除标记）。
 - 关闭 chip = 杀进程树：第一次点 × 弹出**居中确认弹窗**（官方 Modal），点「关闭终端」才真杀，
@@ -27,11 +27,16 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
   浏览器重放与 ConPTY 内部缓冲逐行对齐（逐键回显是绝对定位，错位会把输入行画歪）。
 - 键盘直写：xterm `onData` → 16ms 微批 → `write` 端点 → PTY；Ctrl+C、Tab、粘贴都是真实按键。
   密码不回显是程序行为（sudo/REPL 关闭回显），UI 不做遮罩。
-- 尺寸自适应：ResizeObserver（120ms 防抖）→ FitAddon → `resize` 端点。ConPTY 对 resize
-  **不重绘**（字节捕获实测），客户端只重排网格、不清屏；PTY 已与面板同尺寸时不重发；新输出
-  按新宽度的绝对定位到达，画面自然收敛。PTY 以 `xterm-256color` 宣告（上游默认 `dumb`）并
-  删除上游 pwsh 专属的 `NO_COLOR`（bash 方言本就没有），程序输出 ANSI 彩色，模型 `read` 经
-  上游 sanitizer 剥离转义序列拿到干净文本。
+- 尺寸自适应：ResizeObserver（120ms 防抖）→ FitAddon → `resize` 端点。真实栈（dsh 宿主自带
+  的 node-pty）ConPTY 对 resize **不重绘**，客户端只重排网格、不清屏；PTY 已与面板同尺寸时
+  不重发（同尺寸守卫）；resize 成功后 tap 几何前移，重连重放的 size 帧始终是 PTY 当前值。
+  PTY 以 `xterm-256color` 宣告（上游默认 `dumb`）并删除上游 pwsh 专属的 `NO_COLOR`
+  （bash 方言本就没有），程序输出 ANSI 彩色，模型 `read` 经上游 sanitizer 剥离转义序列拿到
+  干净文本。
+- **终端查询单应答者**：pwsh/conhost 发 DSR/DA 查询并由上游会话的 headless 模拟器应答（1:1）。
+  浏览器 xterm 对查询也会自动应答并写回 PTY，双重应答污染 shell 输入行（pwsh 按行读应答时吞掉
+  后续回车，命令文本残留输入行——「命令被自动重复输入」的根因）。tap 的 `TerminalQueryStripper`
+  在字节进 ring/实时帧前剥掉 `\e[6n` 与 DA 族查询，浏览器不再应答。
 - 主题：底座四色（背景/前景/光标/选区）跟随 dsh 主题 token（深浅自动切换）；16 色 ANSI
   用 xterm 内置经典色板（彩色输出）。
 

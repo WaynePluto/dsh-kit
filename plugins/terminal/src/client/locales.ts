@@ -3,7 +3,7 @@
 /** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
 export const en = {
   title: 'AI Terminal',
-  guideTitle: 'New terminal',
+  guideTitle: 'AI Terminal',
   guideDescription: 'Start a fresh interactive terminal for this session',
   connecting: 'Connecting to the terminal…',
   spawnFailed: 'Failed to open the terminal: {message}',
@@ -25,7 +25,7 @@ export type TerminalKey = keyof typeof en
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 export const zh: Record<TerminalKey, string> = {
   title: 'AI交互终端',
-  guideTitle: '新终端',
+  guideTitle: 'AI交互终端',
   guideDescription: '为当前会话开启一个全新的交互终端',
   connecting: '正在连接终端…',
   spawnFailed: '打开终端失败：{message}',
