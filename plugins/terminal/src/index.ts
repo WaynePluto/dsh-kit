@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { release } from 'node:os'
 import { Config } from './config.js'
 import { CHANNEL, STREAM_PATH, encodeStreamFrame, isStreamAttachRequest } from './shared.js'
 import { interactiveTerminalContract } from './interactive-terminal-tools.js'
@@ -123,12 +124,14 @@ export async function serveStream(ctx: Context, request: Request, taps: Terminal
           closed = true
         }
       }
-      // 1) size 几何帧（含平台语义：Windows 客户端 resize 前清屏让 ConPTY 重绘成为唯一
-      // 内容源）；2) ring 重放；3) live 标记（客户端此后才 fit + resize PTY）；
+      // 1) size 几何帧（含平台语义与 Windows 内部版本号：客户端据此启用 xterm 的 conpty
+      // 兼容档位——长行不随变窄 reflow，与 ConPTY 内部布局对齐，避免逐键回显整体错行）；
+      // 2) ring 重放；3) live 标记（客户端此后才 fit + resize PTY）；
       // 4) 已退出则补 exit 帧收尾；5) 接实时帧，退出后收尾。
       push({
         t: 'size', cols: entry.size.cols, rows: entry.size.rows,
         platform: process.platform === 'win32' ? 'windows' : 'posix',
+        ...(process.platform === 'win32' ? { build: windowsBuildNumber() } : {}),
       })
       const snapshot = entry.ring.snapshot()
       if (snapshot.length > 0) push({ t: 'ring', b64: bufferToBase64(snapshot) })
@@ -173,6 +176,11 @@ export async function serveStream(ctx: Context, request: Request, taps: Terminal
 /** 字节转 base64（宿主 Node 环境）。 */
 function bufferToBase64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('base64')
+}
+
+/** Windows 内部版本号（`os.release()` 末段，如 19045）；xterm `windowsPty` 档位判定用。 */
+export function windowsBuildNumber(): number {
+  return Number.parseInt(release().split('.').at(-1) ?? '0', 10)
 }
 
 /** 挂载 backend、组合工具、RPC channel、流式路由与生命周期清理。 */

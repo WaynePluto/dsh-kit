@@ -30,6 +30,9 @@ Windows 使用 PowerShell 7，POSIX 使用 bash，底层复用 dsh 的终端运�
 - 尺寸自适应：ResizeObserver（120ms 防抖）→ FitAddon → `resize` 端点。真实栈（dsh 宿主自带
   的 node-pty）ConPTY 对 resize **不重绘**，客户端只重排网格、不清屏；PTY 已与面板同尺寸时
   不重发（同尺寸守卫）；resize 成功后 tap 几何前移，重连重放的 size 帧始终是 PTY 当前值。
+  **fit 前排干 xterm 写队列**（write 异步解析，重放未解析完就 resize 会让长行按新窄宽提前
+  reflow、与 ConPTY 不重排的内部布局错行，REPL 输入叠进上一行）；Windows 宿主在 size 帧附
+  内部版本号，客户端设 xterm `windowsPty`（conpty 档位禁 reflow），两边行数保持一致。
   PTY 以 `xterm-256color` 宣告（上游默认 `dumb`）并删除上游 pwsh 专属的 `NO_COLOR`
   （bash 方言本就没有），程序输出 ANSI 彩色，模型 `read` 经上游 sanitizer 剥离转义序列拿到
   干净文本。

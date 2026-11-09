@@ -132,9 +132,11 @@ export interface TerminalOpResult {
 export const MAX_WRITE_BYTES = 64 * 1024
 
 /**
- * PTY 宿主的平台语义。Windows ConPTY 在每次 PTY resize 后会全屏重绘，客户端 resize
- * 网格前必须先清屏（否则 xterm reflow 的旧内容与重绘叠加，错位/输入行重复）；POSIX
- * 的 tty 只发 SIGWINCH 不重绘，保留 reflow。
+ * PTY 宿主的平台语义。Windows ConPTY 的输出几何契约与 POSIX 不同：长行在 PTY 变窄时
+ * **不被重排**（内部缓冲保持原行布局），而 xterm 默认 resize 会 reflow——两边行数分叉后，
+ * 绝对定位的逐键回显整体错行。客户端据此启用 xterm 的 `windowsPty`（conpty 模式，
+ * build < 21376 禁 reflow），并依赖 size 帧的 {@link StreamFrame} `build`（Windows
+ * 内部版本号，`os.release()` 末段）选择启发式档位。
  */
 export type TerminalPlatform = 'windows' | 'posix'
 
@@ -211,11 +213,19 @@ export function isCloseRequest(value: unknown): value is TerminalCloseRequest {
 
 /**
  * 流式响应里的一帧。字节以 base64 承载，边界逐帧保留，部分 UTF-8 序列由 xterm 内部解码器拼接。
- * 帧序：`size`（PTY 当前几何 + 平台语义，重放前按它建画面，避免 160 列字节错位重放进窄面板）→
- * `ring`（重放）→ `live`（重放结束标记，此后客户端才 fit + resize PTY）→ `data`/`exit`。
+ * 帧序：`size`（PTY 当前几何 + 平台语义 + Windows 内部版本号，重放前按它建画面，避免 160 列
+ * 字节错位重放进窄面板）→ `ring`（重放）→ `live`（重放结束标记，此后客户端才 fit + resize
+ * PTY）→ `data`/`exit`。`build` 只在 Windows 宿主出现，驱动客户端的 `windowsPty` 档位。
  */
 export type StreamFrame =
-  | { readonly t: 'size'; readonly cols: number; readonly rows: number; readonly platform: TerminalPlatform }
+  | {
+    readonly t: 'size'
+    readonly cols: number
+    readonly rows: number
+    readonly platform: TerminalPlatform
+    /** Windows 内部版本号（`os.release()` 末段）；POSIX 宿主缺省。 */
+    readonly build?: number
+  }
   | { readonly t: 'ring'; readonly b64: string }
   | { readonly t: 'live' }
   | { readonly t: 'data'; readonly b64: string }
@@ -249,12 +259,14 @@ export function decodeStreamFrame(line: string): StreamFrame | undefined {
     const cols = frame.cols
     const rows = frame.rows
     const platform = frame.platform
+    const build = frame.build
     if (typeof cols !== 'number' || !Number.isSafeInteger(cols) || cols < 2
       || typeof rows !== 'number' || !Number.isSafeInteger(rows) || rows < 1) return undefined
-    // platform 缺省按 POSIX 处理（不清屏，与既有行为一致），容忍旧宿主。
+    // platform 缺省按 POSIX 处理（与既有行为一致），容忍旧宿主；build 同为可选（旧宿主无）。
     return {
       t: 'size', cols, rows,
       platform: platform === 'windows' ? 'windows' : 'posix',
+      ...(typeof build === 'number' && Number.isSafeInteger(build) && build > 0 ? { build } : {}),
     }
   }
   if (frame.t === 'live') return { t: 'live' }

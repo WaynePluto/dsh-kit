@@ -50,7 +50,7 @@ const NAVIGATOR_WINDOWS = navigator.userAgent.includes('Windows')
 let loggedReady = false
 
 /** 客户端产物标记；改客户端行为时同步更新，供实机 Console 核对生效版本。 */
-const CLIENT_BUILD = '2026-11-08.2'
+const CLIENT_BUILD = '2026-11-09.1'
 
 /** sidebar tab 槽收到的完整 props。 */
 export type TerminalTabBodyProps = PropsRuntime<'sidebar.right.pane.tab'>
@@ -103,21 +103,31 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
   // PTY 侧的实际几何（size 帧上报，resize 成功后前移）：fit 的对齐守卫。PTY 已与面板
   // 同尺寸时不重复发送。
   const ptySizeRef = useRef<{ cols: number; rows: number } | undefined>(undefined)
+  // xterm 写队列未排干的 write 数与排干后的续跑动作。write 是异步解析的：ring 重放后立刻
+  // resize（live 帧与 ring 帧通常同一 HTTP chunk 到达，同一 tick 执行），排队字节会在 resize
+  // 之后按新窄宽解析——长行被提前 reflow，与 ConPTY 内部布局（不 reflow）错开一行，之后
+  // 逐键回显整体错行（实测复现：REPL 提示符上输入叠进上一行）。fit 前必须等队列排干。
+  const pendingWritesRef = useRef(0)
+  const afterDrainRef = useRef<(() => void) | undefined>(undefined)
   // 重放门控：attach 期间按 PTY 原几何渲染 ring；重放结束（live 帧）后才 fit + resize PTY，
   // 避免 160 列字节被重放进窄面板产生错位残影。
   const replayGateRef = useRef(false)
 
   /**
-   * 按当前面板几何 fit 并把新尺寸发给 PTY；重放未结束（门控关闭）或 PTY 已对齐时不执行。
-   * 不清屏：真实栈（dsh 宿主自带的 node-pty）对 resize 不重绘（真实栈字节捕获实测，
-   * 实机验证：清屏后无重绘、画面永久空白），清屏只会在 ConPTY 无重绘时抹掉视口；
-   * 新输出按 ConPTY 新宽度的绝对定位到达，画面自然收敛。输入行「重复自动输入」的根因
-   * 不在渲染对齐，而在查询双重应答污染 PTY 输入（宿主半 tap 剥离查询，见 terminal-tap）。
+   * 按当前面板几何 fit 并把新尺寸发给 PTY；重放未结束（门控关闭）、PTY 已对齐或写队列
+   * 未排干时不执行（写队列未排干时挂起，排干后续跑）。不清屏：真实栈（dsh 宿主自带的
+   * node-pty）对 resize 不重绘（字节捕获实测，实机验证：清屏后无重绘、画面永久空白）；
+   * 新输出按 ConPTY 新宽度的绝对定位到达，画面自然收敛。长行对齐由 `windowsPty`（conpty
+   * 档位禁 reflow，size 帧装配）保证——xterm 与 ConPTY 都不重排旧行，行数不叉。
    */
   const fitNow = (): void => {
     const handle = termRef.current
     const element = containerRef.current
     if (handle === undefined || element === null || !tab.visible) return
+    if (pendingWritesRef.current > 0) {
+      afterDrainRef.current = fitNow
+      return
+    }
     if (element.clientWidth === 0 || element.clientHeight === 0) return
     const proposal = handle.fit.proposeDimensions()
     if (proposal === undefined || proposal.cols < 2 || proposal.rows < 1) return
@@ -130,6 +140,21 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
       return undefined
     }).catch((error: unknown) => {
       console.warn('terminal: resize failed; retrying on the next layout change', error)
+    })
+  }
+
+  /** 带解析回调的写入：ring/data 帧入队时计数，xterm 解析完这段后计数递减，队列清零时续跑挂起的 fit。 */
+  const writeParsed = (bytes: Uint8Array): void => {
+    const handle = termRef.current
+    if (handle === undefined) return
+    pendingWritesRef.current += 1
+    handle.term.write(bytes, () => {
+      pendingWritesRef.current -= 1
+      if (pendingWritesRef.current === 0) {
+        const run = afterDrainRef.current
+        afterDrainRef.current = undefined
+        run?.()
+      }
     })
   }
 
@@ -193,6 +218,9 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
       }
       abortRef.current?.abort()
       abortRef.current = undefined
+      // 实例消亡后写回调不再触发，排干计数与挂起动作随实例一并清零。
+      pendingWritesRef.current = 0
+      afterDrainRef.current = undefined
       termRef.current?.dataDisposable.dispose()
       termRef.current?.term.dispose()
       termRef.current = undefined
@@ -257,8 +285,10 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
             if (frame === undefined) continue
             if (frame.t === 'size') {
               // 按 PTY 当前几何重建画面（重连时先清掉旧内容，ring 全量重放）。宿主上报的
-              // 几何是 fit 对齐守卫的权威值；platform 仅用于就绪诊断（宿主半较旧时无此
-              // 字段，解码回退 posix）。
+              // 几何是 fit 对齐守卫的权威值；Windows 宿主附带内部版本号，装配 xterm 的
+              // conpty 兼容档位（禁 reflow——ConPTY 变窄不重排长行，xterm 默认 reflow 会让
+              // 两边行数分叉、逐键回显整体错行；必须在首个 fit/resize 前设置，size 帧先于
+              // live 到达，时序天然满足）。旧宿主无 platform/build 字段：行为与旧版一致。
               ptySizeRef.current = { cols: frame.cols, rows: frame.rows }
               if (!loggedReady) {
                 loggedReady = true
@@ -269,6 +299,9 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
               }
               const live = termRef.current
               if (live !== undefined) {
+                if (frame.platform === 'windows' && frame.build !== undefined) {
+                  live.term.options.windowsPty = { backend: 'conpty', buildNumber: frame.build }
+                }
                 live.term.resize(frame.cols, frame.rows)
                 live.term.reset()
               }
@@ -281,7 +314,7 @@ export function TerminalTab(props: TerminalTabBodyProps): ReactNode {
               continue
             }
             if (frame.t === 'ring' || frame.t === 'data') {
-              termRef.current?.term.write(base64ToBytes(frame.b64))
+              writeParsed(base64ToBytes(frame.b64))
               continue
             }
             setExitCode(frame.code)

@@ -88,6 +88,18 @@ describe('stream frames', () => {
     expect(decodeStreamFrame('{"t":"size","cols":1,"rows":40,"platform":"windows"}')).toBeUndefined()
   })
 
+  it('carries the optional windows build number on size frames', () => {
+    // Windows 宿主附带内部版本号（xterm windowsPty 档位用）；非法值丢弃、POSIX 不带。
+    expect(decodeStreamFrame(encodeStreamFrame({ t: 'size', cols: 160, rows: 40, platform: 'windows', build: 19045 })))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'windows', build: 19045 })
+    expect(decodeStreamFrame('{"t":"size","cols":160,"rows":40,"platform":"windows"}'))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'windows' })
+    expect(decodeStreamFrame('{"t":"size","cols":160,"rows":40,"platform":"windows","build":0}'))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'windows' })
+    expect(decodeStreamFrame('{"t":"size","cols":160,"rows":40,"platform":"windows","build":"x"}'))
+      .toStrictEqual({ t: 'size', cols: 160, rows: 40, platform: 'windows' })
+  })
+
   it('tolerates garbage lines without throwing', () => {
     expect(decodeStreamFrame('')).toBeUndefined()
     expect(decodeStreamFrame('not json')).toBeUndefined()

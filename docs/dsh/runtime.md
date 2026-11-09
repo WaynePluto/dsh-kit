@@ -176,9 +176,17 @@ Linux 个人用户部署允许一个窄范围例外：所有 sudo 命令都必�
   客户端 fit（120ms 防抖）只重排网格并发 `resize` 端点、不清屏；fit 以宿主上报的 PTY 实际几何为
   对齐守卫，已与面板同尺寸不重发；新输出按新宽度的绝对定位到达，画面自然收敛。resize 端点成功
   后 tap 几何前移——size 帧（重连重放的建画面几何）始终是 PTY 当前值，停留 spawn 值会让重放在
-  过期几何上错位。PTY 以 xterm-256color 宣告且子环境删除上游 pwsh 专属的 `NO_COLOR`
-  （bash 方言本就没有，parity），程序输出 ANSI 彩色，模型 read 经上游 sanitizer 剥离转义拿到
-  干净文本——原始彩色字节走 tap 给浏览器，干净文本走模型，两路同源。
+  过期几何上错位。
+- **fit 前必须排干 xterm 写队列 + ConPTY 档位禁 reflow（AI 开终端进 REPL 后错行根因）**：
+  xterm 的 `write` 是异步解析，ring 重放后同 tick 立刻 resize（live 帧与 ring 帧同一 HTTP chunk），
+  排队字节会按新窄宽解析、长行提前 reflow——而 ConPTY 变窄**不重排内部缓冲**（长行仍是原逻辑行），
+  两边行数分叉后逐键回显整体错一行（实测：REPL `>>>` 后输入叠进上一行 banner）。修法两件：
+  ① ring/data 帧写入带解析回调计数，fitNow 在写队列未排干时挂起、排干后续跑；② size 帧附
+  Windows 内部版本号（`os.release()` 末段），客户端据此设 xterm `windowsPty`（conpty 档位，
+  build < 21376 禁 reflow、行尾非空白视为 wrapped）——xterm 与 ConPTY 都不重排旧行，行数不叉。
+  PTY 以 xterm-256color 宣告且子环境删除上游 pwsh 专属的 `NO_COLOR`（bash 方言本就没有，
+  parity），程序输出 ANSI 彩色，模型 read 经上游 sanitizer 剥离转义拿到干净文本——原始彩色字节
+  走 tap 给浏览器，干净文本走模型，两路同源。
 - **终端查询必须只有一个应答者（幽灵输入根因，真实栈字节捕获实证）**：pwsh/conhost 会向终端
   发 DSR 光标查询（`\e[6n`）与 DA 族请求（`\e[c`/`\e[>c`…）并按行读回应答；上游会话的
   headless 模拟器从自己的 output listener 看到原始流并应答（宿主内 1:1 闭环）。浏览器 xterm
