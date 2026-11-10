@@ -2,11 +2,10 @@
 export const ASSISTANT_FLOW_KIND = 'assistant-step'
 
 /**
- * 落点让锚点上沿停在滚动容器上沿下方 26px。锚点是 turn 头部（33px 行高）时，
- * 0 inset 会让「已完成，用时 X秒」紧贴视口顶边显得太挤；26px 留出一行左右的
- * 呼吸位。代价是顶部会露出上一条内容被裁切的一行——用户明确选择这个观感。
+ * 落点让锚点上沿停在滚动容器上沿下方 24px。锚点是 turn 头部（33px 行高）时，
+ * 0 inset 贴顶太挤、26px 又偏多；24px 是用户实机微调后选定的呼吸位。
  */
-export const LANDING_INSET_PX = 26
+export const LANDING_INSET_PX = 24
 
 /** 滚动定位的最长稳定时间；超时不能闪出虚假的到达效果。 */
 export const MAX_LANDING_WAIT_MS = 1_800
