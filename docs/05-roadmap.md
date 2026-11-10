@@ -6,6 +6,26 @@
 
 ## 已实现
 
+- [x] chat-scroll 落点改锚「本轮 turn 头部」并贴顶（2026-11-10 第四轮，用户报长回复定位错，
+  截图实测：视口顶边 y132、首行被裁半、26px 落点把上一条消息的尾巴留在顶部）：① 锚点不再
+  要求与消息行邻接，永远取本轮 turn 头部——多步轮次（长回复）也回到这一轮的开头，正好落在
+  原生分割线上，原生线高亮因此几乎总能用上；整轮折叠使头部零高时退回消息行锚点；② 落点
+  inset 26px → 0：任何正 inset 都会在顶部留下被裁半的上一行，呼吸位由头部/行内边距提供。
+  删除 `dividerAdjacentToRow`/`DIVIDER_ADJACENCY_TOLERANCE_PX` 死代码；46 项单测、lint/
+  typecheck 全绿。实机复验（长回复落 turn 头部并点亮分割线、短回复、折叠轮次回退）待用户执行。
+
+- [x] favorite-models 推理档位默认值（2026-11-10，用户提出「切模型后出现 Default 很困惑，
+  期望默认 high，没有 high 就取 high 以下最高档」）：核实 `Default` 是原生行为而非插件发明
+  （`ui-model-selection/src/client/locales.ts` 的 `effort.providerDefault`，`ModelSelect.tsx`
+  只在模型没有 `defaultEffort` 时插入该行），语义是「不传 reasoning 参数、由端点决定」，
+  因此保留该行、文案与原生一致（用户确认：触发器里模型名是英文，混中文更怪）。真正改动是换模型时显式提交档位：
+  模型 `defaultEffort` 优先（与原生一致，也保住用户配置的路由默认），没有则取
+  high → high 以下最高档 → 只有更强档位时的最低可用档（不选 off）；模型无档位时不指定。
+  纯函数 `src/effort.ts` + 5 项单测、2 项组件测试（31 项全绿），lint/typecheck 全绿。
+  未采用「给路由写 `reasoning: high`」：路由级默认对不支持的模型会在请求路径抛
+  `UNSUPPORTED_REASONING_EFFORT`（adapter 只对描述静默丢弃），混合档位路由会硬失败。
+  桌面实机复验（切到无默认档位模型后显示具体档位、`Default` 行保持原生文案）待用户执行。
+
 - [x] chat-scroll「回到消息开头」落点改为 26px（2026-11-10 第三轮，用户报「需要滚动的提示线
   定位错误」，截图红框标出顶部半行残留 + 提示线落在空白带）：落点 inset 由 dsh Turn 导航的
   24px 改为 26px（约一行行高）——24px 小于正文行高，会把上一条消息的最后一行裁掉半个字，

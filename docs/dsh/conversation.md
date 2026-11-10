@@ -162,15 +162,17 @@ store-owned Session 的 append 另有生命周期门控（`core/session/src/inde
 chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](../../plugins/chat-scroll/README.md)。
 - 不搬动 React 拥有的 sibling rows 来套内部滚动容器。
 - chat-scroll（2026-11-10 起）把「回到消息开头」的滚动锚点与到达提示都放在上述原生分割线
-  上：同轮头部上沿停在滚动容器上沿下方 26px（头部整行可见、分割线在其下方，语义由用户
-  选定）。不用 dsh Turn 导航的 24px 阅读线——24px 小于正文行高，会把上一条消息的最后一行
-  裁掉半个字，实机反馈就是「定位不对」；26px 约一行高，完整露出那一行。落点
+  上：锚点永远是**本轮的 turn 头部**（按行 `data-chat-turn` 查找，不要求与消息行邻接——
+  多步轮次的头部远在消息上方，用户要的是回到这一轮的开头），头部上沿与滚动容器上沿齐平
+  （0 inset）。不用 dsh Turn 导航的 24px 阅读线，也不用 26px：任何正 inset 都会在顶部留下
+  上一条消息被裁掉半行的文字（行高 20~26px），实机反馈就是「定位不对」。整轮折叠使头部
+  零高不可测量时退回消息行锚点。落点
   后注入按 `[data-chat-flow-kind="turn-process"] button[data-turn-process=N]` 属性选择的自有
   CSS 规则点亮 hairline（border 变 business-primary + `::after` 2px 光带复用自有 keyframes，
   720ms/reduced-motion 240ms 后定时移除规则）；特异性 (0,2,1) 高于 CSS module 哈希类，
-  不需要 `!important`，且不向 React 拥有的节点写任何 class/属性/内联样式。无邻接可视头部
-  （过程组展开、多 step 轮次、头部滚出视口、上游 seam 变化）时回退自绘 fixed overlay 在行顶
-  闪线。衬垫、落点守护与输入让位机制不变，衬垫 prepare 直接复用与动画同源的目标值。
+  不需要 `!important`，且不向 React 拥有的节点写任何 class/属性/内联样式。整轮折叠使头部
+  不可测量、头部在落点后滚出视口或上游 seam 变化时回退自绘 fixed overlay 在行顶闪线。
+  衬垫、落点守护与输入让位机制不变，衬垫 prepare 直接复用与动画同源的目标值。
   「不滚动直接闪线」的跳过条件收窄为「对齐阅读线必须垫尾部空白（目标超过
   scrollHeight−clientHeight）且开头已可见」：只判「开头可见」会让屏幕中部的消息开头原地不动
   （2026-11-10 用户实机反馈），长会话里下方仍有内容时目标可达，必须照常滚动。

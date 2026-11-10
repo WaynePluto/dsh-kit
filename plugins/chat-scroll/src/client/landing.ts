@@ -1,5 +1,4 @@
 import {
-  dividerAdjacentToRow,
   findAssistantMessageRow, findScrollport, findTurnDividerHost, MAX_LANDING_WAIT_MS, MAX_TARGET_WAIT_MS,
   scrollTopForMessage,
 } from './locate.js'
@@ -72,13 +71,10 @@ export function startMessageLanding(options: MessageLandingOptions): () => void 
     scrollport.addEventListener('pointerdown', stop, { capture: true, passive: true })
     scrollport.addEventListener('wheel', stop, { capture: true, passive: true })
     scrollport.addEventListener('keydown', stop, { capture: true })
-    // 原生分割线锚点：同轮 turn-process 头部紧贴行上沿时，滚动目标与到达
-    // 提示都以它为准（头部整行可见，分割线落在其下方）；不邻接则退回行锚点。
-    let header = findTurnDividerHost(row)
-    if (header !== null
-      && !dividerAdjacentToRow(header.getBoundingClientRect(), row.getBoundingClientRect())) {
-      header = null
-    }
+    // 锚点优先取本轮的 turn 头部（「已完成，用时 X秒」）。多步轮次里头部远在
+    // 消息上方，但「回到消息开头」要的是回到这一轮的开头：头部贴顶、分割线在
+    // 其下方。头部不可测量（整轮折叠隐藏）时退回消息行锚点。
+    const header = findTurnDividerHost(row)
     const anchor: HTMLElement = header ?? row
     const initialTarget = targetFor(anchor, scrollport)
     // 只有「对齐阅读线必须垫出尾部空白」（无滚动条短页、最后一条消息）且开头已可见时

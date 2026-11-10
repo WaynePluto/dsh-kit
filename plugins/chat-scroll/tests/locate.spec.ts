@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  assistantMessageNodeKey, bottomCushionForTarget, dividerAdjacentToRow, dividerGeometry,
+  assistantMessageNodeKey, bottomCushionForTarget, dividerGeometry,
   dividerVisibleInScrollport, findAssistantMessageRow, findTurnDividerHost,
   messageReachedLanding, scrollTopForMessage,
 } from '../src/client/locate.js'
@@ -54,11 +54,11 @@ describe('chat-scroll locator math', () => {
     expect(reads).toBe(afterFirst)
   })
 
-  it('places a message 26px below the scrollport top without negative scroll', () => {
-    // 26px inset：约一行高度，顶部完整露出上一条消息的最后一行，不裁半个字
-    expect(scrollTopForMessage(380, 920, 120)).toBe(1_154)
+  it('places a message flush at the scrollport top without negative scroll', () => {
+    // 0 inset：锚点上沿贴滚动容器上沿，顶部不残留上一条消息的半行
+    expect(scrollTopForMessage(380, 920, 120)).toBe(1_180)
     expect(scrollTopForMessage(0, 10, 120)).toBe(0)
-    expect(messageReachedLanding(146, 120)).toBe(true)
+    expect(messageReachedLanding(121, 120)).toBe(true)
     expect(messageReachedLanding(149, 120)).toBe(false)
   })
 
@@ -156,10 +156,7 @@ describe('chat-scroll locator math', () => {
     expect(findTurnDividerHost(withZeroHost)).toBeNull()
   })
 
-  it('accepts the divider only when its hairline sits right above the row and on screen', () => {
-    // 折叠组隐藏时隔 12px、无组时隔 16px，都在容差内；过程组展开远超容差。
-    expect(dividerAdjacentToRow({ bottom: 44 }, { top: 60 })).toBe(true)
-    expect(dividerAdjacentToRow({ bottom: 44 }, { top: 90 })).toBe(false)
+  it('accepts the divider only when its hairline sits on screen', () => {
     expect(dividerVisibleInScrollport({ bottom: 44 }, { top: 0 })).toBe(true)
     expect(dividerVisibleInScrollport({ bottom: -8 }, { top: 0 })).toBe(false)
   })
