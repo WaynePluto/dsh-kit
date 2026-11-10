@@ -96,12 +96,12 @@ describe('history-message landing', () => {
     vi.advanceTimersByTime(500)
     expect(world.writes.length).toBeGreaterThan(3)
     expect(new Set(world.writes).size).toBeGreaterThan(3)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, null)
     expect(world.prepare).toHaveBeenCalledTimes(1)
     // 落点守护在窗口内把视图保持在阅读线，窗口结束后释放全部监听
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledTimes(1)
     expect(world.listenerCount()).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
@@ -113,13 +113,13 @@ describe('history-message landing', () => {
     const world = historyWindow({ turn: '3' })
     world.start()
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(104 - 16 - 33)
-    expect(world.prepare).toHaveBeenCalledWith(world.row, world.port, 104 - 16 - 33)
+    expect(world.port.scrollTop).toBe(104 - 16 - 33 - 26)
+    expect(world.prepare).toHaveBeenCalledWith(world.row, world.port, 104 - 16 - 33 - 26)
     expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, world.header)
     // 落点守护同样以头部为锚保持落点
     world.port.scrollTop = 800
     vi.advanceTimersByTime(64)
-    expect(world.port.scrollTop).toBe(104 - 16 - 33)
+    expect(world.port.scrollTop).toBe(104 - 16 - 33 - 26)
   })
 
   it('anchors the turn header even when it sits far above the message', () => {
@@ -130,7 +130,7 @@ describe('history-message landing', () => {
     world.moveHeader(400)
     world.start()
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(400)
+    expect(world.port.scrollTop).toBe(374)
     expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, world.header)
   })
 
@@ -140,7 +140,7 @@ describe('history-message landing', () => {
     world.hideHeader()
     world.start()
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, null)
   })
 
@@ -164,8 +164,8 @@ describe('history-message landing', () => {
     world.moveRow(700)
     world.start()
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(700)
-    expect(world.prepare).toHaveBeenCalledExactlyOnceWith(world.row, world.port, 700)
+    expect(world.port.scrollTop).toBe(674)
+    expect(world.prepare).toHaveBeenCalledExactlyOnceWith(world.row, world.port, 674)
     expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, null)
   })
 
@@ -176,7 +176,7 @@ describe('history-message landing', () => {
     world.start()
     vi.advanceTimersByTime(500)
     // 头部 rect top 251（行 300 上沿 16px 处是分割线），锚点取头部
-    expect(world.port.scrollTop).toBe(651)
+    expect(world.port.scrollTop).toBe(625)
     expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, world.header)
   })
 
@@ -211,7 +211,7 @@ describe('history-message landing', () => {
     // 模拟 dsh 机制在落点后把视图拉回底部
     world.port.scrollTop = 800
     vi.advanceTimersByTime(64)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
     expect(world.listenerCount()).toBe(0)
@@ -267,9 +267,9 @@ describe('history-message landing', () => {
     world.setRowHeight(40)
     world.port.scrollTop = 800
     vi.advanceTimersByTime(64)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     vi.advanceTimersByTime(400)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
 
@@ -299,7 +299,7 @@ describe('history-message landing', () => {
     vi.advanceTimersByTime(LANDING_HOLD_STABLE_FRAMES * 16 + 64)
     expect(world.prepare.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(world.onLand).toHaveBeenCalledTimes(1)
-    expect(world.port.scrollTop).toBe(1_500)
+    expect(world.port.scrollTop).toBe(1_474)
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
     expect(world.listenerCount()).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
@@ -321,7 +321,7 @@ describe('history-message landing', () => {
     world.port.scrollTop = 800
     vi.advanceTimersByTime(LANDING_HOLD_STABLE_FRAMES * 16 + 32)
     expect(world.onLand).toHaveBeenCalledTimes(1)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
     expect(world.listenerCount()).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
@@ -333,7 +333,7 @@ describe('history-message landing', () => {
     vi.advanceTimersByTime(16)
     world.port.scrollTop = 800
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.writes.length).toBeGreaterThan(4)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
@@ -341,11 +341,11 @@ describe('history-message landing', () => {
   it('uses an instant bounded write when reduced motion is enabled', () => {
     const world = historyWindow()
     world.start(true)
-    expect(world.port.scrollTop).toBe(104)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).not.toHaveBeenCalled()
     vi.advanceTimersByTime(40)
-    expect(world.port.scrollTop).toBe(104)
-    expect(world.writes.filter(value => value === 104)).toHaveLength(2)
+    expect(world.port.scrollTop).toBe(78)
+    expect(world.writes.filter(value => value === 78)).toHaveLength(2)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
 
@@ -365,7 +365,7 @@ describe('history-message landing', () => {
     world.start()
     world.moveRow(904)
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(904)
+    expect(world.port.scrollTop).toBe(878)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
 

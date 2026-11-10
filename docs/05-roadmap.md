@@ -12,7 +12,9 @@
   原生分割线上，原生线高亮因此几乎总能用上；整轮折叠使头部零高时退回消息行锚点；② 落点
   inset 26px → 0：任何正 inset 都会在顶部留下被裁半的上一行，呼吸位由头部/行内边距提供。
   删除 `dividerAdjacentToRow`/`DIVIDER_ADJACENCY_TOLERANCE_PX` 死代码；46 项单测、lint/
-  typecheck 全绿。实机复验（长回复落 turn 头部并点亮分割线、短回复、折叠轮次回退）待用户执行。
+  typecheck 全绿。实机复验后用户反馈「贴顶太挤」，inset 恢复 26px（锚点仍为本轮 turn 头部，
+  顶部保留一行左右的呼吸位）；46 项单测按 26px 几何更新、lint/typecheck 全绿。桌面实机复验
+  （长回复落 turn 头部并点亮分割线、短回复、折叠轮次回退）待用户执行。
 
 - [x] favorite-models 推理档位默认值（2026-11-10，用户提出「切模型后出现 Default 很困惑，
   期望默认 high，没有 high 就取 high 以下最高档」）：核实 `Default` 是原生行为而非插件发明

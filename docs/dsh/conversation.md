@@ -163,9 +163,8 @@ chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](
 - 不搬动 React 拥有的 sibling rows 来套内部滚动容器。
 - chat-scroll（2026-11-10 起）把「回到消息开头」的滚动锚点与到达提示都放在上述原生分割线
   上：锚点永远是**本轮的 turn 头部**（按行 `data-chat-turn` 查找，不要求与消息行邻接——
-  多步轮次的头部远在消息上方，用户要的是回到这一轮的开头），头部上沿与滚动容器上沿齐平
-  （0 inset）。不用 dsh Turn 导航的 24px 阅读线，也不用 26px：任何正 inset 都会在顶部留下
-  上一条消息被裁掉半行的文字（行高 20~26px），实机反馈就是「定位不对」。整轮折叠使头部
+  多步轮次的头部远在消息上方，用户要的是回到这一轮的开头），头部上沿停在滚动容器上沿下方
+  26px（用户选定：0 inset 贴顶太挤，代价是顶部露出上一条内容被裁切的一行）。整轮折叠使头部
   零高不可测量时退回消息行锚点。落点
   后注入按 `[data-chat-flow-kind="turn-process"] button[data-turn-process=N]` 属性选择的自有
   CSS 规则点亮 hairline（border 变 business-primary + `::after` 2px 光带复用自有 keyframes，

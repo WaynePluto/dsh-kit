@@ -54,11 +54,11 @@ describe('chat-scroll locator math', () => {
     expect(reads).toBe(afterFirst)
   })
 
-  it('places a message flush at the scrollport top without negative scroll', () => {
-    // 0 inset：锚点上沿贴滚动容器上沿，顶部不残留上一条消息的半行
-    expect(scrollTopForMessage(380, 920, 120)).toBe(1_180)
+  it('places a message 26px below the scrollport top without negative scroll', () => {
+    // 26px inset：给 turn 头部留一行左右的呼吸位
+    expect(scrollTopForMessage(380, 920, 120)).toBe(1_154)
     expect(scrollTopForMessage(0, 10, 120)).toBe(0)
-    expect(messageReachedLanding(121, 120)).toBe(true)
+    expect(messageReachedLanding(146, 120)).toBe(true)
     expect(messageReachedLanding(149, 120)).toBe(false)
   })
 

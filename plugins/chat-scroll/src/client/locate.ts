@@ -2,11 +2,11 @@
 export const ASSISTANT_FLOW_KIND = 'assistant-step'
 
 /**
- * 落点让锚点元素上沿与滚动容器上沿齐平（0 inset）。任何正 inset 都会在顶部
- * 留下上一条消息被裁掉半行的文字（行高 20~26px），实机看起来就是「没滚到位」；
- * 呼吸位由 turn 头部 / 消息行自身的内边距提供。
+ * 落点让锚点上沿停在滚动容器上沿下方 26px。锚点是 turn 头部（33px 行高）时，
+ * 0 inset 会让「已完成，用时 X秒」紧贴视口顶边显得太挤；26px 留出一行左右的
+ * 呼吸位。代价是顶部会露出上一条内容被裁切的一行——用户明确选择这个观感。
  */
-export const LANDING_INSET_PX = 0
+export const LANDING_INSET_PX = 26
 
 /** 滚动定位的最长稳定时间；超时不能闪出虚假的到达效果。 */
 export const MAX_LANDING_WAIT_MS = 1_800
