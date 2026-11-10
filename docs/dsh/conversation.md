@@ -133,6 +133,23 @@ store-owned Session 的 append 另有生命周期门控（`core/session/src/inde
   输入回显 instant 落尾（不做平滑动画，避免运行中轮次在回显上方继续增长把回显推下去）；
   另有 `keepAboveClosing` 折叠保持测量（延迟折叠下收起行时维持阅读位置）。插件跟随判定
   与原生 instant 落尾叠加时，注意动画取消窗口变窄。
+- 0.2.2-rc.1 起会话滚动整套换新（`use-chat-viewport.ts`/`use-chat-reading.ts`/`flow-motion.ts`）：
+  ChatViewport 持有 `[data-chat-turn-spacer]` 折叠余量元素（style.height 由上游写），
+  ResizeObserver 观察列/滚动/composer 并触发 `keepAboveClosing`/`reclaimBelow`；
+  阅读策略用 500ms 采样定时器（`flushSample`）结算读者移动并写回 `chatScroll` 存储，
+  原生跟随动画（`ScrollFollow.toBottom` smooth）由 intent 事件打断。插件逐帧写 scrollTop
+  会被视为读者移动；落点后上游折叠批次/回底跟随仍可能在无输入时移动视图，
+  插件需要自己的短窗守护（chat-scroll 落点守护约 2.5 秒，任何 pointerdown/wheel/keydown
+  在行所属 document 捕获层立即让位）。上游写入入口有三类：`write/align/jump`（instant）、
+  `toBottom`（instant 或一次 smooth）、fold 批次按帧写（`flow-motion` 的 rAF 时钟）；
+  hidden 标签页 rAF 冻结时动画按 1.8s 上限超时，布局稳定后的收敛交给插件守护。
+- 消息行的可测量性：带工具调用的消息由多个 part 行组成（同一 `data-chat-node-key`，flow key
+  为裸 key 或 `JSON.stringify([key, part])`），首个 part 常随过程分组折叠——`hidden` 属性或
+  折叠过渡中的零高度都使 `getBoundingClientRect()` 全零，按零几何算目标会把落点错成
+  「当前 scrollTop − 视口上沿 − 24」。定位前必须按行高过滤，取同消息第一条可测量行；
+  dsh 的折叠过渡是瞬时的，等待恢复比立即放弃更稳。composer 座位
+  （`[data-composer-seat]`）位于滚动容器内并占用 scrollHeight，「无滚动条」几乎不成立，
+  可见性判定要用 composer 上沿做可视下界（与上游 capturePosition 同口径）。
 chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](../../plugins/chat-scroll/README.md)。
 - 不搬动 React 拥有的 sibling rows 来套内部滚动容器。
 

@@ -6,6 +6,36 @@
 
 ## 已实现
 
+- [x] chat-scroll「回到消息开头」二轮修复（2026-11-09 晚，用户报两点：开头已可见仍滚动并垫出
+  大片空白（截图红框）；部分长内容落点差几行、需手动再上滚）：① 开头已在可视区内（无滚动条
+  短页或开头可见，可视下界取 composer 座位上沿，与上游 capturePosition 同口径）不滚动不加
+  衬垫直接闪线——替代上一轮仅判无滚动条的跳过（真实会话 composer 座位占 scrollHeight，
+  无滚动条几乎不成立）；② 带工具调用的消息首个 part 常被折叠在过程分组里（hidden/零高，
+  rect 全零），旧 findAssistantMessageRow 直接返回该行，目标被算成「当前位 −视口上沿 −24」
+  恰好差几行——改为按同一 data-chat-node-key 的全部 part 行取第一条可测量的行，整条折叠时
+  等待；③ 守护窗口 2.5s→5s，行瞬时零高耐心等待 40 帧而非立即退出，写回被滚动底钳制时
+  重新执行 prepare 补足尾部空间（上游 reclaimBelow 可能回收底部余量使目标暂时不可达）。
+  35 项单测（新增 6 项）、lint/typecheck/build/check:dependencies 全绿；dev 实例（0.2.2-rc.1）
+  三场景实测通过：开头可见点击零位移且闪线、底部点击精确落阅读线（306=期望）、落点后注入
+  拉回底部被守护拉回阅读线。suite tar 重打（同版本号覆盖）。桌面实机复验（截图场景 +
+  带工具调用会话落点）待用户执行。
+
+- [x] chat-scroll「回到消息开头」0.2.2-rc.1 适配修复（2026-11-09，用户报告「定位异常，
+  落点不是正确位置」并要求短页不再强制滚顶）：dsh 0.2.2-rc.1 整套替换会话滚动视口
+  （use-chat-viewport/reading/flow-motion，折叠批次 + 底部 spacer + 阅读采样），当时适配
+  仅修 quick-commands 与 files，chat-scroll 被假定不受影响。实机复现确认：落点计算与
+  动画本身精确命中阅读线，但落点后上游机制（折叠批次/回底跟随一类非输入写入）会把视图
+  拉走，落点守护缺失导致「回到错误位置」；另外无滚动条的短页会被 cushion 强制滚顶，
+  用户确认该行为多余。修复三件：① 落点后 2.5s 守护循环——按帧复核阅读线并写回非输入
+  漂移，行所属 document 捕获层的任何 pointerdown/wheel/keydown 立即让位（覆盖原生 Turn
+  导航等滚动宿主外入口），行卸载/隐藏即停，超时路径改为守护收敛稳定后才补闪（不产生
+  虚假到达）；② 短页 `scrollHeight <= clientHeight` 直接在行顶闪线，不滚动不加衬垫；
+  ③ README/文档回写（[会话滚动导航](dsh/conversation.md) 补 0.2.2 视口契约段）。30 项
+  单测（新增守护 6 项 + 短页跳过）、lint/typecheck/build/check:dependencies 全绿，
+  suite tar 重打（同版本号覆盖）。桌面实机验收（正常会话/冷启动旧会话/短回复/返回底部/
+  深浅主题中英文）待用户执行；上游拉回写入者的调用栈因窗口遮挡（Chrome hidden 时 rAF
+  冻结）未能抓取，守护按「非输入漂移一律校正」设计不依赖具体触发者。
+
 - [x] 分叉会话置顶（2026-11-05，用户反馈「分叉后在会话列表里找不到」）：fork 子会话的
   summary.updatedAt 继承 seed 前缀的旧时间戳，工作区按 recency 排序时落在末尾，会话多时
   不可见。fork/create 成功后调用官方 `ctx.uiWorkspace.pinSession(childId)` 置顶到分组

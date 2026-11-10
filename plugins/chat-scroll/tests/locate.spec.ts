@@ -4,6 +4,15 @@ import {
   messageReachedReadingLine, scrollTopForMessage,
 } from '../src/client/locate.js'
 
+/** 构造一个带 flow/node key 与可配置几何的助手行替身。 */
+function makeRow(flowKey: string, nodeKey: string, height: number, hidden = false) {
+  return {
+    dataset: { chatFlowKey: flowKey, chatNodeKey: nodeKey },
+    hidden,
+    getBoundingClientRect: () => ({ top: 0, height }),
+  } as unknown as HTMLElement
+}
+
 describe('chat-scroll locator math', () => {
   it('maps each finalized assistant message id to its own Chat Node', () => {
     const nodes = new Map([
@@ -65,9 +74,31 @@ describe('chat-scroll locator math', () => {
   })
 
   it('resolves the row from the caller-provided Chat flow only', () => {
-    const row = { dataset: { chatFlowKey: 'current-row' }, hidden: false } as unknown as HTMLElement
+    const row = makeRow('current-row', 'node-1', 40)
     const root = { querySelectorAll: () => [row] } as unknown as ParentNode
     expect(findAssistantMessageRow(root, 'current-row')).toBe(row)
     expect(findAssistantMessageRow(root, 'stale-row')).toBeNull()
+  })
+
+  it('skips folded-away leading parts and lands on the first measurable part of the message', () => {
+    // 消息 msg-1 的首选行（snapshot key）是分组里的响应 part；它的首个 part
+    // 被折叠（hidden），中间 part 零高（折叠过渡），不能按它们的零几何定位。
+    const hiddenPart = makeRow('["node-1","process"]', 'node-1', 0, true)
+    const zeroHeightPart = makeRow('["node-1","middle"]', 'node-1', 0)
+    const responsePart = makeRow('node-1', 'node-1', 120)
+    const nextMessage = makeRow('node-2', 'node-2', 300)
+    const root = { querySelectorAll: () => [hiddenPart, zeroHeightPart, responsePart, nextMessage] } as unknown as ParentNode
+    expect(findAssistantMessageRow(root, 'node-1')).toBe(responsePart)
+    expect(findAssistantMessageRow(root, '["node-1","process"]')).toBe(responsePart)
+  })
+
+  it('waits instead of landing on zero geometry when every part of the message is folded', () => {
+    const hiddenPart = makeRow('["node-1","process"]', 'node-1', 0, true)
+    const responsePart = makeRow('node-1', 'node-1', 0)
+    const nextMessage = makeRow('node-2', 'node-2', 300)
+    const root = { querySelectorAll: () => [hiddenPart, responsePart, nextMessage] } as unknown as ParentNode
+    expect(findAssistantMessageRow(root, 'node-1')).toBeNull()
+    // 不会越过消息边界落到下一条消息的行上。
+    expect(findAssistantMessageRow(root, 'node-1')).not.toBe(nextMessage)
   })
 })

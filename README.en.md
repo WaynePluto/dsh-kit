@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Verified against official dsh: `0.2.1-rc.3` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
+Verified against official dsh: `0.2.2-rc.1` (adaptation baseline and upgrade procedure: see [docs/02-dsh-facts.md](docs/02-dsh-facts.md) and the `dsh-upgrade` skill)
 
 A third-party **plugin suite** for the official DeepSeek Harness (dsh): 26 components
 that improve everyday model, conversation, workspace and runtime workflows. Install or
@@ -62,6 +62,23 @@ pnpm suite:build      # generates the suite patch and materializes dependencies
 
 Then enter the **absolute path** of the `plugins/suite` directory in
 "Add plugin" (for example `D:\Documents\ai-dev\dsh-kit\plugins\suite`).
+
+**CLI install (fallback)**
+
+When a release is re-published under the same tag (same address), "Add plugin"
+refuses the identical address as already-installed; fall back to the official
+CLI, which does not check installation state, refuses nothing, and takes effect
+after a restart.
+
+```powershell
+dsh plugin --profile desktop add https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit.tar.gz
+```
+
+`--profile` is the profile of the instance to install into (the official desktop
+uses `desktop`; initialize the profile once with the desktop app and **fully
+quit** the app before running the CLI); local tarball and directory paths work
+the same way (all three address forms are equivalent, see
+[architecture](docs/03-architecture.md)).
 
 **Notes**
 

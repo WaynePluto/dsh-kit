@@ -67,9 +67,19 @@ export function assistantMessageNodeKey(
 export function findAssistantMessageRow(root: ParentNode, preferredKey: string | null): HTMLElement | null {
   const rows = Array.from(root.querySelectorAll<HTMLElement>(`[data-chat-flow-kind="${ASSISTANT_FLOW_KIND}"]`))
   if (preferredKey !== null) {
-    const preferred = rows.find(row => row.dataset.chatFlowKey === preferredKey)
-    if (preferred === undefined || preferred.hidden) return preferred ?? null
-    return preferred
+    const index = rows.findIndex(row => row.dataset.chatFlowKey === preferredKey)
+    if (index >= 0) {
+      // 折叠的工具/过程分组里，消息的第一个 part 行可能 hidden 或零高（rect 全零，
+      // 按它计算会把目标错位成「当前位置减一个视口上沿」）。同一消息的所有 part 行
+      // 共享 data-chat-node-key：按 DOM 序找第一条可测量的行；都不行就等待。
+      const nodeKey = rows[index]?.dataset.chatNodeKey
+      for (const row of rows.filter(candidate => candidate.dataset.chatNodeKey === nodeKey)) {
+        if (row.hidden || row.getBoundingClientRect().height === 0) continue
+        return row
+      }
+      return null
+    }
+    return null
   }
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index]

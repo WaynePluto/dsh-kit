@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README.en.md)
 
-对应官方 dsh：`0.2.1-rc.3`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
+对应官方 dsh：`0.2.2-rc.1`（已实测；适配基线与跟进流程见 [docs/02-dsh-facts.md](docs/02-dsh-facts.md)）
 
 官方 DeepSeek Harness（dsh）的第三方**插件套件**：模型、会话、工作区与运行环境四个方向的
 个人体验增强，共 27 个组件，通过官方「添加插件」输入**一个地址**即可安装或升级全部内容。
@@ -72,6 +72,19 @@ pnpm suite:build      # 生成套件 patch 并物化依赖闭包
 
 然后在「添加插件」里输入 `plugins/suite` 目录的**绝对路径**（例如
 `D:\Documents\ai-dev\dsh-kit\plugins\suite`）。
+
+**CLI 安装（兜底）**
+
+同版本号重发（tag 与地址都不变）时，「添加插件」会把同一地址拒为 already-installed；
+此时用官方 CLI 兜底：不查已安装、无拒绝，重启生效。
+
+```powershell
+dsh plugin --profile desktop add https://github.com/WaynePluto/dsh-kit/releases/download/v0.0.1/dsh-kit.tar.gz
+```
+
+`--profile` 是要安装到的实例 profile（官方桌面为 `desktop`，需先用桌面版初始化过 profile
+并**完全退出**桌面版再执行）；本地 tarball 与目录地址同样适用（安装地址三形态统一，
+见 [架构](docs/03-architecture.md)）。
 
 **通用说明**
 
