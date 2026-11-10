@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  assistantMessageNodeKey, bottomCushionForTarget, dividerGeometry, findAssistantMessageRow,
-  messageReachedReadingLine, scrollTopForMessage,
+  assistantMessageNodeKey, bottomCushionForTarget, dividerAdjacentToRow, dividerGeometry,
+  dividerVisibleInScrollport, findAssistantMessageRow, findTurnDividerHost,
+  messageReachedLanding, scrollTopForMessage,
 } from '../src/client/locate.js'
 
 /** 构造一个带 flow/node key 与可配置几何的助手行替身。 */
@@ -53,11 +54,12 @@ describe('chat-scroll locator math', () => {
     expect(reads).toBe(afterFirst)
   })
 
-  it('places a message on the dsh reading line without negative scroll', () => {
-    expect(scrollTopForMessage(380, 920, 120)).toBe(1_156)
+  it('places a message 26px below the scrollport top without negative scroll', () => {
+    // 26px inset：约一行高度，顶部完整露出上一条消息的最后一行，不裁半个字
+    expect(scrollTopForMessage(380, 920, 120)).toBe(1_154)
     expect(scrollTopForMessage(0, 10, 120)).toBe(0)
-    expect(messageReachedReadingLine(144, 120)).toBe(true)
-    expect(messageReachedReadingLine(149, 120)).toBe(false)
+    expect(messageReachedLanding(146, 120)).toBe(true)
+    expect(messageReachedLanding(149, 120)).toBe(false)
   })
 
   it('adds enough tail room when the browser would clamp a final-message landing', () => {
@@ -100,5 +102,65 @@ describe('chat-scroll locator math', () => {
     expect(findAssistantMessageRow(root, 'node-1')).toBeNull()
     // 不会越过消息边界落到下一条消息的行上。
     expect(findAssistantMessageRow(root, 'node-1')).not.toBe(nextMessage)
+  })
+
+  it('finds the owning turn divider host through the ancestor flow levels', () => {
+    // 行在过程组内容层内：从行父层逐级上溯，直到包含同 turn 头部按钮的 flow 层。
+    const header = {
+      hidden: false,
+      getBoundingClientRect: () => ({ height: 33 }),
+    } as unknown as HTMLElement
+    const groupContent = {
+      querySelector: () => null,
+    }
+    const column = {
+      querySelector: (selector: string) => (
+        selector.includes('[data-chat-flow-kind="turn-process"]')
+        && selector.includes('[data-chat-turn="7"]')
+        && selector.includes('button[data-turn-process]')
+          ? header
+          : null
+      ),
+    }
+    const row = {
+      dataset: { chatTurn: '7' },
+      parentElement: groupContent,
+    } as unknown as HTMLElement
+    ;(groupContent as { parentElement?: unknown }).parentElement = column
+    expect(findTurnDividerHost(row)).toBe(header)
+  })
+
+  it('rejects divider hosts without a turn, without a match, or without geometry', () => {
+    const header = {
+      hidden: false,
+      getBoundingClientRect: () => ({ height: 33 }),
+    } as unknown as HTMLElement
+    const column = { querySelector: () => header }
+    const noTurn = { dataset: {}, parentElement: column } as unknown as HTMLElement
+    expect(findTurnDividerHost(noTurn)).toBeNull()
+    // 祖先里没有同 turn 头部：一路上溯到 null 才放弃
+    const unmatched = {
+      dataset: { chatTurn: '9' },
+      parentElement: { querySelector: () => null, parentElement: null },
+    } as unknown as HTMLElement
+    expect(findTurnDividerHost(unmatched)).toBeNull()
+    // 头部自身不可测量（隐藏或零高）时不能当作锚点
+    const zeroHeight = {
+      hidden: false,
+      getBoundingClientRect: () => ({ height: 0 }),
+    } as unknown as HTMLElement
+    const withZeroHost = {
+      dataset: { chatTurn: '7' },
+      parentElement: { querySelector: () => zeroHeight, parentElement: null },
+    } as unknown as HTMLElement
+    expect(findTurnDividerHost(withZeroHost)).toBeNull()
+  })
+
+  it('accepts the divider only when its hairline sits right above the row and on screen', () => {
+    // 折叠组隐藏时隔 12px、无组时隔 16px，都在容差内；过程组展开远超容差。
+    expect(dividerAdjacentToRow({ bottom: 44 }, { top: 60 })).toBe(true)
+    expect(dividerAdjacentToRow({ bottom: 44 }, { top: 90 })).toBe(false)
+    expect(dividerVisibleInScrollport({ bottom: 44 }, { top: 0 })).toBe(true)
+    expect(dividerVisibleInScrollport({ bottom: -8 }, { top: 0 })).toBe(false)
   })
 })

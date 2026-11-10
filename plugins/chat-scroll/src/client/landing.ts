@@ -1,5 +1,6 @@
 import {
-  findAssistantMessageRow, findScrollport, MAX_LANDING_WAIT_MS, MAX_TARGET_WAIT_MS,
+  dividerAdjacentToRow,
+  findAssistantMessageRow, findScrollport, findTurnDividerHost, MAX_LANDING_WAIT_MS, MAX_TARGET_WAIT_MS,
   scrollTopForMessage,
 } from './locate.js'
 import { durationForDistance, startScrollAnimation } from './animation.js'
@@ -9,10 +10,10 @@ interface MessageLandingOptions {
   readonly root: ParentNode
   readonly messageKey: string
   readonly reducedMotion: boolean
-  /** 首次写入滚动位置前补足缺失的尾部空间。 */
-  prepare(row: HTMLElement, scrollport: HTMLElement): void
-  /** 只有几何测量确认到达目标行后才调用。 */
-  onLand(row: HTMLElement, scrollport: HTMLElement): void
+  /** 首次写入滚动位置前补足缺失的尾部空间；target 与动画目标同源（锚点元素对齐阅读线）。 */
+  prepare(row: HTMLElement, scrollport: HTMLElement, target: number): void
+  /** 只有几何测量确认到达目标锚点后才调用；header 为命中的原生分割线宿主（未命中为 null）。 */
+  onLand(row: HTMLElement, scrollport: HTMLElement, header: HTMLElement | null): void
 }
 
 /** 落点守护的最长持续时间；超时后即使仍有非输入性的拉动也不再校正。 */
@@ -21,7 +22,7 @@ export const MAX_LANDING_HOLD_MS = 5_000
 /** 视图连续保持这么多帧在阅读线上，守护才确认稳定（超时路径据此补闪）。 */
 export const LANDING_HOLD_STABLE_FRAMES = 24
 
-/** 目标行连续零高/隐藏这么多帧仍不恢复就结束守护（瞬时折叠过渡不算）。 */
+/** 目标锚点连续零高/隐藏这么多帧仍不恢复就结束守护（瞬时折叠过渡不算）。 */
 export const HOLD_ZERO_RECT_PATIENCE_FRAMES = 40
 
 /** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
@@ -71,19 +72,29 @@ export function startMessageLanding(options: MessageLandingOptions): () => void 
     scrollport.addEventListener('pointerdown', stop, { capture: true, passive: true })
     scrollport.addEventListener('wheel', stop, { capture: true, passive: true })
     scrollport.addEventListener('keydown', stop, { capture: true })
-    // 消息开头已在可视区内（无滚动条的短页，或开头本来就看得见）：对齐阅读线
-    // 没有意义——最后一条消息还会因此垫出大片空白。不滚动、不加衬垫，直接闪线。
-    if (startAlreadyVisible(row, scrollport)) {
+    // 原生分割线锚点：同轮 turn-process 头部紧贴行上沿时，滚动目标与到达
+    // 提示都以它为准（头部整行可见，分割线落在其下方）；不邻接则退回行锚点。
+    let header = findTurnDividerHost(row)
+    if (header !== null
+      && !dividerAdjacentToRow(header.getBoundingClientRect(), row.getBoundingClientRect())) {
+      header = null
+    }
+    const anchor: HTMLElement = header ?? row
+    const initialTarget = targetFor(anchor, scrollport)
+    // 只有「对齐阅读线必须垫出尾部空白」（无滚动条短页、最后一条消息）且开头已可见时
+    // 才跳过：那时硬对齐只会留下大片空白。长会话里开头可见但下方仍有内容时照常滚动——
+    // 只判「已可见」会让屏幕中部的消息开头原地不动，落点看起来完全没反应。
+    const naturalFloor = Math.max(0, scrollport.scrollHeight - scrollport.clientHeight)
+    if (initialTarget > naturalFloor + 1 && startAlreadyVisible(anchor, scrollport)) {
       stopped = true
       removeInputListeners()
-      options.onLand(row, scrollport)
+      options.onLand(row, scrollport, header)
       return
     }
-    options.prepare(row, scrollport)
-    const initialTarget = targetFor(row, scrollport)
+    options.prepare(row, scrollport, initialTarget)
     animationStop = startScrollAnimation({
       scrollport,
-      getTarget: () => targetFor(row, scrollport),
+      getTarget: () => targetFor(anchor, scrollport),
       reducedMotion: options.reducedMotion,
       durationMs: durationForDistance(initialTarget - scrollport.scrollTop),
       maxDurationMs: MAX_LANDING_WAIT_MS,
@@ -91,12 +102,13 @@ export function startMessageLanding(options: MessageLandingOptions): () => void 
         animationStop = null
         stopped = true
         removeInputListeners()
-        options.onLand(row as HTMLElement, scrollport as HTMLElement)
+        options.onLand(row as HTMLElement, scrollport as HTMLElement, header)
         // dsh 的折叠批次、回底跟随等机制会在无用户输入时移动视图；
         // 落点后短时间内按帧把视图拉回阅读线。
         holdStop = startLandingHold({
           row: row as HTMLElement,
           scrollport: scrollport as HTMLElement,
+          anchor,
           prepare: options.prepare,
         })
       },
@@ -109,8 +121,9 @@ export function startMessageLanding(options: MessageLandingOptions): () => void 
         holdStop = startLandingHold({
           row: row as HTMLElement,
           scrollport: scrollport as HTMLElement,
+          anchor,
           prepare: options.prepare,
-          onStable: () => { options.onLand(row as HTMLElement, scrollport as HTMLElement) },
+          onStable: () => { options.onLand(row as HTMLElement, scrollport as HTMLElement, header) },
         })
       },
     })
@@ -121,22 +134,24 @@ export function startMessageLanding(options: MessageLandingOptions): () => void 
 }
 
 /**
- * 落点后的短暂守护：按帧复核目标行是否仍在阅读线上，漂移时写回；任何
+ * 落点后的短暂守护：按帧复核目标锚点是否仍在阅读线上，漂移时写回；任何
  * pointerdown/wheel/keydown（行所属 document 捕获，覆盖原生 Turn 导航等
- * 滚动宿主之外的入口）立即让位。行卸载即停；行短暂零高/隐藏（折叠过渡）时
- * 等待恢复，持续不恢复才结束。写回被浏览器钳制（目标暂时不可达）时重新执行
- * prepare 补足尾部滚动空间再写。
+ * 滚动宿主之外的入口）立即让位。行或锚点卸载即停；锚点短暂零高/隐藏
+ * （折叠过渡）时等待恢复，持续不恢复才结束。写回被浏览器钳制（目标暂时
+ * 不可达）时重新执行 prepare 补足尾部滚动空间再写。
  * @returns 停止守护的函数。
  */
 export function startLandingHold(options: {
   row: HTMLElement
   scrollport: HTMLElement
+  /** 阅读线对齐的锚点元素：命中分割线时是 turn 头部，否则是消息行本身。 */
+  anchor: HTMLElement
   /** 与 landing 相同的尾部空间准备回调；写入被钳制时按当前几何重算。 */
-  prepare?(row: HTMLElement, scrollport: HTMLElement): void
+  prepare?(row: HTMLElement, scrollport: HTMLElement, target: number): void
   /** 首次连续稳定时调用一次；守护自然结束不重复调用。 */
   onStable?: () => void
 }): () => void {
-  const { row, scrollport } = options
+  const { row, scrollport, anchor } = options
   const startedAt = Date.now()
   let frame: number | null = null
   let stopped = false
@@ -164,14 +179,14 @@ export function startLandingHold(options: {
     if (stopped) return
     frame = null
     if (Date.now() - startedAt >= MAX_LANDING_HOLD_MS) { stop(); return }
-    if (!row.isConnected || !scrollport.isConnected) { stop(); return }
-    if (row.hidden || row.getBoundingClientRect().height === 0) {
-      // 折叠/展开过渡会让行瞬时不可测量；短暂等待恢复，不把零几何当作目标。
+    if (!row.isConnected || !anchor.isConnected || !scrollport.isConnected) { stop(); return }
+    if (anchor.hidden || anchor.getBoundingClientRect().height === 0) {
+      // 折叠/展开过渡会让锚点瞬时不可测量；短暂等待恢复，不把零几何当作目标。
       zeroRectFrames += 1
       if (zeroRectFrames >= HOLD_ZERO_RECT_PATIENCE_FRAMES) { stop(); return }
     } else {
       zeroRectFrames = 0
-      const target = targetFor(row, scrollport)
+      const target = targetFor(anchor, scrollport)
       if (Math.abs(target - scrollport.scrollTop) <= 2) {
         stableFrames += 1
         if (stableFrames >= LANDING_HOLD_STABLE_FRAMES && !stableReported) {
@@ -181,10 +196,10 @@ export function startLandingHold(options: {
       } else {
         stableFrames = 0
         scrollport.scrollTop = target
-        if (Math.abs(targetFor(row, scrollport) - scrollport.scrollTop) > 2 && options.prepare !== undefined) {
+        if (Math.abs(targetFor(anchor, scrollport) - scrollport.scrollTop) > 2 && options.prepare !== undefined) {
           // 写入被钳制：目标超过当前滚动底（上游可能回收了尾部空间），补足后重写。
-          options.prepare(row, scrollport)
-          scrollport.scrollTop = targetFor(row, scrollport)
+          options.prepare(row, scrollport, targetFor(anchor, scrollport))
+          scrollport.scrollTop = targetFor(anchor, scrollport)
         }
       }
     }
@@ -195,20 +210,25 @@ export function startLandingHold(options: {
   return stop
 }
 
-/** 判断消息开头是否已经在滚动可视区内（以 composer 座位上沿为可视下界）。 */
-function startAlreadyVisible(row: HTMLElement, scrollport: HTMLElement): boolean {
-  const rowRect = row.getBoundingClientRect()
+/** 判断消息开头（锚点元素上沿）是否已经在滚动可视区内（以 composer 座位上沿为可视下界）。 */
+function startAlreadyVisible(anchor: HTMLElement, scrollport: HTMLElement): boolean {  const anchorRect = anchor.getBoundingClientRect()
   const portRect = scrollport.getBoundingClientRect()
   const composerSeat = scrollport.querySelector<HTMLElement>('[data-composer-seat]')
   const visibleBottom = composerSeat === null ? portRect.bottom : composerSeat.getBoundingClientRect().top
-  return rowRect.top >= portRect.top - 2 && rowRect.top <= visibleBottom
+  return anchorRect.top >= portRect.top - 2 && anchorRect.top <= visibleBottom
 }
 
-function targetFor(row: HTMLElement | null, scrollport: HTMLElement | null): number {
-  if (row === null || scrollport === null) return 0
+/**
+ * 计算把锚点元素上沿放到转录阅读线上的 scrollTop。锚点在折叠过渡中
+ * 不可测量（hidden/零高）时按当前位置保持，等下一帧重新测量。
+ */
+function targetFor(anchor: HTMLElement | null, scrollport: HTMLElement | null): number {
+  if (anchor === null || scrollport === null) return 0
+  const rect = anchor.getBoundingClientRect()
+  if (anchor.hidden || rect.height === 0) return scrollport.scrollTop
   return scrollTopForMessage(
     scrollport.scrollTop,
-    row.getBoundingClientRect().top,
+    rect.top,
     scrollport.getBoundingClientRect().top,
   )
 }

@@ -6,10 +6,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import {
-  assistantMessageNodeKey, bottomCushionForTarget, dividerGeometry, scrollTopForMessage,
+  assistantMessageNodeKey, bottomCushionForTarget, dividerGeometry, dividerVisibleInScrollport,
 } from './locate.js'
 import { startMessageLanding } from './landing.js'
-import { ACTION_CLASS, CUSHION_PROPERTY, FLASH_CLASS } from './styles.js'
+import {
+  ACTION_CLASS, CUSHION_PROPERTY, DIVIDER_FLASH_MS, DIVIDER_FLASH_REDUCED_MS, FLASH_CLASS,
+  showDividerHighlight,
+} from './styles.js'
 
 /** 一个已完成助手消息操作的完整 props。 */
 export type AgentMessageStartButtonProps =
@@ -71,6 +74,8 @@ export function AgentMessageStartButton({ messageId, sessionId, useChat, t }: Ag
   const cushionOwner = useRef<object>({})
   const animationToken = useRef(0)
   const animationEndHandler = useRef<((event: AnimationEvent) => void) | null>(null)
+  const dividerCleanupRef = useRef<(() => void) | null>(null)
+  const dividerTimerRef = useRef<number | null>(null)
 
   const clearFlash = useCallback(() => {
     const line = flashRef.current
@@ -79,6 +84,12 @@ export function AgentMessageStartButton({ messageId, sessionId, useChat, t }: Ag
     animationEndHandler.current = null
     animationToken.current += 1
     line?.removeAttribute('data-active')
+    if (dividerTimerRef.current !== null) {
+      window.clearTimeout(dividerTimerRef.current)
+      dividerTimerRef.current = null
+    }
+    dividerCleanupRef.current?.()
+    dividerCleanupRef.current = null
   }, [])
 
   const cancelLanding = useCallback(() => {
@@ -97,7 +108,23 @@ export function AgentMessageStartButton({ messageId, sessionId, useChat, t }: Ag
     line.style.width = `${String(geometry.width)}px`
   }, [])
 
-  const showFlash = useCallback((row: HTMLElement, scrollport: HTMLElement) => {
+  const showFlash = useCallback((row: HTMLElement, scrollport: HTMLElement, header: HTMLElement | null) => {
+    // 原生分割线路径：点亮 dsh turn 头部的 border-bottom（整条内容列宽的
+    // hairline 本身），不落自绘 overlay。头部必须在可视区内且带 turn 号。
+    const turn = header?.getAttribute('data-turn-process') ?? ''
+    if (header !== null && /^\d+$/.test(turn)
+      && dividerVisibleInScrollport(header.getBoundingClientRect(), scrollport.getBoundingClientRect())) {
+      clearFlash()
+      const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+      dividerCleanupRef.current = showDividerHighlight(document, turn)
+      dividerTimerRef.current = window.setTimeout(
+        clearFlash,
+        (reducedMotion ? DIVIDER_FLASH_REDUCED_MS : DIVIDER_FLASH_MS) + 40,
+      )
+      return
+    }
+    // 回退路径：没有紧贴行上沿的可视分割线（多 step 轮次、过程组展开、
+    // 头部滚出视口、上游 seam 变化）时按旧行为在行顶闪自绘线。
     const line = flashRef.current
     if (line === null) return
     placeFlash(row, scrollport)
@@ -124,11 +151,8 @@ export function AgentMessageStartButton({ messageId, sessionId, useChat, t }: Ag
       root,
       messageKey,
       reducedMotion,
-      prepare: (row, scrollport) => {
+      prepare: (row, scrollport, target) => {
         clearBottomCushion()
-        const rowRect = row.getBoundingClientRect()
-        const scrollportRect = scrollport.getBoundingClientRect()
-        const target = scrollTopForMessage(scrollport.scrollTop, rowRect.top, scrollportRect.top)
         const cushion = bottomCushionForTarget(target, scrollport.scrollHeight, scrollport.clientHeight)
         const flowRoot = row.closest<HTMLElement>('[data-chat-flow]')
         if (flowRoot !== null) setBottomCushion(cushionOwner.current, flowRoot, scrollport, cushion)

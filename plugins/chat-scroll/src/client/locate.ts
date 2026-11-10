@@ -1,8 +1,12 @@
 /** dsh 用于助手消息的 Chat Node kind。 */
 export const ASSISTANT_FLOW_KIND = 'assistant-step'
 
-/** 阅读线距 scrollport 顶部的默认 inset。 */
-export const READING_LINE_INSET_PX = 24
+/**
+ * 落点让锚点元素上沿停在滚动容器上沿下方 26px。取值约为正文一行的高度：
+ * 小于行高的 inset（如 dsh Turn 导航的 24px）会把上一条消息的最后一行裁掉半个字，
+ * 实机看起来像「没滚到位」；26px 让那一行完整露出，同时给消息开头留一点呼吸位。
+ */
+export const LANDING_INSET_PX = 26
 
 /** 滚动定位的最长稳定时间；超时不能闪出虚假的到达效果。 */
 export const MAX_LANDING_WAIT_MS = 1_800
@@ -88,21 +92,21 @@ export function findAssistantMessageRow(root: ParentNode, preferredKey: string |
   return rows.at(-1) ?? null
 }
 
-/** 计算把行放到转录阅读线上的 scrollTop。 */
+/** 计算把锚点上沿贴到滚动容器上沿所需的 scrollTop。 */
 export function scrollTopForMessage(
   currentScrollTop: number,
   rowTop: number,
   scrollportTop: number,
-  inset = READING_LINE_INSET_PX,
+  inset = LANDING_INSET_PX,
 ): number {
   return Math.max(0, currentScrollTop + rowTop - scrollportTop - inset)
 }
 
-/** 判断行是否已到达目标阅读线。 */
-export function messageReachedReadingLine(
+/** 判断锚点是否已到达落点（与动画的 2px 容差同口径）。 */
+export function messageReachedLanding(
   rowTop: number,
   scrollportTop: number,
-  inset = READING_LINE_INSET_PX,
+  inset = LANDING_INSET_PX,
   tolerance = 2,
 ): boolean {
   return Math.abs(rowTop - scrollportTop - inset) <= tolerance
@@ -140,7 +144,7 @@ export function scrollMessageToTop(
   row: HTMLElement,
   scrollport: HTMLElement,
   behavior: ScrollBehavior,
-  inset = READING_LINE_INSET_PX,
+  inset = LANDING_INSET_PX,
 ): number {
   const rowRect = row.getBoundingClientRect()
   const scrollportRect = scrollport.getBoundingClientRect()
@@ -163,4 +167,54 @@ export function dividerGeometry(
   const left = Math.max(row.left, scrollport.left)
   const right = Math.min(row.right, scrollport.right)
   return { left, top: row.top, width: Math.max(1, right - left) }
+}
+
+/** dsh 用于 turn 头部（「已完成，用时 X秒」）的 Chat Node kind。 */
+export const TURN_PROCESS_FLOW_KIND = 'turn-process'
+
+/**
+ * 分割线宿主与目标行之间允许的最大间距。头部与下方可见行有 16px 间隙
+ * （ChatView.module.css 的 --dsh-chat-flow-gap），中间隔着已隐藏过程组时
+ * 邻接选择器不命中、响应行回落 12px；超出容差说明头部与这条消息开头
+ * 不相邻（如过程组展开），不能当作消息开头的分割线。
+ */
+export const DIVIDER_ADJACENCY_TOLERANCE_PX = 24
+
+/**
+ * 查找目标行所属 turn 的原生分割线宿主（turn-process 头部按钮，其
+ * border-bottom 就是「已完成，用时 X秒」下方的 hairline）。从行的祖先逐级
+ * 上溯到包含同 turn 头部的 flow 层，不依赖分组嵌套形态；头部不可测量
+ * （hidden 或零高）时返回 null。
+ */
+export function findTurnDividerHost(row: HTMLElement): HTMLElement | null {
+  const turn = row.dataset.chatTurn
+  if (turn === undefined || turn === '') return null
+  let scope: HTMLElement | null = row.parentElement
+  while (scope !== null) {
+    const host = scope.querySelector<HTMLElement>(
+      `[data-chat-flow-kind="${TURN_PROCESS_FLOW_KIND}"][data-chat-turn="${turn}"] button[data-turn-process]`,
+    )
+    if (host !== null) {
+      return host.hidden || host.getBoundingClientRect().height === 0 ? null : host
+    }
+    scope = scope.parentElement
+  }
+  return null
+}
+
+/** 头部下沿（分割线）与消息行上沿邻接，即分割线就是这条消息的开头标记。 */
+export function dividerAdjacentToRow(
+  header: Pick<DOMRect, 'bottom'>,
+  row: Pick<DOMRect, 'top'>,
+  tolerance = DIVIDER_ADJACENCY_TOLERANCE_PX,
+): boolean {
+  return Math.abs(row.top - header.bottom) <= tolerance
+}
+
+/** 头部下沿（分割线）至少部分落在滚动可视区内，高亮才看得见。 */
+export function dividerVisibleInScrollport(
+  header: Pick<DOMRect, 'bottom'>,
+  scrollport: Pick<DOMRect, 'top'>,
+): boolean {
+  return header.bottom >= scrollport.top
 }

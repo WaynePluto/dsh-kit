@@ -107,3 +107,66 @@ export function installLocatorStyles(host: StyleHost | undefined): () => void {
   else head.appendChild?.(element)
   return () => { element.remove() }
 }
+
+/** 原生分割线高亮样式元素的标记属性。 */
+export const DIVIDER_STYLE_MARKER = 'data-dshx-chat-scroll-divider-highlight'
+
+/** 原生分割线闪烁时长；复用 dshx-chat-scroll-flash 关键帧的节奏。 */
+export const DIVIDER_FLASH_MS = 720
+/** 减少动态效果时的闪烁时长。 */
+export const DIVIDER_FLASH_REDUCED_MS = 240
+
+/**
+ * 针对一个 turn 的原生分割线高亮规则。只按 dsh 自身 data 属性选择
+ * turn-process 头部按钮，不向 React 拥有的节点写任何 class/属性/内联样式；
+ * 特异性 (0,2,1) 高于 CSS module 哈希类，无需 !important。
+ */
+export function dividerHighlightStylesheet(turn: string): string {
+  const target = `[data-chat-flow-kind="turn-process"] button[data-turn-process="${turn}"]`
+  return `
+${target} {
+  position: relative;
+  border-bottom-color: var(--dsw-alias-state-business-primary, #3964fe);
+}
+
+${target}::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: var(--dsw-alias-state-business-primary, #3964fe);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--dsw-alias-state-business-primary, #3964fe) 48%, transparent);
+  opacity: 0;
+  transform: scaleX(0.25);
+  transform-origin: center;
+  animation: dshx-chat-scroll-flash ${DIVIDER_FLASH_MS}ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ${target}::after {
+    animation-duration: ${DIVIDER_FLASH_REDUCED_MS}ms;
+  }
+}
+`.trim()
+}
+
+/**
+ * 高亮指定 turn 的原生分割线：注入只包含该 turn 规则的插件样式元素，
+ * 到时移除。返回清理函数；不依赖 React 重建（新按钮同属性即命中）。
+ */
+export function showDividerHighlight(host: StyleHost, turn: string): () => void {
+  const element = host.createElement('style')
+  element.setAttribute(DIVIDER_STYLE_MARKER, '')
+  element.textContent = dividerHighlightStylesheet(turn)
+  const head = host.head as {
+    append?: (node: unknown) => void
+    appendChild?: (node: unknown) => void
+  }
+  if (typeof head.append === 'function') head.append(element)
+  else head.appendChild?.(element)
+  return () => { element.remove() }
+}

@@ -4,14 +4,14 @@ import { MAX_LANDING_HOLD_MS, LANDING_HOLD_STABLE_FRAMES } from '../src/client/l
 import { MAX_LANDING_WAIT_MS, MAX_TARGET_WAIT_MS } from '../src/client/locate.js'
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
-function historyWindow() {
+function historyWindow(options: { turn?: string; scrollTop?: number; scrollHeight?: number } = {}) {
   const listeners = new Map<string, Set<() => void>>()
-  let currentScrollTop = 800
+  let currentScrollTop = options.scrollTop ?? 800
   const writes: number[] = []
   const port = {
     get scrollTop() { return currentScrollTop },
     set scrollTop(value: number) { writes.push(value); currentScrollTop = value },
-    scrollHeight: 1_400,
+    scrollHeight: options.scrollHeight ?? 1_400,
     clientHeight: 600,
     isConnected: true,
     getBoundingClientRect: () => ({ top: 100, bottom: 700 }),
@@ -24,11 +24,30 @@ function historyWindow() {
   }
   let rowTop = 104
   let rowHeight = 40
+  // turn 头部替身：33px 高（含 border-bottom 分割线），默认与行上沿相距 16px
+  let headerTop = rowTop - 16 - 33
+  const header = {
+    hidden: false,
+    isConnected: true,
+    getAttribute: (name: string) => (name === 'data-turn-process' ? options.turn ?? null : null),
+    getBoundingClientRect: () => ({
+      top: 100 + headerTop - port.scrollTop,
+      bottom: 100 + headerTop - port.scrollTop + 33,
+      height: 33,
+    }),
+  }
+  // 行的父层替身：只为同 turn 的 turn-process 头部查询命中
+  const scope = {
+    querySelector: (selector: string) => (
+      options.turn !== undefined && selector.includes(`[data-chat-turn="${options.turn}"]`) ? header : null
+    ),
+  }
   const row = {
-    dataset: { chatFlowKey: 'assistant:1:2' },
+    dataset: { chatFlowKey: 'assistant:1:2', chatTurn: options.turn },
     hidden: false,
     isConnected: true,
     ownerDocument: undefined,
+    parentElement: options.turn === undefined ? null : scope,
     closest: () => port,
     getBoundingClientRect: () => ({ top: 100 + rowTop - port.scrollTop, height: rowHeight }),
   }
@@ -44,11 +63,12 @@ function historyWindow() {
     onLand,
   })
   return {
-    port, row, writes, prepare, onLand, start,
+    port, row, header, writes, prepare, onLand, start,
     hideRow: () => { rows = [] },
     showRow: () => { rows = [row] },
     moveRow: (top: number) => { rowTop = top },
     setRowHeight: (height: number) => { rowHeight = height },
+    moveHeader: (top: number) => { headerTop = top },
     input: (type: string) => { for (const handler of listeners.get(type) ?? []) handler() },
     listenerCount: () => [...listeners.values()].reduce((sum, set) => sum + set.size, 0),
   }
@@ -75,15 +95,77 @@ describe('history-message landing', () => {
     vi.advanceTimersByTime(500)
     expect(world.writes.length).toBeGreaterThan(3)
     expect(new Set(world.writes).size).toBeGreaterThan(3)
-    expect(world.port.scrollTop).toBe(80)
-    expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port)
+    expect(world.port.scrollTop).toBe(78)
+    expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, null)
     expect(world.prepare).toHaveBeenCalledTimes(1)
     // 落点守护在窗口内把视图保持在阅读线，窗口结束后释放全部监听
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledTimes(1)
     expect(world.listenerCount()).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('anchors the landing on the native turn divider when it sits directly above the row', () => {
+    // 头部下沿（分割线）距行上沿 16px：滚动目标变为头部整行落在阅读线上，
+    // 分割线落在其下方；onLand 带回命中的头部供原生线高亮。
+    const world = historyWindow({ turn: '3' })
+    world.start()
+    vi.advanceTimersByTime(500)
+    expect(world.port.scrollTop).toBe(104 - 16 - 33 - 26)
+    expect(world.prepare).toHaveBeenCalledWith(world.row, world.port, 104 - 16 - 33 - 26)
+    expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, world.header)
+    // 落点守护同样以头部为锚保持落点
+    world.port.scrollTop = 800
+    vi.advanceTimersByTime(64)
+    expect(world.port.scrollTop).toBe(104 - 16 - 33 - 26)
+  })
+
+  it('falls back to the row anchor when the divider host is far above the row', () => {
+    // 头部与行之间隔着展开的过程组：分割线不代表这条消息的开头，
+    // 退回旧行为（行顶对齐阅读线、onLand 带回 null）。
+    const world = historyWindow({ turn: '3' })
+    world.moveHeader(55 - 200)
+    world.start()
+    vi.advanceTimersByTime(500)
+    expect(world.port.scrollTop).toBe(78)
+    expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, null)
+  })
+
+  it('skips scrolling and reports the divider when the header is already visible', () => {
+    // 头部已在可视区内：不滚动、不垫尾部空间，直接把命中的头部交给闪线。
+    const world = historyWindow({ turn: '3' })
+    world.moveHeader(945)
+    world.moveRow(945 + 33 + 16)
+    world.start()
+    expect(world.onLand).toHaveBeenCalledTimes(1)
+    expect(world.onLand).toHaveBeenCalledWith(world.row, world.port, world.header)
+    expect(world.prepare).not.toHaveBeenCalled()
+    expect(world.writes).toHaveLength(0)
+    expect(world.listenerCount()).toBe(0)
+  })
+
+  it('scrolls a visible message start to the landing inset when content still follows', () => {
+    // 长会话里消息开头在屏幕中部可见（真实反馈的「定位不对」场景）：下方仍有内容，
+    // 对齐落点不需要垫尾部空白，必须照常滚动而不是原地闪线。
+    const world = historyWindow({ scrollTop: 500, scrollHeight: 3_000 })
+    world.moveRow(700)
+    world.start()
+    vi.advanceTimersByTime(500)
+    expect(world.port.scrollTop).toBe(674)
+    expect(world.prepare).toHaveBeenCalledExactlyOnceWith(world.row, world.port, 674)
+    expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, null)
+  })
+
+  it('aligns a visible turn header when its turn still has content below', () => {
+    const world = historyWindow({ turn: '3', scrollTop: 500, scrollHeight: 3_000 })
+    world.moveRow(700)
+    world.moveHeader(651)
+    world.start()
+    vi.advanceTimersByTime(500)
+    // 头部 rect top 251（行 300 上沿 16px 处是分割线），锚点取头部
+    expect(world.port.scrollTop).toBe(625)
+    expect(world.onLand).toHaveBeenCalledExactlyOnceWith(world.row, world.port, world.header)
   })
 
   it('skips scrolling and flashes in place when the message start is already visible', () => {
@@ -117,7 +199,7 @@ describe('history-message landing', () => {
     // 模拟 dsh 机制在落点后把视图拉回底部
     world.port.scrollTop = 800
     vi.advanceTimersByTime(64)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
     expect(world.listenerCount()).toBe(0)
@@ -173,9 +255,9 @@ describe('history-message landing', () => {
     world.setRowHeight(40)
     world.port.scrollTop = 800
     vi.advanceTimersByTime(64)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     vi.advanceTimersByTime(400)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
 
@@ -205,7 +287,7 @@ describe('history-message landing', () => {
     vi.advanceTimersByTime(LANDING_HOLD_STABLE_FRAMES * 16 + 64)
     expect(world.prepare.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(world.onLand).toHaveBeenCalledTimes(1)
-    expect(world.port.scrollTop).toBe(1_476)
+    expect(world.port.scrollTop).toBe(1_474)
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
     expect(world.listenerCount()).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
@@ -227,7 +309,7 @@ describe('history-message landing', () => {
     world.port.scrollTop = 800
     vi.advanceTimersByTime(LANDING_HOLD_STABLE_FRAMES * 16 + 32)
     expect(world.onLand).toHaveBeenCalledTimes(1)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     vi.advanceTimersByTime(MAX_LANDING_HOLD_MS)
     expect(world.listenerCount()).toBe(0)
     expect(vi.getTimerCount()).toBe(0)
@@ -239,7 +321,7 @@ describe('history-message landing', () => {
     vi.advanceTimersByTime(16)
     world.port.scrollTop = 800
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.writes.length).toBeGreaterThan(4)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
@@ -247,11 +329,11 @@ describe('history-message landing', () => {
   it('uses an instant bounded write when reduced motion is enabled', () => {
     const world = historyWindow()
     world.start(true)
-    expect(world.port.scrollTop).toBe(80)
+    expect(world.port.scrollTop).toBe(78)
     expect(world.onLand).not.toHaveBeenCalled()
     vi.advanceTimersByTime(40)
-    expect(world.port.scrollTop).toBe(80)
-    expect(world.writes.filter(value => value === 80)).toHaveLength(2)
+    expect(world.port.scrollTop).toBe(78)
+    expect(world.writes.filter(value => value === 78)).toHaveLength(2)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
 
@@ -271,13 +353,14 @@ describe('history-message landing', () => {
     world.start()
     world.moveRow(904)
     vi.advanceTimersByTime(500)
-    expect(world.port.scrollTop).toBe(880)
+    expect(world.port.scrollTop).toBe(878)
     expect(world.onLand).toHaveBeenCalledTimes(1)
   })
 
-  it('accepts the natural top clamp rather than retrying an unreachable inset', () => {
+  it('accepts the natural top clamp instead of forcing an unreachable position', () => {
+    // 锚点已在滚动容器上方（负数目标）：浏览器钳到 0，落点按当前几何确认
     const world = historyWindow()
-    world.moveRow(12)
+    world.moveRow(-200)
     world.start(true)
     vi.advanceTimersByTime(40)
     expect(world.port.scrollTop).toBe(0)

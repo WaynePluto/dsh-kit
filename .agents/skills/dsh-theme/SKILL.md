@@ -347,6 +347,23 @@ base 与 :hover 放同一局部 stylesheet 规则，不用 inline style。若卡
   解释而甩出可视区（quick-commands 闪退实例，2026-11-05）。portal 到 body 的浮层不受影响。
   契约详情在仓库根 `docs/dsh/conversation.md` composer 槽一节。
 
+### 按 dsh 自身 data 属性注入动态规则，高亮原生元素（chat-scroll，2026-11-10）
+
+需要「点亮」某个原生元素（而非新增插件面板）时，插件可注入按宿主自身 data 属性选择的一次性
+规则（如 `[data-chat-flow-kind="turn-process"] button[data-turn-process="N"]`），不向 React
+拥有的节点写任何 class/属性/内联样式；用完（动画计时器到点、取消、卸载、会话切换）即移除该
+`<style>` 元素。要点：
+
+- 属性+元素选择器特异性 (0,2,1) 高于 CSS module 哈希类 (0,1,0)，无需 `!important`。
+- `::after` 光带需要宿主 `position: relative`——布局中性，写进同一条注入规则即可。
+- 闪烁动画复用插件自有 keyframes；`@media (prefers-reduced-motion: reduce)` 覆盖直接写进
+  注入文本；规则由计时器移除，不依赖 `animationend`（伪元素动画事件与中途卸载都不可靠）。
+- 生命周期必须自带超时清理：data 属性值（turn 号）会在其他会话/轮次复用，残留规则会点亮
+  错误目标。React 重建节点不受影响——新节点带同属性即继续命中。
+- 实例：`plugins/chat-scroll/src/client/{styles.ts,AgentMessageStartButton.tsx}`；上游 seam
+  与几何事实（turn-process 头部 border-bottom、16px 间隙）记录在仓库根
+  `docs/dsh/conversation.md`「会话滚动导航」。
+
 ### dsh 组件的 jsdom 测试坑（2026-11-05 实测）
 
 - **MenuSurface mock 必须 forwardRef**：组件的 blur 守卫靠 `menuRef.contains(relatedTarget)`

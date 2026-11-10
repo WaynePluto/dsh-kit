@@ -1,6 +1,9 @@
 # @dsh-kit/dsh-plugin-chat-scroll
 
-为 dsh 会话提供统一的滚动导航：每条正式 Agent 消息下方增加一个向上箭头，点击后回到**这条消息的开头**并在落点短暂闪过分界线；dsh 原生右下角的向下箭头返回底部时增加平滑滚动动效。
+为 dsh 会话提供统一的滚动导航：每条正式 Agent 消息下方增加一个向上箭头，点击后把这条消息所属
+turn 的「已完成，用时 X秒」头部（或消息本身的开头）贴到视口顶部（头部整行可见，其下方就是
+dsh 原生分割线），并在落点短暂点亮这条原生分割线；dsh 原生右下角的向下箭头返回底部时增加
+平滑滚动动效。
 
 ## 行为
 
@@ -11,27 +14,45 @@
   `data-chat-flow-key` 找到真实 DOM，不猜 URL、不移动 React 拥有的节点。带工具调用的消息
   首个 part 可能被折叠在过程分组里（hidden/零高，rect 全零）：按同一 `data-chat-node-key`
   的全部 part 行取第一条可测量的行定位，整条消息都折叠时等待而不是按零几何错位。
+- 分割线锚点：按目标行的 `data-chat-turn` 沿祖先 flow 层查找同轮的 turn-process 头部按钮
+  （`button[data-turn-process]`），并以几何邻接校验确认它紧贴这条消息开头（分割线距行上沿
+  ≤24px，覆盖无过程组 16px、隐藏过程组 12px 两种布局）；头部不可测量、不邻接或缺失时回退
+  消息行锚点。
 - 滚动容器不写死：优先使用 dsh ConversationRoot 的
   `[data-conversation-scroll]`，否则沿祖先查找 ChatView 自己的滚动框。
-- 落点沿用 dsh Turn 导航的 24px 阅读线；普通浏览器使用 smooth scroll，开启「减少动态效果」时改为瞬时定位。
-- 消息开头已在可视区内（无滚动条的短页，或开头本来就看得见）时不滚动、不加临时尾部空间，
-  直接在消息行当前顶部闪烁分界线——把可见内容硬对齐到阅读线只会垫出无意义的空白。
+- 落点让锚点上沿停在滚动容器上沿下方 26px（`LANDING_INSET_PX`），不用 dsh Turn 导航的 24px
+  阅读线：24px 小于一行行高，会把上一条消息的最后一行裁掉半个字，实机看起来就是「没滚到位」；
+  26px 让那一行完整露出并留出呼吸位。锚点是 turn 头部时头部整行可见、原生分割线（头部按钮的
+  border-bottom）落在其下方约 33px 处；普通浏览器使用 smooth scroll，开启「减少动态效果」时
+  改为瞬时定位。
+- 只有「对齐顶部必须临时垫出尾部空白」（无滚动条的短页、会话最后一条消息）且开头本来
+  就看得见时才不滚动，直接在当前分割线闪烁——此时硬对齐只会垫出无意义的空白。长会话里
+  开头在屏幕中部可见、下方仍有内容时照常滚动到顶部，不会原地不动。
 - 最后一条回复较短时，浏览器会在自然滚动底部提前钳住目标位置；插件按缺口临时增加尾部滚动空间，下一次用户滚轮、触摸或键盘输入时恢复正常尾部。
 - 切换历史会话时如果消息行尚未提交到 DOM，点击动作会等待目标出现，而不是静默失效。
 - 首次定位不需要先滚到顶部或点击「加载更早」。插件用 requestAnimationFrame 逐帧推进，若 dsh 保持底部的逻辑介入，会重新测量并继续动画；正常进行的滚动不受干扰。
 - 滚轮、触摸、键盘输入或切换会话会取消待完成的定位；定位与校正均有超时上限。
 - dsh 0.2.2 起会话视口引入折叠批次与回底跟随等自有滚动机制，可能在无用户输入时移动视图：
-  动画落点后插件继续按帧守护约 5 秒，把无输入的漂移拉回阅读线；写回被滚动底钳制时按当前
+  动画落点后插件继续按帧守护约 5 秒，把无输入的漂移拉回落点；写回被滚动底钳制时按当前
   几何重新补足尾部空间再写；目标行瞬时折叠（零高/隐藏）时等待恢复（上限 40 帧），行卸载即停。
   任何指针、滚轮或键盘输入（行所属 document 捕获层）立即让位，原生 Turn 导航等跳转不会被争夺。
 - 返回底部保留 dsh 原生按钮和状态更新：插件先动画到原生底部阈值外，再重放仍连接的原生按钮 click，由 dsh 完成最终归位、清理分页锚点并恢复新消息跟随；无法安全接管时不拦截原生行为。
-- 只有确认到达后，分界线才由插件自己的 fixed overlay 闪烁，不向 dsh / React 拥有的消息行写 class 或属性；开启「减少动态效果」也会在下一帧复核落点。
+- 只有确认到达后才闪线，且优先点亮 dsh 原生分割线：注入按
+  `[data-chat-flow-kind="turn-process"] button[data-turn-process=N]` 属性选择的自有 CSS 规则，
+  hairline 变 `--dsw-alias-state-business-primary` 并叠 2px `::after` 光带（720ms 渐隐，
+  「减少动态效果」240ms），动画结束即移除规则；不向 dsh / React 拥有的消息行写 class、属性
+  或内联样式。没有紧贴行上沿的可视分割线时（多 step/交错输入轮次、过程组展开、头部滚出
+  视口、上游 seam 变化）回退为插件自己的 fixed overlay 在行顶闪烁。开启「减少动态效果」
+  也会在下一帧复核落点。
 
 这些接缝已在 dsh 源码中核实：
 
 - `packages/client/ui-chat/src/client/contract/slots.ts`
 - `packages/client/ui-chat/src/client/chat/TurnTailNodeView.tsx`
 - `packages/client/ui-chat/src/client/chat/ChatNodeSeat.tsx`
+- `packages/client/ui-chat/src/client/chat/TurnProcessNodeView.tsx`（分割线 = 头部按钮的
+  `border-bottom: 0.5px solid var(--dsw-alias-border-l2)`，`TurnProcessNodeView.module.css`）
+- `packages/client/ui-chat/src/client/chat/ChatView.module.css`（头部与下方内容 16px 间隙）
 - `packages/client/ui-chat/src/client/chat/ChatView.tsx`
 - `packages/client/ui-conversation/src/client/skeleton/ConversationRoot.tsx`
 
@@ -43,7 +64,7 @@ pnpm --filter @dsh-kit/dsh-plugin-chat-scroll test
 pnpm --filter @dsh-kit/dsh-plugin-chat-scroll typecheck
 ```
 
-浏览器回归：首次打开仍有「加载更早」的历史会话，不滚动、不加载更多，直接点击最后一条回复的「回到消息开头」，确认其开头到达阅读线且有中间滚动位置；再检查短回复、其他回复各自的按钮、切换会话以及「减少动态效果」。手动上滚后点击右下角原生向下箭头，确认有中间滚动位置、最终回到底部，继续生成内容时仍自动跟随；深浅主题与中英文都需验收。
+浏览器回归：首次打开仍有「加载更早」的历史会话，不滚动、不加载更多，直接点击最后一条回复的「回到消息开头」，确认「已完成，用时 X秒」头部（或消息开头）贴到视口顶部、顶部不残留上一条消息的半行、其下分割线被短暂点亮且 有中间滚动位置；再检查短回复、其他回复各自的按钮、切换会话以及「减少动态效果」（分割线 240ms 短闪）。展开一条消息的过程组再点击，确认回退为行顶自绘线。手动上滚后点击右下角原生向下箭头，确认有中间滚动位置、最终回到底部，继续生成内容时仍自动跟随；深浅主题与中英文都需验收。
 
 插件改完后必须重启 dsh；当前 `dsh-kit-web` profile 没有 HMR，单纯刷新页面不会重新加载新的浏览器 bundle。
 

@@ -68,5 +68,6 @@ check(dock?.id === 'dsh-plugin-chat-scroll-navigation', '注册会话级底部�
 check(source.includes('requestAnimationFrame'), 'bundle 包含逐帧滚动动画')
 check(source.includes('Back to bottom') && source.includes('回到底部'), 'bundle 包含中英文原生按钮识别文案')
 check(source.includes('dshx-chat-scroll-cushion'), 'bundle 包含尾部空间协调属性')
+check(source.includes('data-turn-process'), 'bundle 包含原生 turn 分割线高亮选择器')
 console.log(failures === 0 ? '\n全部通过。' : `\n${failures} 项未通过。`)
 process.exit(failures === 0 ? 0 : 1)

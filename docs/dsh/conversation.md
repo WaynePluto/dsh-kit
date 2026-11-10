@@ -124,6 +124,15 @@ store-owned Session 的 append 另有生命周期门控（`core/session/src/inde
 每行有 data-chat-flow-key、anchor-key、kind、turn。
 
 - 从祖先实际 overflow 查找滚动容器；不能写死 .scroll，因为布局可把滚动交给祖先。
+- 0.2.2 起 turn 头部（「已完成，用时 X秒」，kind `turn-process`）下沿是消息开头的原生
+  分割线：头部按钮 border-bottom `0.5px solid var(--dsw-alias-border-l2)`
+  （`packages/client/ui-chat/src/client/chat/TurnProcessNodeView.module.css`，每个已闭合
+  turn 一个，纯问答轮次也有）；头部 flow item 挂 `data-chat-flow-kind/data-chat-turn`，
+  按钮挂 `data-turn-process`（`ChatNodeSeat.tsx`/`TurnProcessNodeView.tsx`）。头部与下方
+  可见行隔 16px（`ChatView.module.css` 的 `--dsh-chat-flow-gap`）；中间隔着已隐藏过程组时
+  邻接选择器不命中、响应行按自身 12px。过程组展开或多 step/交错输入轮次里头部不紧贴目标
+  行，须经几何邻接校验（间距 ≤24px）才能当作这条消息的开头。这些属性是内部 seam 而非公开
+  插件契约，上游改动会静默失效，升级需复核。
 - `scrollTop` 会被浏览器钳制到 `scrollHeight - clientHeight`；最后一条回复较短时，它的开头在自然底部仍可能低于阅读线。需要严格顶对齐的插件必须临时补足尾部滚动空间，不能只重复调用 `scrollTo`。
 - ChatView 的 `onScrollRef` 以当前 scrollTop 与 observedTop 判断读者移动；历史会话首次定位时，原生 smooth scroll 尚未移动的 scroll 事件可能触发 `toBottom`，写回底部并取消动画。ResizeObserver 的跟随也可能覆盖定位；目标 DOM 已存在不代表滚动成功。
 - chat-scroll 用 requestAnimationFrame 逐帧推进消息开头定位，按帧复核真实落点；消息行等待上限 3 秒，动画/落点等待上限 1.8 秒，超时不闪线。减少动态效果同样瞬时定位后复核下一帧，读者输入或 sessionId/messageKey 变化取消待定位动作，不需要加载更早的历史。
@@ -152,6 +161,19 @@ store-owned Session 的 append 另有生命周期门控（`core/session/src/inde
   可见性判定要用 composer 上沿做可视下界（与上游 capturePosition 同口径）。
 chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](../../plugins/chat-scroll/README.md)。
 - 不搬动 React 拥有的 sibling rows 来套内部滚动容器。
+- chat-scroll（2026-11-10 起）把「回到消息开头」的滚动锚点与到达提示都放在上述原生分割线
+  上：同轮头部上沿停在滚动容器上沿下方 26px（头部整行可见、分割线在其下方，语义由用户
+  选定）。不用 dsh Turn 导航的 24px 阅读线——24px 小于正文行高，会把上一条消息的最后一行
+  裁掉半个字，实机反馈就是「定位不对」；26px 约一行高，完整露出那一行。落点
+  后注入按 `[data-chat-flow-kind="turn-process"] button[data-turn-process=N]` 属性选择的自有
+  CSS 规则点亮 hairline（border 变 business-primary + `::after` 2px 光带复用自有 keyframes，
+  720ms/reduced-motion 240ms 后定时移除规则）；特异性 (0,2,1) 高于 CSS module 哈希类，
+  不需要 `!important`，且不向 React 拥有的节点写任何 class/属性/内联样式。无邻接可视头部
+  （过程组展开、多 step 轮次、头部滚出视口、上游 seam 变化）时回退自绘 fixed overlay 在行顶
+  闪线。衬垫、落点守护与输入让位机制不变，衬垫 prepare 直接复用与动画同源的目标值。
+  「不滚动直接闪线」的跳过条件收窄为「对齐阅读线必须垫尾部空白（目标超过
+  scrollHeight−clientHeight）且开头已可见」：只判「开头可见」会让屏幕中部的消息开头原地不动
+  （2026-11-10 用户实机反馈），长会话里下方仍有内容时目标可达，必须照常滚动。
 
 ## 原生分叉节点约束
 
