@@ -12,9 +12,9 @@
   原生分割线上，原生线高亮因此几乎总能用上；整轮折叠使头部零高时退回消息行锚点；② 落点
   inset 26px → 0：任何正 inset 都会在顶部留下被裁半的上一行，呼吸位由头部/行内边距提供。
   删除 `dividerAdjacentToRow`/`DIVIDER_ADJACENCY_TOLERANCE_PX` 死代码；46 项单测、lint/
-  typecheck 全绿。实机复验后用户反馈「贴顶太挤」，inset 恢复 26px（锚点仍为本轮 turn 头部，
-  顶部保留一行左右的呼吸位），随后再微调为 24px；46 项单测按最终 24px 几何更新、lint/
-  typecheck 全绿。桌面实机复验（长回复落 turn 头部并点亮分割线、短回复、折叠轮次回退）待用户执行。
+  typecheck 全绿。实机复验后用户反馈「贴顶太挤」，inset 依次微调 26px → 24px → 20px（锚点始终
+  为本轮 turn 头部）；46 项单测按最终 20px 几何更新、lint/typecheck 全绿。桌面实机复验
+  （长回复落 turn 头部并点亮分割线、短回复、折叠轮次回退）待用户执行。
 
 - [x] favorite-models 推理档位默认值（2026-11-10，用户提出「切模型后出现 Default 很困惑，
   期望默认 high，没有 high 就取 high 以下最高档」）：核实 `Default` 是原生行为而非插件发明
@@ -205,7 +205,11 @@
   （input.left 槽位 + inputActions 插入面）回写 docs/dsh/plugins.md。2026-11-08 修：面板
   打开时首行接受程序化 focus（方向键/Enter 即刻可用），`:focus-within` 让首行的编辑/
   删除钮常显而其它行 hover 才显——动作簇显隐改 `:has(:focus-visible)`（鼠标打开的程序
-  化 focus 不匹配，行为与其它行一致；键盘导航焦点仍显现，Tab 可达）。
+  化 focus 不匹配，行为与其它行一致；键盘导航焦点仍显现，Tab 可达）。2026-11-10 增强：
+  点选指令插入后经上游 `SessionInput.focus()`（`ctx.get('conversation').input.for(
+  ctx.sessions.scope(sessionId))`）把键盘交回输入框，光标停在插入文本之后可直接续写；
+  面板行按钮持焦点时编辑器失焦、上游跳过 DOM 选区同步，不交还键盘就会「文本进来了光标
+  不在里面」；回焦失败静默跳过，插入失败仍留在面板。
 
 - [x] 切屏停靠扩展·面板停靠（session-park，2026-11-02，D24）：点击侧栏面板菜单项
   （插件/自动化任务/服务/任务看板与「更多」菜单项）把 main 视图换成面板页且当前

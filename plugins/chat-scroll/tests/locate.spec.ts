@@ -54,11 +54,11 @@ describe('chat-scroll locator math', () => {
     expect(reads).toBe(afterFirst)
   })
 
-  it('places a message 24px below the scrollport top without negative scroll', () => {
-    // 24px inset：turn 头部的呼吸位
-    expect(scrollTopForMessage(380, 920, 120)).toBe(1_156)
+  it('places a message 20px below the scrollport top without negative scroll', () => {
+    // 20px inset：turn 头部的呼吸位
+    expect(scrollTopForMessage(380, 920, 120)).toBe(1_160)
     expect(scrollTopForMessage(0, 10, 120)).toBe(0)
-    expect(messageReachedLanding(146, 120)).toBe(true)
+    expect(messageReachedLanding(140, 120)).toBe(true)
     expect(messageReachedLanding(149, 120)).toBe(false)
   })
 

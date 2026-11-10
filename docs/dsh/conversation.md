@@ -164,7 +164,7 @@ chat-scroll 现已实现双向导航；行为与验证入口见 [插件 README](
 - chat-scroll（2026-11-10 起）把「回到消息开头」的滚动锚点与到达提示都放在上述原生分割线
   上：锚点永远是**本轮的 turn 头部**（按行 `data-chat-turn` 查找，不要求与消息行邻接——
   多步轮次的头部远在消息上方，用户要的是回到这一轮的开头），头部上沿停在滚动容器上沿下方
-  24px（用户实机微调选定：0 inset 贴顶太挤、26px 偏多）。整轮折叠使头部
+  20px（用户实机连续微调选定：0 inset 贴顶太挤，26/24 偏多）。整轮折叠使头部
   零高不可测量时退回消息行锚点。落点
   后注入按 `[data-chat-flow-kind="turn-process"] button[data-turn-process=N]` 属性选择的自有
   CSS 规则点亮 hairline（border 变 business-primary + `::after` 2px 光带复用自有 keyframes，
@@ -257,6 +257,16 @@ fork 子会话继承源会话的 agent preset（presetForObservation），sessio
 - `insertQuote(text): boolean`（`SessionInput` 与 `InputActions`）：把非空文本作为原子
   引用块插入草稿，编辑器拒绝（提交锁定等）时 false；坐标语义同 `insertText` 的
   clipboard 投影。
+- `SessionInput.focus()`（`facade.ts`，`contract/input.ts`）：把键盘交回 composer 并恢复
+  编辑器记忆的选区，供「浮层/菜单拿走焦点后交还」的调用方使用。两个前提事实让它成为
+  插入后定位光标的唯一正确路径：编辑器失焦时 `preserveExternalSelection`（`runtime.ts`
+  的 BLUR_COMMAND/SELECTION_CHANGE_COMMAND/RootNode 守卫）会给更新打
+  `SKIP_DOM_SELECTION_TAG`，于是 `insertText()` 改的只是编辑器选区、不会写回 DOM
+  （光标不可见、打字进不去）；而 `focus()` 内部先 `rootElement.focus()` 再
+  `editor.focus()`（Lexical 的 focus 只把编辑器选区落回 DOM，自己不点焦点），因此插入
+  →`focus()` 后 DOM 光标正好停在插入文本末尾。取法：`ctx.get('conversation')
+  .input.for(ctx.sessions.scope(sessionId))`（会话 scope 必须已 retain，切走后 `for()`
+  抛错）。实例：`plugins/quick-commands/src/client/index.tsx`（2026-11-10）。
 - 用户消息行新增 `conversation.chat.user.before` chain 子槽（session 作用域）：渲染在
   用户消息内容之前的装饰 seat，owner 按 durable source 与行 kind 选择组件；steering 与
   pending 行不渲染该槽（`ui-chat/src/client/contract/slots.ts`）。
