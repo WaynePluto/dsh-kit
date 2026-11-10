@@ -12,6 +12,7 @@ import {
   IconCloseFillRegular, IconDataOutlineRegular, IconWarningOutlineRegular, Input, isMobileDevice,
   MenuGroup, MenuSurface, observeStickyMenuGroups, rankByName, StateDot, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { preferredEffort } from '../effort.js'
 import { filterFavoriteGroups } from '../filter.js'
 import { DEFAULT_SETTINGS } from '../shared.js'
 import type { FavoriteModelsSettings } from '../shared.js'
@@ -321,7 +322,18 @@ export function FavoriteModelSelect({
       closeAfterSelection()
       return
     }
-    submit(selection)
+    // 换模型时显式写入档位：模型自带的默认优先（与原生一致），没有默认档位时
+    // 用偏好档位补上，避免会话落进 `Default` 这个用户看不懂的未指定态。
+    const targetReasoning = allChoices.find(choice =>
+      choice.group.id === selection.provider && choice.model.id === selection.model)?.model.reasoning
+    const effort = selection.reasoningEffort
+      ?? targetReasoning?.defaultEffort
+      ?? preferredEffort(targetReasoning?.efforts)
+    submit({
+      provider: selection.provider,
+      model: selection.model,
+      ...effort === undefined ? {} : { reasoningEffort: effort },
+    })
   }
   const chooseEffort = (effort: string | undefined): void => {
     if (state.current === null) return

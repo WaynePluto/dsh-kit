@@ -173,6 +173,102 @@ describe('FavoriteModelSelect', () => {
     })
   })
 
+  it('submits the preferred level when switching to a model without a configured default', async () => {
+    const directory = createSnapshotStore<ModelDirectoryState>(modelState({
+      groups: [
+        { id: 'provider-a', name: 'Provider A', models: [{ id: 'a-only', name: 'A only' }] },
+        {
+          id: 'provider-b',
+          name: 'Provider B',
+          models: [{
+            id: 'b-reasoner',
+            name: 'B reasoner',
+            reasoning: {
+              efforts: [
+                { id: 'minimal', name: 'Minimal' },
+                { id: 'low', name: 'Low' },
+                { id: 'medium', name: 'Medium' },
+                { id: 'xhigh', name: 'Xhigh' },
+              ],
+            },
+          }],
+        },
+      ],
+      current: { provider: 'provider-a', model: 'a-only' },
+    }))
+    const select = vi.fn(async (selection) => {
+      directory.set(modelState({
+        ...directory.getSnapshot(),
+        current: selection,
+      }))
+      return true
+    })
+    render(<FavoriteModelSelect
+      locked={false}
+      available
+      directory={directory}
+      load={vi.fn()}
+      select={select}
+      favorites={favoritesForm([
+        { provider: 'provider-a', model: 'a-only' },
+        { provider: 'provider-b', model: 'b-reasoner' },
+      ])}
+      t={t}
+    />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Select model, current A only/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Model/ }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'B reasoner' }))
+    // 没有 high 时取 high 以下最高档，而不是把会话留在「端点默认」。
+    await waitFor(() => {
+      expect(select).toHaveBeenCalledWith({ provider: 'provider-b', model: 'b-reasoner', reasoningEffort: 'medium' })
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /B reasoner, reasoning effort Medium/ })).toBeTruthy()
+    })
+  })
+
+  it('keeps the model default level instead of the preference when one exists', async () => {
+    const directory = createSnapshotStore<ModelDirectoryState>(modelState({
+      groups: [
+        { id: 'provider-a', name: 'Provider A', models: [{ id: 'a-only', name: 'A only' }] },
+        {
+          id: 'provider-b',
+          name: 'Provider B',
+          models: [{
+            id: 'b-low',
+            name: 'B low',
+            reasoning: {
+              efforts: [{ id: 'low', name: 'Low' }, { id: 'high', name: 'High' }],
+              defaultEffort: 'low',
+            },
+          }],
+        },
+      ],
+      current: { provider: 'provider-a', model: 'a-only' },
+    }))
+    const select = vi.fn(async () => true)
+    render(<FavoriteModelSelect
+      locked={false}
+      available
+      directory={directory}
+      load={vi.fn()}
+      select={select}
+      favorites={favoritesForm([
+        { provider: 'provider-a', model: 'a-only' },
+        { provider: 'provider-b', model: 'b-low' },
+      ])}
+      t={t}
+    />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Select model, current A only/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Model/ }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'B low' }))
+    await waitFor(() => {
+      expect(select).toHaveBeenCalledWith({ provider: 'provider-b', model: 'b-low', reasoningEffort: 'low' })
+    })
+  })
+
   it('shows the search box above four entries and accepts Enter on the ranked row', async () => {
     const models = ['one', 'two', 'three', 'four', 'five'].map((word, at) => ({
       id: `b-${at}`, name: `Bravo ${word}`,

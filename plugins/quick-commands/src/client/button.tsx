@@ -1,6 +1,7 @@
 /**
  * composer 工具排左侧组的触发按钮：复刻原生 `.add` 圆形图标按钮
  * （`InputBar.module.css` 的 `.add`，28×28、14px Medium 字形），点击开/关悬浮面板；
+ * 点选指令插入成功后经 `focusInput` 把键盘交回输入框（光标停在插入文本之后），
  * 插入失败（草稿并发变化且重试仍失败）时经官方 Toast 就地提示。
  *
  * 面板必须走 QuickCommandsPortal（portal 到 body）：dsh 0.2.2-rc.1 起 composer
@@ -26,6 +27,8 @@ export interface QuickCommandsInjected {
   load: () => Promise<QuickCommandDocument>
   /** 整份写回（宿主 `put`）。 */
   save: (document: QuickCommandDocument) => Promise<void>
+  /** 插入成功后把键盘与光标交回输入框（光标停在插入文本之后）。 */
+  focusInput: () => void
 }
 
 /** dock entry 的完整 props：会话标准 kit（含 inputActions 插入面）+ RPC 面 + 文案。 */
@@ -39,20 +42,24 @@ export type QuickCommandsEntryProps =
  * @param props - 会话作用域标准 props、RPC 面与文案。
  * @returns 按钮与（打开时的）面板。
  */
-export function QuickCommandsEntry({ inputActions, load, save, t }: QuickCommandsEntryProps) {
+export function QuickCommandsEntry({ inputActions, load, save, focusInput, t }: QuickCommandsEntryProps) {
   const id = useId()
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState<{ seq: number, text: string } | null>(null)
   const toastSeq = useRef(0)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
+  // 插入成功后立刻回焦：面板行按钮还持着焦点，编辑器失焦时上游不会把插入后的
+  // 选区写回 DOM，不交还键盘就会出现「文本进来了、光标不在里面」。
   const insert = (text: string): boolean => {
     const ok = insertAtCaret(inputActions, text)
-    if (!ok) {
-      toastSeq.current += 1
-      setToast({ seq: toastSeq.current, text: t('insertFailed') })
+    if (ok) {
+      focusInput()
+      return true
     }
-    return ok
+    toastSeq.current += 1
+    setToast({ seq: toastSeq.current, text: t('insertFailed') })
+    return false
   }
 
   return (

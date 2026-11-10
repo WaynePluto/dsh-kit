@@ -167,6 +167,12 @@ pi-ai 默认 > models-catalog 推断。使用项目 provider-card 子槽与 Reac
 favorite-models 在 settings.models.footer 保存 provider+model 收藏，只影子覆盖 conversation.input.model。
 目录与选择动作复用 dsh modelDirectories；/model 保持完整目录。
 当前模型不因不在收藏中而自动切换，收藏全部失效时需回退到可用目录。
+
+换模型时选择器显式提交推理档位：模型自带 `defaultEffort`（路由 `providers.<route>.reasoning`）优先，
+没有则按偏好补 high → high 以下最高档 → 只有更强档位时的最低可用档，不选 off；模型不提供档位时
+保留不指定 effort 的 `Default`（请求不带 reasoning 参数，文案与原生一致）。原生没有 per-model 默认档位，且路由级
+`reasoning` 只对描述静默丢弃不支持的档位、请求路径却抛 `UNSUPPORTED_REASONING_EFFORT`
+（`packages/llm/llm-pi-ai/src/adapter.ts`），所以混合档位路由不能靠写路由默认解决。
 具体契约由项目 favorite-models 测试与 scripts/favorite-models-check.mjs 维护。
 
 ## 模型提供商标签

@@ -302,7 +302,11 @@ node_modules 解析出第二份 app-boot 实例，root Include entry 的模块�
   草稿已变化或提交锁定时 false）+ `setDraft/persistDraft` 与附件操作。`TokenSpan`
   坐标系是编辑器的 clipboard 投影，不是 DOM `selectionStart`——输入框本体是 Lexical
   `contentEditable`，没有 textarea 可查；span 对插件不透明，捕获后原样传回，失败重取重试。
-  实例：`plugins/quick-commands/src/client/insert.ts`。
+  插入后面板/菜单行按钮仍持焦点时编辑器是失焦态，上游会跳过 DOM 选区同步：要「插入后
+  光标停在文本之后」必须调 `SessionInput.focus()`（同文件 `contract/input.ts`，经
+  `ctx.get('conversation').input.for(ctx.sessions.scope(sessionId))` 取），不能靠 DOM
+  `focus()` 猜光标位置。
+  实例：`plugins/quick-commands/src/client/{insert.ts,index.tsx}`。
 - conversation.chat.turnTail 是 chain，不适合保证多个插件并列显示。
 - 程序化把图片加入会话草稿走 `conversation.createDrafts()` + `SessionInput.addAttachments()`，契约见 [会话](conversation.md) 的「程序化图片草稿附件」。
 

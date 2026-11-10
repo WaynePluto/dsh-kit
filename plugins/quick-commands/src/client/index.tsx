@@ -3,7 +3,8 @@
  * 官方扩展点——渲染于 [+] 按钮与 permission/plan 模式之后、右侧控制组之前）
  * 注册快捷指令按钮。RPC 走 `/quick-commands` kit 通道（宿主半存取
  * `$DSH_HOME/dsh-kit/quick-commands.json`），插入走 session 标准 prop
- * `inputActions` 的光标插入契约。
+ * `inputActions` 的光标插入契约；插入成功后经 conversation 服务的
+ * `SessionInput.focus()` 把键盘交回输入框，光标停在刚插入的指令之后。
  *
  * @module @dsh-kit/dsh-plugin-quick-commands/client
  */
@@ -49,6 +50,53 @@ const NS = SELF_NAMESPACE
 /** browser half 使用的 service：`slots` 是工具排座位，`locale` 提供文案，`connection` 提供 RPC。 */
 export const inject = ['slots', 'locale', 'connection']
 
+/** conversation 服务上用到的最小面：按会话 scope 解析输入面并交回键盘焦点。 */
+interface ConversationFocusFace {
+  readonly input: {
+    /**
+     * 解析一个会话 scope 的输入面。
+     * @param scope - 会话 scope 上下文。
+     * @returns 该会话的输入面。
+     */
+    for(scope: unknown): { focus(): void }
+  }
+}
+
+/** sessions 服务上用到的最小面：只借出会话 scope，不 retain。 */
+interface SessionsScopeFace {
+  /**
+   * @param id - 会话 id。
+   * @returns 该会话的 scope 上下文，未物化时 undefined。
+   */
+  scope(id: string): unknown
+}
+
+/**
+ * 插入成功后把键盘与光标交回输入框（光标停在刚插入的文本之后）。
+ *
+ * 插入走 `insertText()`，编辑器选区已经落在插入文本末尾，但面板行按钮持焦点时
+ * composer 编辑器处于失焦态（上游 `preserveExternalSelection` 会跳过 DOM 选区同步），
+ * 光标不可见、打字也进不去。上游 `SessionInput.focus()` 正是为「浮层拿走焦点后交还」
+ * 准备的公开面：先 DOM focus 再让 Lexical 把记忆的选区（即插入文本末尾）落回 DOM。
+ *
+ * 服务跨 fiber 现取（`ui-workspace/src/client/navigation.ts` 同款 `ctx.get`），
+ * 不在 apply 时缓存；会话已切走或服务缺席时静默跳过，已插入的文本不受影响。
+ * @param ctx - 插件 apply 上下文。
+ * @param sessionId - 槽位注入的当前会话 id。
+ */
+function focusComposer(ctx: Context, sessionId: string): void {
+  const sessions = ctx.get('sessions') as unknown as SessionsScopeFace | undefined
+  const conversation = ctx.get('conversation') as unknown as ConversationFocusFace | undefined
+  if (sessions === undefined || conversation === undefined) return
+  const scope = sessions.scope(sessionId)
+  if (scope === undefined) return
+  try {
+    conversation.input.for(scope).focus()
+  } catch {
+    // 会话 generation 已释放（切走/关闭）时 for() 抛错：焦点回填尽力而为，不打扰用户
+  }
+}
+
 /** RPC channel 错误。 */
 export class QuickCommandsChannelError extends Error {}
 
@@ -78,7 +126,11 @@ export function apply(ctx: Context): void {
     id: NS,
     order: 0,
     locale: NS,
-    inject: () => actions,
+    // 严格 session 槽：框架按会话绑定注入 sessionId（每次插入后回焦用）。
+    inject: sessionId => ({
+      ...actions,
+      focusInput: () => { focusComposer(ctx, sessionId) },
+    }),
   }, QuickCommandsEntry))
 }
 

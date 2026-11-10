@@ -30,7 +30,7 @@
 | [侧栏面板行回会话](../plugins/panel-toggle/README.md) | 侧栏 → 面板行（插件/自动化任务/服务） | 再点一次高亮的面板行即返回当前会话（原生只能无效重选） |
 | [任务通知](../plugins/notify/README.md) | 设置 → 通知 | 在运行 dsh 的 Windows 桌面提醒任务完成或等待输入 |
 | [切屏停靠](../plugins/session-park/README.md) | 切屏离开或点开侧栏面板页时自动（待操作黄点期间不动） | 把运行中的会话让位给当前工作区的空白会话（面板页停靠后原样保留在眼前），结束后侧栏亮「完成未读」绿点 |
-| [快捷指令](../plugins/quick-commands/README.md) | 输入框左下角 → 列表笔按钮 | 弹出自定义指令面板（可增删改），点击一条在输入框光标位置插入文本 |
+| [快捷指令](../plugins/quick-commands/README.md) | 输入框左下角 → 列表笔按钮 | 弹出自定义指令面板（可增删改），点击一条在输入框光标位置插入文本，插入后光标停在文本之后可直接续写 |
 | [会话工作区显示](../plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数；展开条目可划选复制工具名 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
