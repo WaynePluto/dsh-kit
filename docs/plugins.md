@@ -23,7 +23,7 @@
 | [失败重试](../plugins/turn-retry/README.md) | 输入框上方 | 失败后重试、停止后继续，并保护排队消息 |
 | [会话滚动导航](../plugins/chat-scroll/README.md) | Agent 消息操作栏、右下角底部按钮 | 消息开头定位与返回底部滚动动效 |
 | [会话统计小时档](../plugins/stats-hours/README.md) | 输入框上方 → 会话统计 | 模型用时、工具调用用时超过一小时时按小时显示 |
-| [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填 |
+| [用户消息分叉](../plugins/user-message-fork/README.md) | 用户消息操作栏 | 从消息之前的历史创建子会话并回填草稿；首轮消息改为新建会话回填；fork 出的新会话排在所属工作区分组第一位（普通会话，不置顶） |
 | [会话重命名](../plugins/session-rename/README.md) | 顶栏 → 双击会话标题 | 双击对话顶栏的当前会话标题，弹窗重命名（原生入口只在侧栏） |
 | [复制工作区路径](../plugins/workspace-path/README.md) | 侧栏 → 工作区 `···` 菜单 | 菜单新增「复制路径」，一键复制该工作区的完整目录路径 |
 | [聚焦/折叠工作区](../plugins/workspace-collapse/README.md) | 侧栏 → 工作区标题栏 | 标题栏新增动作按钮：有分组展开时一键折叠全部，全部收起后按会话提醒（运行中、待操作、未读）仅展开活动的工作区；聚焦后活动工作区按字母序置前 |
@@ -34,7 +34,7 @@
 | [会话工作区显示](../plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数；展开条目可划选复制工具名 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
-| [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、图片预览 Space + 鼠标左键拖动平移、目录右键菜单与文件右键「查看 Git 变更」面板 |
+| [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、临时预览与目录树默认展开、右键菜单补充（复制相对路径、查看 Git 变更）、图片预览 Space + 鼠标左键拖动平移 |
 | [常驻服务](../plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务；注册表在 DSH_HOME，跨工作区可见可停 |
 | [任务看板](../plugins/task-board/README.md) | 侧边栏「任务看板」面板 | 本地 Trello 式看板：卡片跨列拖拽、标题与就地编辑、卡片图片（填入新对话时作为图片附件一并加入），第一列任务可填入工作区新对话（只填草稿不发送，成功后卡片移到第二列首位），最后一列可一键清空 |
 | [交互终端](../plugins/terminal/README.md) | 模型工具；右侧边栏「交互终端」tab（原生级 xterm 渲染） | 键盘直写、尺寸自适应、关 chip 杀进程（二次确认）、流式实时画面；密码回显归程序，提问/审批卡片与终端并存 |

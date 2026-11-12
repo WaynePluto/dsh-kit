@@ -31,7 +31,14 @@ turn-retry 以持久化 turn/end 为依据：
 | completed、blocked、max-tokens | 正常收尾，不显示重试 |
 
 agent/error 是运行时事件且早于 turn/end，不适合作为持久 UI 状态源。
-Agent 的 send/followup/steer/inject 都要求 UserMessage，inject 不唤醒；空消息不会发模型请求。
+Agent 的 send/followup/steer/inject 都要求 UserMessage，inject 不唤醒。
+0.2.2-rc.2 起 RPC `session.prompt` 的空 content 是合法的「续跑」请求：仅 queue 模式、
+`conversationContinuation` 投影非空（admitted 用户输入 + 可续失败的 turn/end）、inbox
+nextTurn 空、nextStep 无 user 源输入时放行，走 `agent.followup(createUserMessage({content: []}))`
+发新 turn，并把消息源记为 `kind: 'retry'`（`'retry-rpc'` 事件）。UI 侧原生 composer 在
+`conversationContinuation` 非空且草稿为空时把发送键变成重试键（`ui-conversation` 的
+`InputHub.retry`）。旧口径「空消息不会发模型请求」自该版本起不再成立
+（`packages/api/session-controller/src/{index.ts,commands.ts,continuation.ts}`）。
 agents.resume 只恢复活 Agent，不执行新推理。
 
 `TurnEndReasonMap` 键集合相对 0.2.1 未变；`error` 结局的 `error.code` 新增
@@ -43,9 +50,17 @@ agents.resume 只恢复活 Agent，不执行新推理。
 原 prompt 不重发。错误投影限 2000 字，给模型的通知限 300 字，详情在弹窗查看。
 
 followup 会追加 nextTurn 并唤醒，driver 会先消费已有排队消息。
-项目在 nextTurn 非空时返回 pending-input，不调用 followup、不改队列、不生成 turn。
+项目在 nextTurn 非空时返回 pending-input，不调用 followup、不改队列、不生成 turn
+（与 rc.2 原生续跑守卫同口径）。
 nextStep 保持 dsh 原生语义。入口只有输入框上方的重试栏。
 队列出处：`packages/core/agent/src/inbox.ts`、`packages/api/session-controller/src/commands.ts`。
+
+**root agent 判定（0.2.2-rc.2 破坏性变化）**：`ctx.agents.roots()`、`isOwnedBy()` 与
+`CreateAgentOptions.parentAgent` 随运行时 owner 概念一并删除（`packages/core/agent/src/index.ts`），
+registry 只剩 `get(id)`/`list()`。需要「只驱动顶层会话」的插件改用
+`ctx.agents.get(agent.id) === agent && agent.session.header.origin !== 'subagent'`
+（`origin` 是 `'subagent' | undefined`，见 `packages/core/session/src/types.ts`）。
+实例：notify 的完成通知与等待提醒、turn-retry 的可驱动判定。
 
 ## Session Projection
 

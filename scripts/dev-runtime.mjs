@@ -51,16 +51,16 @@ export async function ensureDevelopmentRuntime({
   // 原 launcher package.json 的依赖清单（launcher 退役后内联于此）：
   // dsh 运行时家族 + 常用工具，外加以 file: 链接的 plugin-ui（浏览器插件内联源）。
   const runtimeDependencies = injectedRuntimeDependencies ?? {
-    '@deepseek-ai/dsh': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-home-paths': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-llm': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-plugin-manager': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-sandbox-policy': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-terminal': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-terminal-bash': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-tool-terminal': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-tools': '0.2.2-rc.1',
-    '@deepseek-ai/dsh-user-approval': '0.2.2-rc.1',
+    '@deepseek-ai/dsh': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-home-paths': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-llm': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-plugin-manager': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-sandbox-policy': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-terminal': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-terminal-bash': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-tool-terminal': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-tools': '0.2.2-rc.2',
+    '@deepseek-ai/dsh-user-approval': '0.2.2-rc.2',
     '@deepseek-ai/schemastery': '3.19.0',
     '@dsh-kit/plugin-ui': `file:${join(root, 'packages', 'plugin-ui')}`,
     '@earendil-works/pi-ai': '1.3.0',
@@ -72,7 +72,7 @@ export async function ensureDevelopmentRuntime({
     pnpm: '12.11.2',
     undici: '8.11.2',
     yaml: '2.9.1',
-    zod: '4.4.3',
+    zod: '4.6.6',
     zustand: '4.4.7',
   }
   const overrides = rootManifest.pnpm?.overrides

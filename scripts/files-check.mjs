@@ -83,7 +83,8 @@ function inspectClientBundle() {
       imageZoomPortalGuards: body.includes('dsh-files-image-toolbar') && body.includes('onPointerDown') && body.includes('stopPropagation'),
       tabBulkClose: body.includes('close-others') && body.includes('close-all'),
       gitSnapshot: body.includes('gitUnavailable') && body.includes('snapshot'),
-      contextMenu: body.includes('copy-relative-path'),
+      contextMenu: body.includes('copy-relative-path') && body.includes('dsh-kit-files.file'),
+      navigatorAutoOpen: body.includes('data-files-navigator-toggle'),
       gitReview: body.includes('files-git-review') && body.includes('gitReviewMenu') && body.includes('dsh-files-gr'),
       gitReviewStore: body.includes('dsh-client-store'),
       noConversationView: !body.includes('conversation.view'),
@@ -97,6 +98,7 @@ async function main() {
   const manifest = JSON.parse(readFileSync(PACKAGE_MANIFEST, "utf8"))
   check(manifest.dsh?.client?.inject?.includes("@deepseek-ai/dsh-client-ui-sidebar-files") === true, "包声明原生 ui-sidebar-files 模块依赖")
   check(manifest.dsh?.client?.inject?.includes("@deepseek-ai/dsh-client-ui-sidebar-documentpreview") === true, "包声明原生 documentpreview 模块依赖")
+  check(manifest.dsh?.client?.inject?.includes("@deepseek-ai/dsh-client-ui-context-menu") === true, "包声明原生 context-menu 模块依赖")
   const host = await inspectHostBundle()
   check(host.channels.includes("/files"), "宿主产物挂上了 /files 通道", host.channels.join(", "))
   check(host.disposers >= 1, "通道注册挂在可撤销的 ctx.effect 上", String(host.disposers))
@@ -116,7 +118,8 @@ async function main() {
   check(client.imageZoomPortalGuards, "图片缩放 portal 阻止原生 tab 事件吞掉点击")
   check(client.tabBulkClose, "浏览器产物保留当前分栏批量关闭")
   check(client.gitSnapshot, "浏览器产物请求 Git snapshot")
-  check(client.contextMenu, "浏览器产物保留目录右键菜单操作")
+  check(client.contextMenu, "浏览器产物以原生 contextMenus 贡献补充右键项")
+  check(client.navigatorAutoOpen, "浏览器产物实现预览页签目录树默认展开")
   check(client.gitReview, "浏览器产物注册 Git 变更页签与右键入口")
   check(client.gitReviewStore, "浏览器产物经页面模块表复用 dsh-client-store")
   check(client.noConversationView, "浏览器产物不再注册 conversation.view")

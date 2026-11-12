@@ -219,6 +219,24 @@ dsh 0.2.0 起菜单/下拉表面是半透明磨砂设计：`--dsw-specific-menu`
 断言应检查「用了 MenuSurface + 保留 `--dsw-elevation-prominent` 抬升阴影 + 无自绘菜单面背景」，
 而不是要求已删除的背景 token（2026-10-14 favorite-models-check 陈旧断言实机修正）。
 
+### 0.2.2-rc.2 Menu 定位改 CSS anchor，DOM 注入契约不变
+
+`Menu` 内部重写但 `MenuSurface` 组件与磨砂材质零变化，DOM 形态仍为
+`MenuSurface[role=menu] > div[role=presentation]（viewport）> rows`（`Menu.tsx` 实测），
+注入点与行渲染方式照旧。变化面（`packages/client/ui-primitives/src/Menu.{tsx,module.css}`）：
+
+- portal 定位从 JS 测量（`useAnchoredPosition`，该导出已删除）迁到 CSS anchor positioning
+  （`anchor-name`/`position-anchor`/`@position-try` + `data-anchor-side`/`data-anchor-align`/
+  `data-match-anchor-width`）；非 portal 模式也是纯 CSS 就地定位。它跟随页面缩放、**可能超出
+  视觉视口**，不能再用旧 JS 定位的边界假设推几何。
+- `Menu` 的 `getAnchorRect` prop 删除，改 `anchorRef`（外部锚元素，hook 在其上写 `anchor-name`）
+  与 `anchorPoint`（右键菜单捕获的 client 坐标）。
+- 子菜单不再嵌在父卡内绝对定位，改为独立 body portal（`SubmenuPanel`，side / 单面板 page 两种
+  布局）；父行 `aria-expanded` 现在真实反映开闭，键盘 Escape/ArrowLeft 返回、ArrowRight/点击进入。
+  向原生菜单注入条目的插件若依赖「子菜单在父卡 DOM 内」会被打破。
+- 所有列表统一 `.scrollable` 高度帽；`MenuRow`/`useMenuSubmenu`/`menu-submenu-position` 为包内部
+  实现、未从 index 导出，不构成新公开 API。
+
 ### 独立 React 根的 body 宿主必须零尺寸
 
 插件自建 React 根（`react-dom/client` 的 `createRoot`）挂进 `document.body` 时，宿主 div 若留在文档流内，

@@ -95,10 +95,13 @@ async function main() {
   check(user?.name === 'conversation.chat.node', '产物把 user renderer 注册进 conversation.chat.node', JSON.stringify(user))
   check(user?.priority === -1, 'user renderer 使用 priority -1 影子覆盖 dsh 默认 renderer', JSON.stringify(user))
   check(report.namespaces.includes('dsh-plugin-user-message-fork'), '产物注册了自己的文案命名空间')
-  check(report.disposers >= 2, '产物 apply() 注册了文案和样式两个可撤销副作用', `${report.disposers} 个`)
+  check(report.disposers >= 3, '产物 apply() 注册了文案、样式和 fork 落位三个可撤销副作用', `${report.disposers} 个`)
   check(report.bundle.includes('sessions.fork'), 'bundle 包含 sessions.fork 调用')
   check(report.bundle.includes('sessions.create'), 'bundle 包含首轮消息的新会话创建路径')
   check(report.bundle.includes('setDraft'), 'bundle 包含输入框 setDraft 回填')
+  check(report.bundle.includes('sidebar.workspaces'), 'bundle 从侧边栏槽位取视图 store 做 fork 落位')
+  check(report.bundle.includes('pinSessionOrder'), 'bundle 复用视图 store 的排序动作（不调宿主 pin）')
+  check(!report.bundle.includes('pinSession('), 'bundle 不再调用 uiWorkspace.pinSession 置顶')
 
   prepareHome()
   await runLiveDshCheck(context, {

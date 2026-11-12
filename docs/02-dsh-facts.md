@@ -1,11 +1,12 @@
 # 02 · dsh 源码依据
 
-当前插件适配基线：`@deepseek-ai/dsh@0.2.2-rc.1`（git `66491b05e3`，vendor cordis 4.1.0 /
-loader 1.1.0 / schemastery 3.19.0 / `@earendil-works/pi-ai` 1.3.0），套件静态验证、开发栈
-冒烟与全部检查表脚本在该版本通过（2026-11-04；本机官方桌面同为 0.2.2-rc.1，桌面实机
-检查表验收待跑）。本项目不内置 dsh 运行时；
+当前插件适配基线：`@deepseek-ai/dsh@0.2.2-rc.2`（git `ddac96760b`，vendor cordis 4.1.0 /
+loader 1.1.0 / schemastery 3.19.0 / `@earendil-works/pi-ai` 1.3.0 未变；上游 zod 钉 4.6.6，
+本仓 zod 与 dev-runtime 同步跟进），套件静态验证、开发栈冒烟与全部检查表脚本在该版本
+通过（2026-11-12；本机官方桌面同为 0.2.2-rc.2，套件以 link: 目录安装）。本项目不内置 dsh 运行时；
 基线 = 类型与开发栈钉住的 `@deepseek-ai` 版本 + 实机验证过的官方宿主版本，机器侧三处
-（根 `pnpm.overrides`、`scripts/dev-suite.mjs` 的 `DSH_VERSION`、各插件 devDependencies）
+（根 `pnpm.overrides`、`scripts/dev-suite.mjs` 的 `DSH_VERSION`、`scripts/dev-runtime.mjs`
+的 `runtimeDependencies`、各插件 devDependencies）
 随基线同步。跟进新版本按 `.agents/skills/dsh-upgrade/SKILL.md` 执行，完成后回写本段。
 本目录保留当前实现依赖的契约与已有核实结论，不表示每次文档整理都重新运行过所有实机检查。
 升级 dsh 时加载 `dsh-source` skill，按主题复核；源码路径均相对于 dsh 仓库根。

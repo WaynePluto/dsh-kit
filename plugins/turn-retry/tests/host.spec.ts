@@ -21,7 +21,7 @@ interface FakeInboxMessage { id: string; source: { kind: string } }
 interface FakeAgent {
   id: string
   status: 'idle' | 'running'
-  session: object
+  session: { id: string; header: { origin?: 'subagent' } }
   inbox: { nextTurn: FakeInboxMessage[]; nextStep: FakeInboxMessage[] }
   followup: ReturnType<typeof vi.fn>
 }
@@ -31,7 +31,7 @@ function fakeAgent(overrides: Partial<FakeAgent> = {}): FakeAgent {
   return {
     id: 's1',
     status: 'idle',
-    session: { id: 's1' },
+    session: { id: 's1', header: {} },
     inbox: { nextTurn: [], nextStep: [] },
     followup: vi.fn(),
     ...overrides,
@@ -40,8 +40,8 @@ function fakeAgent(overrides: Partial<FakeAgent> = {}): FakeAgent {
 
 interface CtxOptions {
   agent?: FakeAgent
-  /** 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`roots()`） */
-  roots?: FakeAgent[]
+  /** 注册表内视为 live 的 agent；dsh 0.2.2-rc.2 起 `roots()` 删除，root 判定走 origin。 */
+  registry?: FakeAgent[]
   projection?: TurnRetryState
   sessionController?: (id: string) => Promise<{ agent: FakeAgent } | { error: { message: string } }>
 }
@@ -65,7 +65,7 @@ interface Built {
 /** 进程与运行时契约：此处说明生命周期、身份核验、轮询或终端边界。 */
 function fakeCtx(options: CtxOptions = {}): Built {
   const agent = options.agent ?? fakeAgent()
-  const roots = options.roots ?? [agent]
+  const registry = options.registry ?? [agent]
   const listeners = new Map<string, (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>>()
   const registered: RegisteredProjection[] = []
   const handled = new Map<string, (request: Request) => Promise<Response>>()
@@ -78,8 +78,7 @@ function fakeCtx(options: CtxOptions = {}): Built {
 
   const ctx = {
     agents: {
-      get: (id: string) => (agent.id === id ? agent : undefined),
-      roots: () => roots,
+      get: (id: string) => registry.find(entry => entry.id === id),
     },
     sessionProjections: {
       // dsh 0.2.2 起注册返回 Promise<ProjectionHandle>；读取走 handle.stateOf，registry 级 stateOf 已弃用。
@@ -223,8 +222,8 @@ describe('retrySession', () => {
   })
 
   it('refuses to drive a subagent', async () => {
-    const agent = fakeAgent()
-    const built = fakeCtx({ agent, roots: [], projection: PENDING })
+    const agent = fakeAgent({ session: { id: 's1', header: { origin: 'subagent' } } })
+    const built = fakeCtx({ agent, projection: PENDING })
     await apply(built.ctx)
     await expect(retrySession(built.ctx, 's1')).resolves.toEqual({ started: false, reason: 'subagent' })
     expect(agent.followup).not.toHaveBeenCalled()
@@ -233,7 +232,7 @@ describe('retrySession', () => {
   it('keeps queued input parked after resolving a cold session', async () => {
     const queued = { id: 'cold-queued', source: { kind: 'user' } }
     const cold = fakeAgent({ id: 'cold', inbox: { nextTurn: [queued], nextStep: [] } })
-    const built = fakeCtx({ roots: [cold], projection: PENDING,
+    const built = fakeCtx({ registry: [cold], projection: PENDING,
       sessionController: () => Promise.resolve({ agent: cold }) })
     await apply(built.ctx)
     await expect(retrySession(built.ctx, 'cold'))
@@ -244,7 +243,7 @@ describe('retrySession', () => {
   it('wakes a cold session through the Session Controller', async () => {
     const cold = fakeAgent({ id: 'cold' })
     const built = fakeCtx({
-      roots: [cold],
+      registry: [cold],
       projection: PENDING,
       sessionController: () => Promise.resolve({ agent: cold }),
     })

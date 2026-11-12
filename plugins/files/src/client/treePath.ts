@@ -38,13 +38,3 @@ export function workspaceRelativePath(root: string, target: string): string | un
   if (!left.startsWith(right)) return undefined
   return value.slice(prefix.length)
 }
-
-/** Restore a target-platform absolute path from a slash-relative workspace path. */
-export function absolutePathOf(root: string, relative: string): string {
-  if (relative === '') return root
-  const separator = root.includes('\\') ? '\\' : '/'
-  const base = root.replace(/[\\/]+$/u, '')
-  const value = relative.split('/').join(separator)
-  if (base === '') return `${separator}${value}`
-  return `${base}${separator}${value}`
-}

@@ -6,6 +6,24 @@
 
 ## 已实现
 
+- [x] files 打开跟随原生 + 目录树默认展开 + 右键并入原生菜单（2026-11-10，用户需求
+  「充分利用原生目录树」）：① 删除 `sidebar.split` 分栏打开（`paneNavigation.ts` 整体删除），
+  单击/双击文件都打进树所在分栏（停靠带 paneId、浮动不带，与原生 `FilesBody.onOpen` 同语义），
+  PreviewTabs 斜体临时页签语义保留（作用域从拆出的预览格改为树所在格）；② 预览页签头部的原生
+  目录树默认展开（`navigatorAutoOpen.ts` 监听 `data-files-navigator-toggle`，每分栏页面生命周期内
+  只 DOM 代点一次，用户点过开关即接管；原生 toggle 工厂单定义注册无法 shadow，故走 DOM 层）；
+  ③ 树行右键改为原生 `ctx.contextMenus` 贡献（`contextMenuContributions.ts`，order 300 排在
+  open-in-app/file-actions 之后）：文件行「查看 Git 变更」「复制相对路径」、目录行「复制相对路径」，
+  自绘菜单与 contextmenu 拦截删除（顺带消除 0.2.2 起原生菜单与插件菜单双开的问题）；
+  「关闭其他/关闭全部」保留（原生 TabMenu 无批量关闭）。新增 `@deepseek-ai/dsh-client-ui-context-menu`
+  固定依赖与 `dsh.client.inject` 声明；13 个测试文件 72 项单测（新增右键贡献 6 项、默认展开 6 项，
+  重写 adapter 测试）、lint/typecheck 全绿。桌面实机验收（点文件不拆栏、目录树默认展开且收起后
+  不再自动弹出、原生菜单尾部出现补充项、斜体临时页签替换）待用户执行。
+  桌面实机首验发现整页启动失败（web boot: 1 entry did not activate，2026-11-11 修复）：客户端
+  入口 cordis inject 漏声明 `contextMenus`/`sessions`（cordis 4 对 fiber 上下文已声明服务强制
+  要求 inject，缺声明激活即 throw，单测 mock 不校验），补声明后桌面正常启动、27 行浏览器图完整
+  （契约见 [插件机制](dsh/plugins.md) 客户端产物节）。
+
 - [x] chat-scroll 落点改锚「本轮 turn 头部」并贴顶（2026-11-10 第四轮，用户报长回复定位错，
   截图实测：视口顶边 y132、首行被裁半、26px 落点把上一条消息的尾巴留在顶部）：① 锚点不再
   要求与消息行邻接，永远取本轮 turn 头部——多步轮次（长回复）也回到这一轮的开头，正好落在
@@ -88,7 +106,21 @@
   深浅主题中英文）待用户执行；上游拉回写入者的调用栈因窗口遮挡（Chrome hidden 时 rAF
   冻结）未能抓取，守护按「非输入漂移一律校正」设计不依赖具体触发者。
 
-- [x] 分叉会话置顶（2026-11-05，用户反馈「分叉后在会话列表里找不到」）：fork 子会话的
+- [x] 分叉会话排到工作区第一位（2026-11-11，用户决策「分叉后的新会话就是该工作区第一个会话，
+  但不要被锁定为置顶会话」；取代 2026-11-05 的 pin 方案）：定位到侧边栏手动排序模式
+  （用户本地 `dsh.workspace.view.v5` 为 `orderBy:"manual"`）下 `reconcileManualOrder` 把新会话
+  追加在已存顺序之后，所以 fork 子会话沉到底部。改为复用 ui-workspace 视图 store 的
+  `pinSessionOrder` 动作（原生置顶按钮写顺序的同一动作）把子会话前置到所属分组与扁平列表，
+  **不再调用 `uiWorkspace.pinSession`**，会话不进 pin 集合、侧边栏无图钉、用户可照常拖动。
+  覆盖全部 fork 入口：观察 `sessions.list` 新出现的非 blank 会话（原生「在新对话中分叉」、
+  侧边栏「分叉会话」），本插件自己的两条路径按已知 id 直接入队；宿主 attach 帧晚于 fork
+  返回时按快照通知重试，分组一直未知超过宽限次数才按「未分组」账户落位。
+  顺带更正文档旧结论：`updated` 模式下 fork 子会话的 `createdAt` 是 fork 时刻，本来就在最前；
+  pin 在两种模式都由 `sectionMembers` 领跑分区。21 项新增/更新单测与
+  `user-message-fork-check.mjs` 冒烟全绿；suite tar 重打（同版本号覆盖）。桌面实机验收
+  （原生按钮 fork 落第一位、无图钉、拖动仍可、切 updated 模式无副作用）待用户执行。
+- [x] 分叉会话置顶（2026-11-05，用户反馈「分叉后在会话列表里找不到」；已被上一条取代）：
+  fork 子会话的
   summary.updatedAt 继承 seed 前缀的旧时间戳，工作区按 recency 排序时落在末尾，会话多时
   不可见。fork/create 成功后调用官方 `ctx.uiWorkspace.pinSession(childId)` 置顶到分组
   第一位（pin 在排序里优先于手动顺序与 recency；用户可随时手动取消置顶）。21 项单测与
@@ -117,29 +149,27 @@
     两半产物/`terminal-check.mjs`（真实 dsh 冷启动 + 新通道面 + xterm bundle 断言）全绿，
     suite tar 重打。新契约回写：流式响应（[插件机制](dsh/plugins.md) D16 段）、sidebar tab
     （[Sidebar 扩展](dsh/sidebar.md)，自 plugins.md 拆分）、页面渲染与生命周期
-    （[工具与进程](dsh/runtime.md)）。桌面实机验收（四点体验 + 彩色输出 + 保活）待用户执行。实机首轮报
-  「no PTY backend registered for shell」：backend 注册写在 apply 顶层，`ctx.get('terminals')`
-  在服务 fiber 未起时返回 undefined 被可选链吞掉——改为 `ctx.inject(['terminals'])` 内注册
-  （实例仍绑宿主根 ctx，inject 派生 scope 无 sandboxPolicy 执行环境）；套件已重打。二轮实机又修三处：serveStream 按 sessionId 查 tap（应按 terminalId）致流式 attach 恒 404（missing 态）——请求改双 id 并加跨会话归属校验；tap 在就绪探测后才登记丢失启动期输出（guide 终端空白）——改 spawnTerminal 注入点立即登记（闭包持外层 spec.sessionId）；monitor 只认导航 params 识别已绑定 tab（guide 壳 tab 无 params）致重复开 tab——openTabs contentId 经 bindings 回退。画面几何：流式帧序改 size→ring→live→data/exit，客户端按 PTY 原几何重放、live 后才 fit+resize（消除 160 列字节错位重放），重连先 reset 全量重放。三轮实机（2026-11-08，用户报「首开后/变宽后命令重复自动输入、chip 末字截半、开始页叫新终端」）：先用简化栈（工作区 node-pty 1.2.0-beta.15）字节捕获得出「ConPTY 每次 resize 都全屏重绘」并据此清屏+几何前移（resize 端点成功后 tap 几何前移——这条保留，size 帧不再停留 spawn 值），**但实机复验推翻重绘前提（真实栈=dsh 宿主自带 node-pty，resize 不重绘，清屏即永久白屏）**，清屏回退。随后在真实栈（cordis + subprocess-local + sandbox-policy + 本插件 backend）复刻完整链路捕获 PTY 输入侧，**抓到真凶：pwsh/conhost 发 DSR/DA 查询（`\e[6n`/`\e[c`），上游会话 headless 模拟器应答之外，浏览器 xterm 也经 onData 自动应答写回 PTY——双重应答进输入行，pwsh 按行读应答时吞掉后续回车，命令文本残留输入行**（复现用户全部症状：直接回车显示 `Clear-Host`、命令执行后被自动重输）。修法：tap 加 `TerminalQueryStripper`（跨 chunk 状态机，剥 `\e[6n` 与 DA 族查询，OSC/DCS 字符串态负载不误伤），浏览器侧不再应答；上游模拟器不经 tap，应答通道不变。真实栈实验复验：直接回车干净、命令单次执行、resize 画面保留。chip 末字截半是 dockkit 标题遮罩（激活态末 30→14px 渐变 mask）吃掉恰好占满 chip 的末个 CJK 字形——title span 尾部留白 30px；开始页文案 guideTitle 改「AI交互终端」。61 项单测、lint/typecheck/两半产物/suite tar 全绿，client=2026-11-08.2；桌面实机复验（Console 核对 client 版本 + 首开/变宽输入 + 直接回车 + chip 末字 + 开始页文案）待用户执行。四轮实机（2026-11-09，用户报「AI 开终端进 REPL 等输入时，点击后光标不在提示符处、输入叠进上一行」）：真实栈复刻模型 startSend python → 客户端重放 + 窄面板 fit 复现——**竞态**：xterm write 异步解析，ring 重放后同 tick resize（live 与 ring 同一 HTTP chunk），排队字节按新窄宽解析、长 banner 提前 reflow，而 ConPTY 变窄不重排内部缓冲（`\e[4;5H` 光标定位实证 `>>>` 仍在原行），两边行数分叉一行、逐键回显整体错行。修法两件：① ring/data 帧写入带解析回调计数，fitNow 写队列未排干时挂起、排干后续跑（实例消亡随清理归零）；② 宿主在 size 帧附 Windows 内部版本号（`os.release()` 末段），客户端设 xterm `windowsPty`（conpty 档位，build < 21376 禁 reflow）——xterm 与 ConPTY 都不重排旧行，行数不叉（VS Code 同款兼容开关）。真实栈实验复验：REPL `>>>` 后输入 `1+1` 精确落在提示符后、执行出 `2`、光标就位。63 项单测、lint/typecheck/全仓测试/两半产物/suite tar 全绿，client=2026-11-09.1；桌面实机复验（AI 开终端进 REPL 后点击/输入 + 变宽后输入）待用户执行。
-- [x] 交互终端迁右侧边栏 tab（2026-11-05，已被上方原生级重写取代）：提问/审批卡片接管 composer 席位时旧
-  dock 面板（`conversation.input.dock` 在 chain fallback 内）被整体 `display:none`，用户无法在
-  提问期间输入密码。改为右侧边栏自有 tab 类型（kind `dsh-kit-terminal`，`sidebarRightTabs` +
-  `sidebar.right.pane.tab` 两段式注册，`keepMounted: true`，guide 入口卡片）：composer 接管与
-  sidebar 互不影响，边看提问边输入。宿主半零改动（PTY、工具契约、/terminal RPC 原样）；
-  浏览器半复用 panel/polling hook，`tab.visible` 驱动 screen 轮询暂停与草稿清理；会话级
-  monitor 每 5 秒收敛视图（0→1 自动 `openTabIn`，用户手动关闭按基线抑制重开、模型开出更多
-  终端才重开，终端清零收掉空 tab）；关 tab 不杀进程（不注册 close handler）。guidance 补
-  「等待用户输入轮询 read、不发提问弹窗」。91 项单测、lint/typecheck/两半产物/suite tar 全绿，
-  `terminal-check.mjs`（真实 dsh 冷启动 + PTY + 通道）全过；桌面实机核心场景
-  （模型 start + ask_user_question 弹出时在 tab 输入密码后点选项，AI 接管）待用户验收。
-  sidebarRight tab 契约（openTabIn 跨会话、close 仅前台、openTabs 清单、useTabInfo 自动绑定、
-  关闭语义）回写 [Sidebar 扩展](dsh/sidebar.md)。
+    （[工具与进程](dsh/runtime.md)）。
+  - 四轮实机（2026-11-08 ～ 11-09）修复并保留的现行实现：backend 注册改走 `ctx.inject(['terminals'])`
+    （顶层 `ctx.get` 在服务未起时被可选链吞掉）；serveStream 按 terminalId 查 tap 并校验跨会话归属；
+    spawnTerminal 注入点立即登记 tap（保留启动期输出）；openTabs contentId 经 bindings 回退识别；
+    流式帧序 size→ring→live→data/exit，客户端按 PTY 原几何重放、live 后才 fit+resize；
+    tap 的 `TerminalQueryStripper` 剥离 pwsh/conhost 的 DSR/DA 查询（`\e[6n`/`\e[c`）以消除
+    浏览器与上游模拟器双重应答；ring/data 写入带解析回调计数，fitNow 等写队列排干；
+    size 帧附 Windows build 号供客户端设 xterm `windowsPty`（build < 21376 禁 reflow，
+    与 ConPTY 不重排旧行对齐）；chip 标题尾部留白 30px 防 dockkit 遮罩吃掉末字 CJK。
+    63 项单测、lint/typecheck/全仓测试/两半产物/suite tar 全绿，client=2026-11-09.1；
+    桌面实机复验（AI 开终端进 REPL 后点击/输入 + 变宽后输入）待用户执行。
+- [x] 交互终端迁右侧边栏 tab（2026-11-05，已被上方原生级重写取代）：改为右侧边栏自有 tab
+  类型（kind `dsh-kit-terminal`，`sidebarRightTabs` + `sidebar.right.pane.tab` 两段式注册，
+  `keepMounted: true`，guide 入口卡片），composer 接管与 sidebar 互不影响；会话级 monitor
+  每 5 秒收敛视图（0→1 自动 `openTabIn`，用户手动关闭按基线抑制重开，终端清零收掉空 tab），
+  关 tab 不杀进程。sidebarRight tab 契约（openTabIn 跨会话、close 仅前台、openTabs 清单、
+  useTabInfo 自动绑定、关闭语义）回写 [Sidebar 扩展](dsh/sidebar.md)。
 - [x] quick-commands 弹窗闪退修复（2026-11-05，用户报告）：dsh 0.2.2-rc.1 起 composer 座位
-  `will-change: transform`（`ConversationRoot.module.css`）成为 fixed 后代包含块，契约要求
-  composer 内 fixed 浮层一律 portal 到 body（[会话](dsh/conversation.md) 已记录）；面板此前
-  误用非 portal 的 `QuickCommandsPanel` 内联渲染（违背 D25 自身的 portal 声明），fixed 坐标
-  被按 composer 座位解释而闪退。改用 `QuickCommandsPortal` 后恢复；chat-scroll 的 fixed 元素
-  在消息区（非 composer 后代），不受影响。35 项单测绿。
+  `will-change: transform` 成为 fixed 后代包含块，composer 内 fixed 浮层必须 portal 到 body
+  （[会话](dsh/conversation.md) 已记录）；面板此前误用内联渲染，改用 `QuickCommandsPortal`
+  后恢复。35 项单测绿。
 - [x] favorite-models 选择器对齐原生并吸收三项能力（2026-11-05，用户确认）：按
   dsh 0.2.2-rc.1 `ui-model-selection/ModelSelect.module.css` 重译样式（行密度 34px/13px/400、
   勾号 14×14、图标族 Regular、radius token、business-primary 焦点圈 + `data-selection-focus`
@@ -148,8 +178,7 @@
   ②选中提交期间 StateDot 进度点（触发器 chevron 位 + 对应行勾号位，`state.pending` 驱动）
   ③打开时 `scrollIntoView` 定位当前选中项、无当前模型直达列表 pane、Escape 二段式返回。
   未吸收（清单已过用户评估）：badge、focus-follows-mouse、Tab 语义、provider 排序、移动端
-  适配、结构化错误。24 项单测与全仓检查绿；测试基建教训（MenuSurface mock 须 forwardRef、
-  jsdom 缺 scrollIntoView 需 polyfill）已并入 dsh-theme skill。
+  适配、结构化错误。24 项单测与全仓检查绿；测试基建教训已并入 dsh-theme skill。
 - [x] 任务看板三项增强（2026-11-04，用户需求）：① **卡片图片**——回形针按钮多选或卡片聚焦时
   粘贴截图，缩略图行支持官方 ImageLightbox 预览与悬停移除；仅 PNG/JPEG/WebP/GIF（dsh
   `isImageMediaType` 白名单）、单图 4 MiB、单卡 8 张、整板 data URL 24 MB，图片以自包含
@@ -479,6 +508,23 @@
 
 ## 实机验收
 
+- [ ] **0.2.2-rc.2 适配验收（2026-11-12，静态与开发栈已全绿，桌面实机待用户执行）**：
+  契约核对结论——客户端模块系统/槽位（新增 `hoc` kind，纯加法）/RPC 通道/IndexInjection/
+  MenuSurface 材质全部保持；`ctx.agents.roots()`+`isOwnedBy()`+`parentAgent` 删除是本轮唯一
+  破坏性变化（notify ×2、turn-retry ×1 已改 origin 判定）；`session.prompt` 空 content 变成
+  合法续跑（`kind:'retry'`）；`useAnchoredPosition`/`Menu.getAnchorRect` 导出删除（我方零引用）；
+  第三方客户端入口失败不再阻断 Web 挂载。需点检：
+  - turn-retry：失败 turn 的重试栏与原生 composer 重试键（`conversationContinuation` 非空时
+    发送键变重试键）并存时不冲突、nextTurn 非空时两者都被挡；notice 行在 rc.2
+    「context 注入渲染为 tool-call 行」下形态正常（`ui-chat` 44ad857798）。
+  - chat-scroll：rc.2 历史加载两阶段化（`loadOlder`/`consumeOlder`）+ 原生滚动到顶自动加载
+    更早 + 增量 flush 失败后窗口重建（#7537）下，落点守护与「回到消息开头」仍正确。
+  - notify：subagent 静默（origin 判定）与 root 会话完成/等待通知正常。
+  - favorite-models：原生选择器迁移 CSS anchor positioning 后，影子选择器的定位与页面缩放
+    （pinch zoom）表现与原生一致。
+  - deepseek-official-switch：停用 `llm-deepseek` 行后 web 检索的凭据解析（默认 provider 已改
+    `deepseek-search-api`，凭据跟随模型路由）仍能工作。
+  - 全套件：深浅主题、中英文界面、27 个浏览器行完整（`verify-suite-client.mjs`）。
 - [x] favorite-models 选择器样式与能力已在官方桌面 0.2.2-rc.1 完成（2026-11-05，用户确认）：
   与原生并排视觉一致；搜索框（>4 条收藏出现、↑↓/Enter/清除）、选中进度点、打开定位与
   无当前模型直达 pane、触发器紧凑模式、深浅主题均通过。
@@ -493,8 +539,8 @@
 - [ ] 上游缺陷盯梢（修复后回写本文并移除对应豁免）：
   - CLI web 宿主 `settings/mutate` 持久化缺陷（dual app-boot 实例致 bootstrapIncludes
     miss，0.2.0-rc.2 起已知，见 [插件机制](dsh/plugins.md) 设置写入一节）：rc.2/rc.3/rc.5/
-    0.2.2-rc.1 复核均未修复，桌面宿主不受影响；notify-check 与 proxy-check 的写入断言按
-    精确签名豁免；
+    0.2.2-rc.1/0.2.2-rc.2 复核均未修复，桌面宿主不受影响；notify-check 与 proxy-check 的写入
+    断言按精确签名豁免；
   - ~~套件在线启停的 session-controller file-upload 二次注册竞态~~（0.2.2-rc.1 上游已修复，
     commit 67a4ab78be：resolver 存普通 holder，dispose→再注册正常；suite-toggle-check 的
     FAILURE_SIGNATURES 保留为哨兵，命中仍响亮报错）；

@@ -23,6 +23,7 @@ function fakeContext() {
   const registrations: Registration[] = []
   const locales: string[] = []
   const injected: string[] = []
+  const subscriptions: string[] = []
   const ctx = {
     effect: (run: () => unknown) => run(),
     locale: {
@@ -32,19 +33,26 @@ function fakeContext() {
       fork: vi.fn(async () => 'child'),
       create: vi.fn(async () => 'fresh'),
       scope: vi.fn(() => ({ get: () => ({ input: { for: () => ({ setDraft: vi.fn() }) } }) })),
-      list: { getSnapshot: () => ({ ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }) },
+      list: {
+        getSnapshot: () => ({ ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }),
+        subscribe: () => { subscriptions.push('sessions'); return () => {} },
+      },
       open: vi.fn(),
     },
-    workspaces: { list: { getSnapshot: () => ({ items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null }) } },
+    workspaces: { list: {
+      getSnapshot: () => ({ items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null }),
+      subscribe: () => { subscriptions.push('workspaces'); return () => {} },
+    } },
     slots: {
       inject: (name: string, run: () => unknown) => { injected.push(name); run() },
+      entries: () => [],
       register: (options: Registration['options'], component: unknown) => {
         registrations.push({ options, component })
         return () => {}
       },
     },
   }
-  return { ctx, registrations, locales, injected }
+  return { ctx, registrations, locales, injected, subscriptions }
 }
 
 describe('user-message-fork client wiring', () => {
@@ -67,5 +75,11 @@ describe('user-message-fork client wiring', () => {
     const world = fakeContext()
     expect(() => { apply(world.ctx as never) }).not.toThrow()
     expect(world.registrations[0]?.component).toBeDefined()
+  })
+
+  it('observes both lists so native forks land on top of their workspace', () => {
+    const world = fakeContext()
+    apply(world.ctx as never)
+    expect(world.subscriptions).toEqual(['sessions', 'workspaces'])
   })
 })

@@ -13,18 +13,19 @@ import type { Notice, Notifier } from '../src/toast.js'
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 interface FakeSession {
   /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
-  header: { cwd?: string }
+  header: { cwd?: string; origin?: 'subagent' }
 }
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 interface FakeAgent {
+  id: string
   status: 'idle' | 'running'
   session: FakeSession
 }
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
 function fakeAgent(overrides: Partial<FakeAgent> = {}): FakeAgent {
-  return { status: 'idle', session: { header: { cwd: 'D:\\dev\\dsh-kit' } }, ...overrides }
+  return { id: 's1', status: 'idle', session: { header: { cwd: 'D:\\dev\\dsh-kit' } }, ...overrides }
 }
 
 /** 实现说明：此处记录相关接口、边界和生命周期约束。 */
@@ -34,8 +35,8 @@ function recorder(): Notifier & { sent: Notice[] } {
 }
 
 interface CtxOptions {
-  /** Agents `roots()` 报告的 agent 集合。 */
-  roots?: FakeAgent[]
+  /** 注册表内视为 live 的 agent；dsh 0.2.2-rc.2 起 `roots()` 删除，root 判定走 origin。 */
+  registry?: FakeAgent[]
   /** 设置写入契约：此处说明命名空间、校验、回读确认和草稿保留。 */
   settings?: Partial<NotifySettings>
   /** 会话与投影契约：此处说明持久事件、投影状态或历史回放边界。 */
@@ -87,7 +88,7 @@ function fakeCtx(options: CtxOptions = {}): Built {
   }
 
   const ctx = {
-    agents: { roots: () => options.roots ?? [] },
+    agents: { get: (id: string) => (options.registry ?? []).find(entry => entry.id === id) },
     // cordis 注入语义：inject 声明的 service 以同名属性直挂 ctx。
     sessionProjections: services.sessionProjections,
     connection: {
@@ -159,7 +160,7 @@ describe('the settings section', () => {
 
   it('follows a settings hot update without remounting', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -175,7 +176,7 @@ describe('the settings section', () => {
 describe('an agent coming to rest', () => {
   it('notifies once the agent has stayed idle', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent], title: '通知插件' })
+    const built = fakeCtx({ registry: [agent], title: '通知插件' })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -194,7 +195,7 @@ describe('an agent coming to rest', () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`agent.ts:226-230`）
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -210,7 +211,7 @@ describe('an agent coming to rest', () => {
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     // 实现说明：此处记录相关接口、边界和生命周期约束。
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -223,7 +224,7 @@ describe('an agent coming to rest', () => {
 
   it('coalesces a burst of short turns into one notification', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -238,10 +239,9 @@ describe('an agent coming to rest', () => {
   })
 
   it('says nothing for a subagent', async () => {
-    // 实现说明：此处记录相关接口、边界和生命周期约束。
-    // 实现说明：此处记录相关接口、边界和生命周期约束。
-    const child = fakeAgent()
-    const built = fakeCtx({ roots: [fakeAgent()] })
+    // dsh 0.2.2-rc.2 起 root 判定 = 注册表内 + origin 非 subagent；live 的 subagent 同样静默。
+    const child = fakeAgent({ session: { header: { cwd: 'D:\\dev\\dsh-kit', origin: 'subagent' } } })
+    const built = fakeCtx({ registry: [child] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -251,9 +251,22 @@ describe('an agent coming to rest', () => {
     expect(notifier.sent).toHaveLength(0)
   })
 
+  it('says nothing for an agent that already left the registry', async () => {
+    // 事件携带的 agent 不在注册表（已 dispose）时不再视为 root。
+    const gone = fakeAgent({ id: 'gone' })
+    const built = fakeCtx({ registry: [] })
+    const notifier = recorder()
+    await apply(built.ctx, built.config, { notifier })
+
+    built.emit('agent/status', { agent: gone, status: 'idle' })
+    vi.advanceTimersByTime(SETTLE_DEBOUNCE_MS)
+
+    expect(notifier.sent).toHaveLength(0)
+  })
+
   it('reports how the last turn actually ended', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -266,7 +279,7 @@ describe('an agent coming to rest', () => {
 
   it('stays quiet about a turn the person stopped themselves', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -284,8 +297,9 @@ describe('an agent coming to rest', () => {
 
   it('keeps the ending of one session out of another', async () => {
     const first = fakeAgent()
-    const second = fakeAgent({ session: { header: { cwd: '/srv/other' } } })
-    const built = fakeCtx({ roots: [first, second] })
+    // live agent 的 id 互异（registry 按 id 索引）；fake 同样遵守。
+    const second = fakeAgent({ id: 's2', session: { header: { cwd: '/srv/other' } } })
+    const built = fakeCtx({ registry: [first, second] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -299,7 +313,7 @@ describe('an agent coming to rest', () => {
 
   it('ignores session events that are not turn endings', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -312,7 +326,7 @@ describe('an agent coming to rest', () => {
 
   it('obeys the switch', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent], settings: { enabled: false } })
+    const built = fakeCtx({ registry: [agent], settings: { enabled: false } })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -324,7 +338,7 @@ describe('an agent coming to rest', () => {
 
   it('still names the machine when the title projection is not composed', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent], projections: false })
+    const built = fakeCtx({ registry: [agent], projections: false })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -336,7 +350,7 @@ describe('an agent coming to rest', () => {
 
   it('drops a pending notification for an agent that went away', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -360,7 +374,7 @@ describe('a turn stalled on a person', () => {
 
   it('says nothing about an approval a preset settled on its own', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -377,7 +391,7 @@ describe('a turn stalled on a person', () => {
 
   it('speaks up for an approval nobody has answered', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -397,7 +411,7 @@ describe('a turn stalled on a person', () => {
 
   it('speaks up for a question nobody has answered', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -436,7 +450,7 @@ describe('a turn stalled on a person', () => {
 
   it('stays out of the approvals a subagent raises', async () => {
     const child = fakeAgent()
-    const built = fakeCtx({ roots: [fakeAgent()] })
+    const built = fakeCtx({ registry: [fakeAgent()] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -456,7 +470,7 @@ describe('a turn stalled on a person', () => {
 
   it('obeys its own switch without touching the master one', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent], settings: { waiting: false } })
+    const built = fakeCtx({ registry: [agent], settings: { waiting: false } })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 
@@ -479,7 +493,7 @@ describe('a turn stalled on a person', () => {
 
   it('returns what downstream decided, even when it notified', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     apply(built.ctx, built.config, { notifier: recorder() })
 
     const answer = deferred<string>()
@@ -496,7 +510,7 @@ describe('a turn stalled on a person', () => {
 
   it('lets a downstream failure through untouched', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     apply(built.ctx, built.config, { notifier: recorder() })
 
     await expect(built.waterfall(
@@ -557,7 +571,7 @@ describe('the test channel', () => {
 describe('unloading', () => {
   it('leaves no timer armed', async () => {
     const agent = fakeAgent()
-    const built = fakeCtx({ roots: [agent] })
+    const built = fakeCtx({ registry: [agent] })
     const notifier = recorder()
     await apply(built.ctx, built.config, { notifier })
 

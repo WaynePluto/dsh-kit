@@ -6,27 +6,33 @@
  * `renderSlot is not a function` 并回退原生（见 docs/dsh/plugins.md）。因此这里不再
  * 替换座位，而是观察 document 中出现的原生树根（`[data-files-state]`），直接在其上
  * 挂捕获事件、插入提示节点并做行级 Git 装饰；React 归属原生，插件不渲染其组件。
+ *
+ * 文件打开跟随原生行为（2026-11-10 用户需求）：不再 split 分栏，文件打进树所在
+ * 分栏（浮动面板不带 paneId，与原生 FilesBody.onOpen 同语义）；斜体临时页签语义
+ * 由 PreviewTabs 继续提供。右键菜单完全交给原生 `ctx.contextMenus` 贡献
+ * （见 contextMenuContributions.ts），这里不再拦截 contextmenu 或渲染自绘菜单。
  */
 
-import { createRoot, type Root } from 'react-dom/client'
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ISidebarRight, PaneId } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { FilesSnapshot } from '../shared.js'
-import { FileContextMenu, contextMenuRow, type ContextMenuTarget } from './FileContextMenu.js'
 import { clearNativeRows, decorateNativeRows } from './gitDecorations.js'
-import { openInPreviewPane, type PaneNavigationContext, type PreviewPaneRef } from './paneNavigation.js'
+import { installNavigatorAutoOpen } from './navigatorAutoOpen.js'
 import type { PreviewTabs } from './previewTabs.js'
 import type { Translate } from './locales.js'
-import { workspaceRelativePath } from './treePath.js'
 
-export type { PaneNavigationContext } from './paneNavigation.js'
+/** Find a native tree row without mistaking the path header for a row. */
+export function contextMenuRow(target: EventTarget | null): HTMLElement | undefined {
+  if (!(target instanceof Element)) return undefined
+  const row = target.closest<HTMLElement>('[data-files-entry][data-files-path]')
+  return row?.dataset.filesPath === undefined ? undefined : row
+}
 
 /** One enhanced native tree root and everything attached to it. */
 interface RootBinding {
   readonly root: HTMLElement
-  readonly paneRef: PreviewPaneRef
   readonly note: HTMLElement
   readonly rowObserver: MutationObserver
   /** 待执行重装饰的 rAF 句柄；0 表示无待执行。 */
@@ -68,41 +74,7 @@ export function installNativeFilesEnhancement(
   loadGit: (sessionId: SessionId, signal: AbortSignal) => Promise<FilesSnapshot>,
   translate: Translate,
   previewTabs: PreviewTabs,
-  openGitReview: (sessionId: SessionId, path: string) => void,
 ): () => void {
-  // 右键菜单是独立 React 根（react-dom/client 属 shell 平台模块），不进入原生树。
-  // 宿主必须零尺寸且脱离 body 流：菜单打开时锚点 span 会在流内生成行盒，把 body
-  // 撑出约一行高度、触发页面滚动条，整个工作台横移一个滚动条宽度（实测 5px 抖动）。
-  const menuHost = document.createElement('div')
-  menuHost.style.position = 'fixed'
-  menuHost.style.top = '0'
-  menuHost.style.left = '0'
-  menuHost.style.width = '0'
-  menuHost.style.height = '0'
-  menuHost.style.overflow = 'hidden'
-  document.body.append(menuHost)
-  let menuRoot: Root | undefined
-  let menuTarget: ContextMenuTarget | undefined
-  let menuWorkspaceRoot: string | undefined
-  const renderMenu = (): void => {
-    menuRoot ??= createRoot(menuHost)
-    menuRoot.render(
-      <FileContextMenu
-        target={menuTarget}
-        workspaceRoot={menuWorkspaceRoot}
-        t={translate}
-        onGitReview={path => {
-          const sessionId = sidebar.mounted.getSnapshot()
-          if (sessionId !== undefined) openGitReview(sessionId, path)
-        }}
-        onClose={() => {
-          menuTarget = undefined
-          renderMenu()
-        }}
-      />,
-    )
-  }
-
   const bindings = new Map<HTMLElement, RootBinding>()
 
   const decorate = (binding: RootBinding): void => {
@@ -166,22 +138,24 @@ export function installNativeFilesEnhancement(
     })()
   }
 
+  /**
+   * 打开一个文件：与原生 FilesBody.onOpen 同语义，打进树所在分栏；
+   * PreviewTabs 在同一分栏内提供斜体临时页签的替换语义。
+   */
   const openFile = (binding: RootBinding, absolute: string, permanent: boolean): void => {
     const sessionId = sidebar.mounted.getSnapshot()
     const workspaceRoot = filesRootOf(binding.root)
-    const panelId = binding.root.closest<HTMLElement>('[data-dockkit-pane]')?.dataset.dockkitPane as PaneId | undefined
+    const paneElement = binding.root.closest<HTMLElement>('[data-dockkit-pane]')
+      ?? binding.root.closest<HTMLElement>('[data-dockkit-float]')
+    const panelId = paneElement?.dataset.dockkitPane ?? paneElement?.dataset.dockkitFloat as PaneId | undefined
     if (sessionId === undefined || workspaceRoot === undefined || panelId === undefined) return
     const address = fileAddressFor(sessionId, workspaceRoot, absolute)
-    const nav: PaneNavigationContext = { panelId, isLive: () => binding.root.isConnected }
-    const opened = openInPreviewPane(
-      sidebar, nav, sessionId, workspaceRoot, absolute, binding.paneRef,
-      paneId => previewTabs.open(String(sessionId), paneId, address, () => {
-        sidebar.openResource(address, { paneId })
-      }),
-    )
-    if (opened && permanent) {
-      previewTabs.confirm(String(sessionId), binding.paneRef.current ?? panelId, address)
-    }
+    // 浮动面板与原生一致：不带 paneId，交给 Sidebar 自己的放置规则。
+    const floating = paneElement?.dataset.dockkitFloat !== undefined
+    previewTabs.open(String(sessionId), panelId, address, () => {
+      sidebar.openResource(address, floating ? undefined : { paneId: panelId })
+    })
+    if (permanent) previewTabs.confirm(String(sessionId), panelId, address)
   }
 
   const attach = (root: HTMLElement): void => {
@@ -195,7 +169,6 @@ export function installNativeFilesEnhancement(
 
     const binding: RootBinding = {
       root,
-      paneRef: { current: undefined },
       note,
       rowObserver: new MutationObserver(() => { scheduleDecorate(binding) }),
       decorateFrame: 0,
@@ -224,49 +197,6 @@ export function installNativeFilesEnhancement(
       event.preventDefault()
       event.stopPropagation()
     }, true)
-    root.addEventListener('contextmenu', (event) => {
-      const row = contextMenuRow(event.target)
-      if (row === undefined || filesRootOf(root) === undefined) return
-      if (event instanceof MouseEvent) {
-        const absolute = row.dataset.filesPath
-        const workspaceRoot = filesRootOf(root)
-        if (absolute === undefined || workspaceRoot === undefined) return
-        event.preventDefault()
-        const relative = workspaceRelativePath(workspaceRoot, absolute)
-        if (relative === undefined) return
-        menuWorkspaceRoot = workspaceRoot
-        menuTarget = {
-          path: relative,
-          kind: row.dataset.filesEntry === 'file' ? 'file' : 'directory',
-          x: event.clientX,
-          y: event.clientY,
-          focus: row.querySelector<HTMLButtonElement>('button'),
-        }
-        renderMenu()
-      }
-    })
-    root.addEventListener('keydown', (event) => {
-      if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return
-      const row = contextMenuRow(event.target)
-      if (row === undefined || filesRootOf(root) === undefined) return
-      const rect = row.querySelector<HTMLButtonElement>('button')?.getBoundingClientRect()
-        ?? row.getBoundingClientRect()
-      const absolute = row.dataset.filesPath
-      const workspaceRoot = filesRootOf(root)
-      if (absolute === undefined || workspaceRoot === undefined) return
-      event.preventDefault()
-      const relative = workspaceRelativePath(workspaceRoot, absolute)
-      if (relative === undefined) return
-      menuWorkspaceRoot = workspaceRoot
-      menuTarget = {
-        path: relative,
-        kind: row.dataset.filesEntry === 'file' ? 'file' : 'directory',
-        x: rect.left + Math.min(rect.width, 16),
-        y: rect.bottom,
-        focus: row.querySelector('button'),
-      }
-      renderMenu()
-    })
     root.addEventListener('click', (event) => {
       if (event.target instanceof Element && event.target.closest('[data-files-reload]') !== null) {
         refreshGit(binding)
@@ -305,16 +235,15 @@ export function installNativeFilesEnhancement(
   const unsubscribeMounted = sidebar.mounted.subscribe(() => {
     for (const binding of bindings.values()) refreshGit(binding)
   })
+  // 预览页签的目录树默认展开（每个分栏一次，用户接管后不代点）。
+  const disposeAutoOpen = installNavigatorAutoOpen()
   scan()
 
   return () => {
+    disposeAutoOpen()
     discovery.disconnect()
     unsubscribeMounted()
     for (const binding of bindings.values()) detach(binding)
     bindings.clear()
-    menuTarget = undefined
-    menuRoot?.unmount()
-    menuRoot = undefined
-    menuHost.remove()
   }
 }

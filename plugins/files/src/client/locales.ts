@@ -1,7 +1,7 @@
 export const en = {
   gitUnavailable: 'Git status unavailable',
   gitTruncated: 'Git status was truncated.',
-  copyPath: 'Copy path',
+  copied: 'Copied',
   copyRelativePath: 'Copy relative path',
   copyFailed: 'Could not copy the path.',
   statusModified: 'Modified',
@@ -54,7 +54,7 @@ export type Translate = (key: FilesKey, params?: Record<string, string | number>
 export const zh: Record<FilesKey, string> = {
   gitUnavailable: 'Git 状态不可用',
   gitTruncated: 'Git 状态条目已截断。',
-  copyPath: '复制路径',
+  copied: '已复制',
   copyRelativePath: '复制相对路径',
   copyFailed: '复制路径失败，请重试。',
   statusModified: '已修改',

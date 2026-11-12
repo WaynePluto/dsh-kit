@@ -18,16 +18,18 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 // oxlint-disable-next-line unicorn/require-module-specifiers -- 激活 uiWorkspace Context 合并（openSession 导航）
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
-// oxlint-disable-next-line unicorn/require-module-specifiers -- 激活 workspaces Context 合并（新会话归组）
-import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+// 类型 import 同时激活 workspaces Context 合并（新会话归组）与落位器要的 WorkspaceSnapshot。
+import type { WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {
   InjectFace, PropsLocale, PropsRenderFactories, PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session/types'
 import { SELF_NAMESPACE } from '../shared.js'
 import {
   createAndSeedUserMessage, forkAndSeedUserMessage, resolvePreviousTurnEnd, type FreshConversationTarget,
 } from './fork.js'
+import { createForkOrderPlacer, type ForkOrderEntry, type ForkOrderPlacer, type ForkOrderRuntime } from './fork-order.js'
 import { UserMessageForkNodeView } from './UserMessageForkNodeView.js'
 import { en, NS, zh, type UserMessageForkKey } from './locales.js'
 import { installUserMessageForkStyles } from './styles.js'
@@ -84,27 +86,50 @@ export const inject = ['slots', 'locale', 'sessions', 'uiConversation', 'uiWorks
 /** keyed shadow priority；dsh 自己的 user renderer 位于默认 priority 0。 */
 export const USER_RENDERER_PRIORITY = -1
 
-/** pin 失败重试间隔：宿主 registry 对刚 fork 的子会话可能短暂不可见（投影/持久化同步竞态）。 */
-const PIN_RETRY_DELAYS_MS = [600, 1500] as const
+/** 空列表兜底：宿主服务尚未装载时读取面必须仍可调用。 */
+const EMPTY_LIST: SessionListState = { ids: [], byId: {}, phase: 'ready', projectionsBySession: {} }
+
+/** 只读快照源：落位器需要的两个列表读取面。 */
+interface SnapshotSource<T> {
+  getSnapshot(): T
+  subscribe(listener: () => void): () => void
+}
+
+/** 冒烟脚本与宿主服务缺席时的防御读取：dsh 装载完成后这些字段必然存在。 */
+interface OptionalForkOrderServices {
+  readonly sessions?: { readonly list?: SnapshotSource<SessionListState> } | undefined
+  readonly workspaces?: { readonly list?: SnapshotSource<WorkspaceSnapshot> } | undefined
+  readonly slots?: { entries?: (key: string) => readonly ForkOrderEntry[] } | undefined
+}
 
 /**
- * 把新会话置顶到工作区分组第一位（dsh 原生 pin，排序里优先于手动顺序与 recency；
- * 仅侧边栏排序为「手动」时生效，默认「按更新时间」是纯 recency 不认置顶）。
- * fork 子会话的 summary.updatedAt 继承 seed 前缀的旧时间戳，按 recency 排在工作区末尾
- * （会话多时用户找不到）。pin 失败按 {@link PIN_RETRY_DELAYS_MS} 重试，最终失败输出
- * console.error 便于诊断。
+ * 落位器读取侧：工作区/会话快照 + 侧边栏槽位条目（视图 store 从条目里取）。
+ * 全部运行时探测，缺服务时只降级为「不落位」，不影响 fork 本身。
  * @param ctx - client 根 context。
- * @param sessionId - fork/create 出的子会话。
- * @param attempt - 当前重试轮次。
+ * @returns {@link ForkOrderRuntime}。
  */
-function pinToTop(ctx: Context, sessionId: SessionId, attempt = 0): void {
-  void ctx.uiWorkspace.pinSession(sessionId).then(() => undefined, (error: unknown) => {
-    if (attempt >= PIN_RETRY_DELAYS_MS.length) {
-      console.error('user-message-fork: pin failed after retries', String(sessionId), error)
-      return
-    }
-    setTimeout(() => { pinToTop(ctx, sessionId, attempt + 1) }, PIN_RETRY_DELAYS_MS[attempt])
-  })
+function forkOrderRuntime(ctx: Context): ForkOrderRuntime {
+  const services = ctx as unknown as OptionalForkOrderServices
+  return {
+    entries: () => services.slots?.entries?.('sidebar.workspaces') ?? [],
+    workspaces: () => services.workspaces?.list?.getSnapshot().items ?? [],
+    list: () => services.sessions?.list?.getSnapshot() ?? EMPTY_LIST,
+    rowState: () => {
+      const snapshot = services.workspaces?.list?.getSnapshot()
+      return {
+        pinnedSessionIds: snapshot?.pinnedSessionIds ?? [],
+        archivedSessionIds: snapshot?.archivedSessionIds ?? [],
+      }
+    },
+    subscribe: (listener: () => void) => {
+      const stops: (() => void)[] = []
+      const sessions = services.sessions?.list
+      if (sessions !== undefined) stops.push(sessions.subscribe(listener))
+      const workspaces = services.workspaces?.list
+      if (workspaces !== undefined) stops.push(workspaces.subscribe(listener))
+      return () => { for (const stop of stops) stop() }
+    },
+  }
 }
 
 /**
@@ -121,12 +146,17 @@ function freshConversationTarget(ctx: Context, sessionId: SessionId): FreshConve
   return cwd === undefined ? {} : { cwd }
 }
 
-/** 注册 renderer、字典和 stylesheet。 */
+/** 注册 renderer、字典、stylesheet 和 fork 子会话落位。 */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'user-message-fork: copy dictionaries')
 
   const host = typeof document === 'undefined' ? undefined : document
   ctx.effect(() => installUserMessageForkStyles(host), 'user-message-fork: styles')
+
+  // 原生「在新对话中分叉」、侧边栏「分叉会话」和本插件的按钮都走 sessions.fork：观察会话列表
+  // 新出现的子会话并排到分组第一位（普通会话，不写宿主 pin），自身路径另按已知 id 直接入队。
+  const placer: ForkOrderPlacer = createForkOrderPlacer(forkOrderRuntime(ctx))
+  ctx.effect(() => () => { placer.dispose() }, 'user-message-fork: fork order observation')
 
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
@@ -144,7 +174,7 @@ export function apply(ctx: Context): void {
             freshConversationTarget(ctx, sessionId),
             request.text,
           )
-          pinToTop(ctx, createdId)
+          placer.enqueue(createdId)
           return
         }
         const chat = ctx.uiConversation.binding(source).target('chat')
@@ -159,7 +189,7 @@ export function apply(ctx: Context): void {
           },
         )
         const childId = await forkAndSeedUserMessage(ctx.sessions, id => ctx.uiWorkspace.openSession(id), sessionId, anchor, request.text)
-        pinToTop(ctx, childId)
+        placer.enqueue(childId)
       },
     }),
   }, UserMessageForkNodeView))

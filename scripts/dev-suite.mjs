@@ -15,7 +15,7 @@ const DSH_HOME = join(homedir(), '.dsh-dev')
 const PROFILE = 'dsh-kit-dev'
 const DSH_PORT = 3180
 const SUITE_DIRECTORY = join(ROOT, 'plugins', 'suite')
-const DSH_VERSION = '0.2.2-rc.1'
+const DSH_VERSION = '0.2.2-rc.2'
 const SUITE_PACKAGE = '@dsh-kit/dsh-plugin-suite'
 
 const runtime = await ensureDevelopmentRuntime()

@@ -119,11 +119,14 @@ updateBundle）、`install-spec.ts`、`git-transport.ts`、
   固定 URL（如 latest 永久链接）重复输入即命中——依赖值就是 URL 本身。**内容不同的新 URL
   反查不到包名，inspect（tarball 类不做该检查）与 installBundle 都放行**，`pnpm add` 原地替换
   同包名依赖值，随后走 HMR publishAndReload 热装载新版本（无 HMR 的 CLI 形态则替换后等重启）。
-- 0.2.2 起第三方 registry 包也有原生升级路径：`BundleInfo.updatable` 标记可升级性，
-  `listVersions` 列 registry 上的更新版本（含 tag/deprecation/DSH 兼容性），`updateBundle`
-  原地替换（HMR 下先停旧版、安装失败自动回装旧版）。仍只有 registry spec 可升级——本地目录、
-  tarball、git 安装的包 not-updatable。官方目录包的「更新」按钮语义不变（`installTarget`
-  仅 `OFFICIAL_ON_DEMAND_CATALOG` 条目派生）。
+- 0.2.2 起第三方 registry 包也有原生升级路径：`BundleInfo.update?: 'registry' | 'git'` 标记
+  可升级性（rc.1 为布尔 `updatable`，rc.2 改为来源枚举），`listVersions` 列 registry 上的更新
+  版本（含 tag/deprecation/DSH 兼容性），`updateBundle` 原地替换（HMR 下先停旧版、安装失败
+  自动回装旧版；0.2.2-rc.2 起安装后还校验装出的包名/版本与 patch 可加载，不符按
+  `unexpected-package` 回滚）。registry 之外的升级：rc.2 新增 Git 钉 full-commit 安装的
+  `update: 'git'` 路径（`updateBundle` 传 `spec`，须同一 origin；`listVersions` 对 Git 安装包
+  明确 refused）；本地目录、tarball 安装的包仍不可升级（`update === undefined`）。官方目录包
+  的「更新」按钮语义不变（`installTarget` 仅 `OFFICIAL_ON_DEMAND_CATALOG` 条目派生）。
 - CLI `dsh plugin --profile desktop add <spec>` 不走 manager、无 already-installed 拒绝，
   等价于带文件锁的裸 pnpm；同 URL 重复 add 会重新下载更新 node_modules，升级障碍只在
   dsh 的 already-installed 拒绝。
@@ -135,6 +138,16 @@ updateBundle）、`install-spec.ts`、`git-transport.ts`、
   experimental-liveshare、experimental-forge-bundle），`HIDDEN_BUNDLES` 新增
   experimental-terminal-bundle 与 experimental-tool-worktree；`EXTENSION` 列表 plugin-market
   升主列表、inspector 降 More。
+- 0.2.2-rc.2 官方行 id 增删（D16 依赖的稳定性核对，无任何 id 改名）：base 增 `agent-team`、
+  `tool-agent-team`（无 disabled 表达式，默认装载），`deepseek-account` 行 id 不变、包名
+  `dsh-deepseek-account-platform` → `dsh-deepseek-account`，`web` 行 `searchProvider` 默认
+  `deepseek-official` → `deepseek-search-api`，`web-deepseek-api` 删 `apiKeyEnv` config；
+  web-app 删 `account-controller`、`office-to-pdf`，增 `ui-account-notifications`、
+  `mcp-manager`、`office-kit`、`workspace-dependencies`（`disabled: !!js` 按 desktop +
+  `DSH_PRIMARY_RUNTIME` 门控）、`skill-office`、`ui-agent-team`。`disabled: !!js` 三类写法
+  （裸布尔 / `profileContext` / `process` env）不变；组合 Bundle patch 文件零改动、行 id 稳定；
+  `agent-team-profile` 进 `RETIRED_BUNDLES`，cua-bundle 移入 `OPTIONAL_BUNDLES` 且改随 DSH
+  出厂（实验性列表开关启用）。`build-suite.mjs` 未来新增组件行需避开上述新官方 id。
 
 ### dsh-kit 分发约束
 
@@ -174,7 +187,15 @@ React、Cordis、store、slots、ui-primitives 等共享运行时保持 external
 追加 `react-dom`，portal 与页面 reconciler 必须共用同一次 React 实例。
 跨插件通过 Cordis 服务协作，避免重复打包造成模块实例不一致。
 
-缺失 dist/client.js 会导致客户端模块激活失败，可能使整个 Web UI 无法启动。
+客户端入口的 cordis `inject` 导出（服务等待）与 manifest `dsh.client.inject`（包行图边）是两回事：
+fiber 上下文访问已声明的服务属性强制要求 cordis inject 声明（`vendor/cordis` reflect：
+`cannot get property "<name>" without inject`），缺声明整行激活失败；0.2.2-rc.2 起 Web 启动
+审计只对 7 个必需入口（modules、api-session-controller、ui-renderer、ui-layout、ui-session、
+ui-chat、ui-sidebar）拒绝挂载，第三方入口失败降级为一条 console warning、应用照常挂载、该组件
+缺席（`packages/client/web/src/boot-client.ts` 的 `requiredClientEntryNames`；官方消费方如
+ui-open-in-app/ui-workspace 均声明 `contextMenus`/`sessions`；dsh-kit files
+2026-11-11 实机踩坑）。单测 mock ctx 不校验此约束，实机启动是唯一拦截面。
+缺失 dist/client.js 会导致该客户端模块激活失败并缺席（rc.2 起不再阻断整个 Web UI）。
 `pnpm plugins:build` 与 `pnpm suite:build` 必须同时检查宿主与浏览器产物。
 
 注册时 readFileSync 将 bundle 读成不可变快照，以 IMMUTABLE_CACHE 下发；只有 rebuilt() 会重读。
@@ -185,9 +206,12 @@ rebuilt() 重读 bundle、重组模块图并经 `/plugins/events` SSE 推 rebuil
 （Bundle/行开关、patch 行、新组件、依赖物化）仍需重启 dsh。模块扫描不再保留负判定缓存（0.2.2）：
 包重装后重启 dsh 即发布新模块状态；`/plugins` 页面路由改为 resource 形态，对外 URL 行为不变。
 
-ui-primitives 0.2.2 为纯新增导出（UserMessageBubble、AnimatedRows、ZoomControls、Tooltip
-`onlyWhenClipped`、Menu contextual/exiting/returnFocus、MenuItemButton disabledReason 等），
-无删除与重命名；Tooltip 的 anchor 事件改 pointer 系。
+ui-primitives 0.2.2-rc.1 为纯新增导出；rc.2 起菜单面迁移 CSS anchor positioning：
+`useAnchoredPosition`/`AnchoredPositionOptions` 导出删除，`Menu` 的 `getAnchorRect` prop 删除
+（改 `anchorRef`/`anchorPoint`），子菜单改独立 body portal（`SubmenuPanel`），`MenuSurface`
+组件与半透明磨砂面材质不变。剩余 rc.1 新增导出仍有效（UserMessageBubble、AnimatedRows、
+ZoomControls、Tooltip `onlyWhenClipped`、Menu contextual/exiting/returnFocus、MenuItemButton
+disabledReason 等）；Tooltip 的 anchor 事件改 pointer 系。
 
 包资产体系（0.2.2 新增，dsh-kit 未采纳，记录为可选）：`/plugins/<pkg>/assets/<path>` 路由 +
 包 manifest `./assets/*` export 约定（发射目标 `./lib/assets/*`）+ client factory 的
@@ -270,6 +294,11 @@ node_modules 解析出第二份 app-boot 实例，root Include entry 的模块�
 `packages/client/ui-conversation/src/client/contract/slots.ts`。
 
 - keyed/single/list 槽同一 cell 可以按 priority 影子覆盖，数值最小者渲染；同 cell + 同 priority 才冲突。
+- 0.2.2-rc.2 起新增 `hoc` 槽 kind（`SlotKind` 五值）：包装层语义，entry 声明 `id`/可选 `key`/
+  `order`，组件经注入的 `children` 渲染内层（最内层是 owner 内容）；cell =（key 或 wildcard）+ id，
+  同 id 的 exact-key 层替换 wildcard 层；层崩溃 `abdicate: false` 只报错不卸层。官方新声明：
+  `conversation.chat.markdown.fence`（Markdown fence 包装）与 `conversation.hero.frame`（会话
+  滚动体框架）。dsh-kit 暂无使用。
 - 接管现有 renderer 使用 priority:-1；并列添加用 list 或插件定义的子槽。
 - 普通 list 槽由标准 `renderSlot` 按 cell 选择 priority 最低的 winner。
 - `ctx.slots.onEntryError` 观察被错误边界捕获的 slot renderer 异常；只覆盖渲染边界，不等于全局

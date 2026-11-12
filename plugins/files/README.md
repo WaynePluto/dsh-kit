@@ -6,18 +6,29 @@
 
 ## 使用
 
-打开右侧 Sidebar，在原生「开始」页选择「工作区文件」，进入原生「文件」页；「新建终端」和「浏览器」入口仍由 dsh 提供，不受本插件影响。宽屏下：
+打开右侧 Sidebar，在原生「开始」页选择「工作区文件」，进入原生「文件」页；「新建终端」和「浏览器」入口仍由 dsh 提供，不受本插件影响。
 
-- 文件树保持在左侧 pane；首次点文件时，插件通过原生 Sidebar `split` 建立右侧 pane；
+- 文件树与预览同住一个分栏：点击文件走原生打开行为（打开到树所在分栏，不拆分栏；重复点击同一文件只定位已有页签）；
 - 文件在原生文档预览 tab 中打开，支持 dsh 已有的 Markdown、代码、纯文本、图片、PDF 和 HTML 预览；
+- 预览页签首次出现时自动展开原生目录树（预览头部的目录树开关），每个分栏只自动展开一次；之后用户手动收起即视为接管，不再代点（刷新页面或重启后重新计）；
 - 单击文件使用 VS Code 式临时预览：标题为斜体，后续单击会复用同一页签；双击文件或页签（含标题两侧空白）后转为保留页签；
 - 图片预览提供缩小、放大、100%、适应窗口和 Ctrl/⌘+滚轮缩放，原生滚动用于查看放大内容；按住 Space 后在图片滚动区域按鼠标左键拖动可平移溢出的图片（输入框、选中文字、其他页签和触摸操作不受影响）；
-- 页签标题右键菜单的「关闭其他」「关闭全部」只作用于右键目标所在分栏，不影响另一个分栏；
-- 空间不足、用户已有布局无法协调或目标 pane 已被移动时，退回原生文件树自己的打开行为，不阻断浏览。
+- 页签标题右键菜单的「关闭其他」「关闭全部」只作用于右键目标所在分栏。
 
 最终用户只看到一个「文件」入口，不再有「文件 pro」。插件不注册额外入口，也不覆盖「开始」页。
-原生文件树的登记项由插件以 slot shadow 方式包装，原始 component、store、inject 和 locale
-均保留；插件不复制上游树源码。
+原生文件树由插件以 DOM 级方式增强（观察原生树根），插件不复制上游树源码。
+
+## 行右键菜单
+
+树行右键完全使用 dsh 原生菜单（`ctx.contextMenus` 贡献机制，0.2.2 起）：
+原生已提供在侧边栏打开、在浮窗中打开、在文件夹显示、使用默认应用打开、复制文件/目录路径、另存为等，
+插件只补充原生没有的只读项，追加在原生项之后（首项带分隔线）：
+
+- **复制相对路径**（文件与目录行）：复制相对于当前 Session 工作区根的 slash 路径；
+- **查看 Git 变更**（仅文件行）：在右侧 Sidebar 打开「Git 变更」页签（见下一节）。
+
+会话没有工作区、或目标越出工作区根时不出这些条目；复制走剪贴板并复用原生菜单的反馈提示。
+右键不会触发展开、预览或任何写入操作。
 
 ## Git 状态
 
@@ -37,18 +48,6 @@ git -c core.fsmonitor=false --no-optional-locks -C <session cwd> status --porcel
 
 status 命令总预算为 3 秒、stdout 1 MiB、最多投影 2000 项。Git 状态不是完整实时信号；
 原生 dsh 的 `fs/observed` 不覆盖所有 shell、Git 或外部编辑器操作。
-
-## 目录右键菜单
-
-目录行保留两个只读操作，文件行多一个 Git 查看入口：
-
-- **复制路径**：复制目标机器上的绝对路径；Windows 使用目标平台分隔符；
-- **复制相对路径**：复制相对于当前 Session 工作区根的 slash 路径；
-- **查看 Git 变更**（仅文件行）：在右侧 Sidebar 打开「Git 变更」页签（见下一节）。
-
-菜单使用 dsh external `Menu` 和 `writeClipboard`，通过局部事件委托挂在原生树外层，支持鼠标右键、
-ContextMenu/Shift+F10、portal 定位、Escape 关闭和焦点归还。右键不会触发展开、预览或任何写入操作。
-复制失败会保留菜单并显示错误。菜单不劫持树外或右侧预览区域的浏览器右键。
 
 ## Git 变更面板
 
@@ -99,18 +98,20 @@ pnpm --filter @dsh-kit/dsh-plugin-files build
 node scripts/files-check.mjs
 ```
 
-源码依赖当前 dsh `0.2.0-rc.2` 的 Sidebar/slot 契约及原生图片滚动容器 `data-document-zoom-scrollport`。插件通过 `dsh.client.inject`
-声明对 `@deepseek-ai/dsh-client-ui-sidebar-files` 的模块图依赖，但不深层 import 上游源码；Git 变更面板按同版本
+源码依赖当前 dsh `0.2.2-rc.1` 的 Sidebar/slot 契约、原生 contextMenus 贡献、目录树开关
+`data-files-navigator-toggle` 与图片滚动容器 `data-document-zoom-scrollport`。插件通过 `dsh.client.inject`
+声明对 `@deepseek-ai/dsh-client-ui-sidebar-files`、`@deepseek-ai/dsh-client-ui-sidebar-documentpreview` 与
+`@deepseek-ai/dsh-client-ui-context-menu` 的模块图依赖，但不深层 import 上游源码；Git 变更面板按同版本
 `ui-deliverables` 的 changes-review 结构与样式复刻（该包的组件不在发布物导出里，无法直接 import），并经页面冻结模块表
 复用 `@deepseek-ai/dsh-client-store` 与 `@deepseek-ai/dsh-client-ui-primitives`。
-如果上游登记项、行 data 属性或 Sidebar 导航契约变化，检查必须响亮失败并重新适配。
+如果上游登记项、行 data 属性、目录树开关属性或 Sidebar 导航契约变化，检查必须响亮失败并重新适配。
 
 `dsh-kit-web` 没有 HMR。修改宿主、浏览器代码或样式后，必须重新构建并重启 dsh；只刷新页面不会
 重新加载冻结的浏览器产物。
 
 ## 分发与管理
 
-本插件作为独立 Bundle 分发，可单独停用、卸载和升级。停用后，Git 状态、目录右键菜单、Git 变更面板与预览增强消失，回到 dsh 原生文件树；本插件不提供写入接口的性质不变。
+本插件作为独立 Bundle 分发，可单独停用、卸载和升级。停用后，Git 状态、右键补充项、Git 变更面板、目录树默认展开与预览增强消失，回到 dsh 原生文件树（原生菜单与打开行为不受影响）；本插件不提供写入接口的性质不变。
 套件安装后本插件默认启用；后续升级以整个套件为单位并保留停用状态，卸载后不会自动补回。
 需要重装时，在 dsh「添加插件」中填写套件目录 `plugins/suite` 的绝对目录，而不是源码目录或 `dist/index.js`。
 

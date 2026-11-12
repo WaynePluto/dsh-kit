@@ -95,7 +95,9 @@ export function retryNoticeSummary(pending: TurnRetryView): string {
 
 /** 只有 live root agent 可以被本插件驱动；subagent 的工作归 parent。 */
 function isLiveRoot(ctx: Context, agent: Agent): boolean {
-  return ctx.agents.roots().includes(agent)
+  // dsh 0.2.2-rc.2 起 `ctx.agents.roots()` 删除（运行时 owner 概念移除），
+  // root 判定改为「在注册表内 + origin 非 subagent」。
+  return ctx.agents.get(agent.id) === agent && agent.session.header.origin !== 'subagent'
 }
 
 // dsh 0.2.2 起投影注册返回 Promise<ProjectionHandle>，registry 级 `stateOf(session, key)` 已弃用。

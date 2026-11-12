@@ -50,7 +50,8 @@
   内嵌的原生组件抛 `TypeError: renderSlot is not a function`，增强静默丢失（`standardKit` 只给声明
   children 的条目装配 renderSlot/SessionProvider，无公开途径借得原生绑定）；重复声明同一 child slot
   会在 register 抛错，影子包装在 0.2.0 契约下不可行。files 已改为 DOM 级挂载（MutationObserver 发现
-  `[data-files-state]` 树根 + 捕获事件 + 独立 React 根菜单，`nativeFilesAdapter.tsx`）；
+  `[data-files-state]` 树根 + 捕获事件，`nativeFilesAdapter.tsx`；2026-11-10 起右键也交给原生
+  `ctx.contextMenus` 贡献，自绘菜单已删除）；
   title 座位（`sidebar.right.pane.tab.title`）的影子仍可用：documentpreview 的 title 注册不带 children。
 - Slot 的子槽由唯一登记 owner 声明并持有 render 授权；对现有 cell 加 priority:-1 不会继承原登记项的 children。
   files 不重声明 `sidebar.right.tab.document`，不覆盖 `ui-sidebar-documentpreview` owner；ctx 级 renderSlot 只能渲染 root，
@@ -99,5 +100,22 @@
   `data-dockkit-pane`、`data-dockkit-tab` 可用于当前版本只读核验，不是稳定的布局查询 API。
 - 原生关闭拒绝不存在的 tab，并保护唯一 docked guide；关闭最后一个非 guide docked tab 会收起 Sidebar。
   增强应沿用关闭入口及布局规则，不直接删布局记录或循环清除新出现的默认页。
-- **工作区分组排序的两模式（0.2.2-rc.1，user-message-fork 置顶实例）**：视图菜单可切`manual`（手动）/ `updated`（按更新时间，**默认**）。默认模式走 `orderByRecency` 纯 recency（summary.updatedAt = max(header.createdAt, lastPromptAt)），**完全无视 pin**；只有 manual 模式走 `reconcileManualOrder`（pin 段最前 → 手动顺序 → recency → 归档）。fork 子会话的 updatedAt 继承 seed 前缀旧时间戳，默认模式必沉底——插件不能写会话事件（铁律），因此 `uiWorkspace.pinSession` 只在用户切到「手动」排序后生效（user-message-fork fork/create 后自动 pin；pin 亦优先于手动拖动顺序）。
+- **工作区分组排序（0.2.2-rc.1，user-message-fork 落位实例）**：出处
+  `packages/client/ui-workspace/src/client/{tree.ts,stores.ts,pin-order.ts,navigation.ts,rows/WorkspaceBrowser.tsx}`。
+  - 视图菜单两模式：`manual`（手动）/ `updated`（按更新时间，**默认**）。渲染顺序都经过
+    `sectionMembers`：blank 占位 → **pin 段** → 其余（按所选顺序）→ 归档位；即 pin 在两种模式下都
+    领跑分区（旧版结论「updated 无视 pin」已按源码更正）。
+  - `updated` 模式走 `orderByRecency`（`summary.updatedAt = max(header.createdAt,
+    sessionListMetadata.lastPromptAt)`，`packages/api/session-controller/src/list.ts`）。fork 子会话的
+    header `createdAt` 是 fork 时刻（`core/session/src/index.ts`：`createdAt: meta?.createdAt ?? Date.now()`，
+    fork 不传 `createdAt`），所以该模式本来就把子会话排在最前。
+  - `manual` 模式走 `reconcileManualOrder`：已存顺序保持相对次序 → 再按 pin → 新成员按 recency →
+    归档。**新会话因此追加在已存条目之后**（fork 子会话在会话多的分组里会沉到靠后位置）。
+  - 手动顺序是浏览器本地状态：`defineStore({persist:'dsh.workspace.view.v5'})` 的
+    `sessionOrderByAccount`（账户键 = 工作区 id、`''`（未分组）、`'__flat_session_order__'`）。
+    拖动排序（`setSessionOrder`）只写它；宿主 `workspace.insertSessionBefore` 不参与显示顺序。
+    原生置顶按钮 = 宿主 `pinSession` + 视图 store 的 `pinSessionOrder`（把该会话在分组与扁平账户前置）。
+  - 因此「fork 后排在第一位、但不置顶」只能复用视图 store 的 `pinSessionOrder`（不调宿主 pin）：
+    插件从 `sidebar.workspaces` 槽位条目拿到同一个 store 句柄（`entry.store.create()` 返回
+    单例实例），见 [用户消息分叉](../plugins/user-message-fork/README.md)。
 - 项目「关闭其他/关闭全部」仍为待实施方案：固定当前分栏 tabId 快照并逐项核对存活/归属，不越过分栏或会话边界。

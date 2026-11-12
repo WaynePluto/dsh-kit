@@ -85,7 +85,20 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 
 - 原生树属于 `ui-sidebar-files`（页面 kind `files`），不是 `ui-sidebar-documentpreview`。
   树按层调用 `remote.workspaceFiles.list`，目录优先、自然排序，默认显示 dotfiles；
-  点击文件通过当前 tab 的 `actions.openResource` 导航，默认落在该 tab 所在 pane。
+  点击文件通过当前 tab 的 `actions.openResource` 导航，默认落在该 tab 所在 pane（浮动面板不带 paneId）；
+  资源 tab 默认按 (kind, contentId) 去重（`revealIfOpened` 默认开），重复打开同一文件只定位已有页签。
+- 预览页签头部末端的目录树开关是 `sidebar.files.navigator.toggle` 工厂
+  （`packages/client/ui-sidebar-files/src/client/NavigatorToggle.tsx`，DOM 标记
+  `data-files-navigator-toggle` + `aria-expanded`）；navigator 显隐在 files store 的
+  `byPane[pane].open`，默认 undefined（隐藏），只被 `actions.shown` 写入。工厂是单定义注册
+  （重复注册抛 already has a definition），第三方无法影子包装该工厂，只能 DOM 代点或观察。
+- 树行右键目标是原生 `rowTriggerProps` 绑定的 `ctx.contextMenus` 目标
+  （file: `{ sessionId, path, paneId? }`，directory: `{ sessionId, path }`，path 为树键的绝对 slash 形式）；
+  菜单项来自 `ctx.contextMenus.register({ id, target, order, resolve })` 贡献
+  （`packages/client/ui-context-menu/src/client/{types.ts,registry.ts}`，注释明示内置与外部插件同等使用），
+  按 order 升序、同 order 按 id 排序，`separatorBefore` 加分隔线，`notify` 提供复制反馈。
+  内置贡献：open-in-app（file/directory order 100：在侧边栏/浮窗打开、在文件夹显示、默认应用、复制路径）
+  与 file-actions（file order 200：复制图片、下载、另存为）。
 - 原生树是 `sidebar.files.tree` 工厂（0.2.2-rc.1，`packages/client/ui-sidebar-files/src/client/FileTree.tsx`）：
   工厂 input（entries/onOpen/onToggle/canOpen/rowTriggerProps）由原生调用方
   `workspace-tree.ts` 提供，第三方不可替换；行内提供 `accessory` 子槽
@@ -230,25 +243,29 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
 ## 项目 files 增强层
 
 出处：`plugins/files/src/{index.ts,git.ts,gitReview.ts,shared.ts}`、
-`plugins/files/src/client/{nativeFilesAdapter.tsx,paneNavigation.ts,previewTabs.ts,previewTabTitle.tsx,imageZoomOverlay.tsx,tabContextActions.tsx,gitDecorations.ts,FileContextMenu.tsx,gitReviewTab.tsx,treePath.ts}`；
+`plugins/files/src/client/{nativeFilesAdapter.tsx,contextMenuContributions.ts,navigatorAutoOpen.ts,previewTabs.ts,previewTabTitle.tsx,imageZoomOverlay.tsx,tabContextActions.tsx,gitDecorations.ts,gitReviewTab.tsx,treePath.ts}`；
 原生改动面板结构出处 `packages/client/ui-deliverables/src/client/{ReviewTab.tsx,FileDiff.tsx,review-definition.ts,review-store.ts,changes.ts}`。
 
 项目插件不再注册 `conversation.view`，不再提供目录/list/read 私有文件服务，也不再复制原生树或预览。
-它通过 `sidebar.right.pane.tab` 的 priority shadow 包装 dsh `ui-sidebar-files` 登记项，保留原生
-component、store、inject、locale 和原生 `files` guide；文件正文由 `ui-sidebar-documentpreview`
+它在 DOM 层增强原生树（0.2.0 起座位 shadow 因 children/renderSlot 不可行，见 [Sidebar 扩展](sidebar.md)）：
+观察 `[data-files-state]` 树根做 Git 装饰与点击拦截；文件正文由 `ui-sidebar-documentpreview`
 及 `workspaceFiles` 负责。插件不接管 `sidebar.right.tab.guide`，不注册 sentinel 或第二个用户可见文件入口；
 「开始」页的工作区文件、新建终端与浏览器入口仍由 dsh 按实际注册的页面类型显示。
 
 - 原生树行的 `data-files-entry` / `data-files-path` 仅用于当前版本的局部增强契约：插件写入 Git
-  data marker、aria-label/title，并通过外层事件委托提供右键菜单；不插入或移动原生行 DOM。
+  data marker、aria-label/title，并在树根上以捕获级 click/dblclick 提供临时页签语义；不插入或移动原生行 DOM。
   0.2.2-rc.1 起行按钮包在 `div.row` 内（非行的直接子元素），Git marker 的装饰样式用
-  `[data-files-entry] button[data-files-git-marker]` 后代选择器命中；原生调用方
-  不提供 `rowTriggerProps`，文件行没有原生右键菜单，插件菜单无双开风险。
-- 首次文件点击通过 `sidebarRight.split` 建立目标 pane，再以 `tab.actions.openResource` 打开原生资源；
+  `[data-files-entry] button[data-files-git-marker]` 后代选择器命中。
+- 文件打开跟随原生行为（2026-11-10 用户需求）：不再 `sidebarRight.split` 拆分栏，单击/双击都把文件
+  打进树所在分栏（停靠带 `paneId`、浮动不带，与原生 `FilesBody.onOpen` 同语义）；
   单击由 `previewTabs` 维护每个 session + pane 一个斜体临时 tab，下一次单击通过原生 `replaceTab` 替换；
   双击文件、页签或 title slot 使 tab 保留（chip 空白不经过插件组件，由 document 捕获级
   dblclick 委托按 dockkit chip 标记回查观测表后走同一条 confirm；非文件页签与 chip 内按钮不拦截）。
-  若空间、用户布局或 pane 生命周期不允许，回退原生打开行为。
+  原生入口（菜单「在侧边栏打开」、聊天文件链接等）不走临时语义，打开的就是保留页签。
+- 预览页签的目录树默认展开（2026-11-10 用户需求）：`navigatorAutoOpen.ts` 监听
+  `data-files-navigator-toggle` 挂载，分栏首次出现收起态开关时 DOM 代点一次展开；
+  每分栏在页面生命周期内只代点一次，用户手动点过开关（展开或收起）即视为接管。
+  原生工厂单定义注册无法 shadow（见上节），故走 DOM 层；刷新页面后随原生 store 一起重置。
 - 图片预览保留原生每 tab 的适应宽度/固定档位/Ctrl+滚轮。项目在原生 text title slot 生成
   document.body portal 附加控件，对当前选中 image preview 的 frame 叠加 CSS zoom，提供适应窗口与 Space+鼠标平移；
   不增加图片 RPC。title menu 通过 `sidebar.right.tab.menu.item` 追加「关闭其他」「关闭全部」，先按目标 tab
@@ -260,7 +277,11 @@ component、store、inject、locale 和原生 `files` guide；文件正文由 `u
   `-c core.fsmonitor=false`、`--no-optional-locks`、`-C cwd`，并以 `rev-parse --show-prefix`
   把仓库根路径转换回 Session cwd。总预算为 3 秒、status stdout 1 MiB、最多投影 2000 项。
 - Git 失败、超时、非仓库或截断只降级 Git 展示，不影响原生树、原生预览或复制路径菜单；Git 状态不承诺实时。
-- 右键菜单：目录行只复制绝对路径和工作区相对 slash 路径；文件行额外提供「查看 Git 变更」，打开 Git 变更面板。
+- 树行右键（2026-11-10 用户需求）：完全使用原生 `ctx.contextMenus` 菜单，插件以贡献身份补充原生没有的项
+  （`contextMenuContributions.ts`，order 300 排在 open-in-app 100 / file-actions 200 之后，首项带分隔线）：
+  文件行「查看 Git 变更」「复制相对路径」，目录行「复制相对路径」；相对路径以 `ctx.sessions.list` 的
+  会话 cwd 为根计算，无 cwd 或越出根不出条目；复制走 `navigator.clipboard` + 原生 `notify` 反馈。
+  插件不再拦截 contextmenu/ContextMenu 键，也不再有自绘菜单（0.2.2 起原生行菜单与旧自绘菜单会双开，此问题随之消除）。
   不提供任何写入或 Git 修改动作。
 - Git 变更面板（`gitReviewTab.tsx`）：文件行右键 → `dsh-resource://files-git-review/session/<sessionId>` 资源页签
   （每会话一个，右键路径经 `params.path` 预选，复用原生按 (kind, contentId) 的去重与导航 revision）。面板按原生

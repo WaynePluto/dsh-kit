@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { apply, inject } from './index.js'
+import { installContextMenuContributions } from './contextMenuContributions.js'
 import { installNativeFilesEnhancement } from './nativeFilesAdapter.js'
 
 vi.mock('./styles.js', () => ({ installStyles: () => () => {} }))
 vi.mock('./nativeFilesAdapter.js', () => ({ installNativeFilesEnhancement: vi.fn(() => () => {}) }))
 vi.mock('./previewTabTitle.js', () => ({ installPreviewTitleEnhancement: () => () => {}, installTabChipConfirm: () => () => {} }))
 vi.mock('./tabContextActions.js', () => ({ installTabContextActions: () => () => {} }))
+vi.mock('./contextMenuContributions.js', () => ({ installContextMenuContributions: vi.fn(() => () => {}) }))
 vi.mock('./previewTabs.js', () => ({ PreviewTabs: class { dispose(): void {} } }))
 vi.mock('./imageZoomOverlay.js', () => ({ ImageZoomStore: class { clear(): void {} } }))
 vi.mock('./gitReviewTab.js', () => ({
@@ -38,6 +40,8 @@ describe('files Sidebar 注册', () => {
     const ctx = {
       locale: { register: vi.fn(() => () => {}), bind: () => (key: string) => key },
       slots: { inject: injectSlot, register },
+      sessions: { list: { getSnapshot: () => ({ byId: {} }) } },
+      contextMenus: { register: vi.fn(() => () => {}), notify: vi.fn() },
       sidebarRight: { openResource: vi.fn() },
       sidebarRightTabs: { register: registerTab },
       on: vi.fn(() => () => {}),
@@ -49,8 +53,13 @@ describe('files Sidebar 注册', () => {
 
     apply(ctx as never)
 
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'sidebarRight', 'sidebarRightTabs'])
+    // 右键菜单贡献依赖 contextMenus 与 sessions 服务：cordis 4 要求已声明服务必须
+    // 出现在 inject 里，漏声明不会在单测暴露（mock 不校验），但实机激活整行失败。
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'contextMenus', 'sessions', 'sidebarRight', 'sidebarRightTabs'])
     expect(installNativeFilesEnhancement).toHaveBeenCalledOnce()
+    expect(installNativeFilesEnhancement).toHaveBeenCalledWith(ctx, ctx.sidebarRight, expect.any(Function), expect.any(Function), expect.anything())
+    // 右键菜单走原生 contextMenus 贡献，而不是自绘菜单。
+    expect(installContextMenuContributions).toHaveBeenCalledWith(ctx, { openGitReview: expect.any(Function), t: expect.any(Function) })
     // Git review 页签类型与正文分别注册在官方契约座位上。
     expect(registerTab).toHaveBeenCalledOnce()
     expect(registerTab.mock.calls[0]?.[0]).toMatchObject({

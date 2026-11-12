@@ -118,10 +118,12 @@ pnpm suite:build
 
 ### 7. 常设关注：套件在线启停的上游竞态
 
-dsh 0.2.1 仍存在 session-controller 重挂载竞态（停用 Bundle 触发 file-upload 的 Agent resolver
-二次注册失败，`registerAgentResolver` 的重复注册断言未变）。套件整包停用/启用会经过这条路径；
-`scripts/suite-toggle-check.mjs` 命中时只允许按精确签名豁免，其他失败照常响亮报错。
-上游修复后删除豁免并回写 `docs/05-roadmap.md` 的后续任务。
+dsh 0.2.2-rc.1 起已修（commit `67a4ab78be`「release the Agent resolver when its owner
+reloads」：Cordis 对 `this` 上的函数属性返回新 proxy，旧 disposer 的同一性检查永不匹配，
+slot 从不清空）。rc.2 复核仍保持该修复，`registerAgentResolver` 的重复注册断言作为哨兵保留
+（`packages/client/file-upload/src/index.ts`）。套件整包停用/启用会经过这条路径；
+`scripts/suite-toggle-check.mjs` 的 FAILURE_SIGNATURES 命中时只允许按精确签名豁免，
+其他失败照常响亮报错。若上游回归，按签名定位并回写 `docs/05-roadmap.md`。
 
 ### 8. 常设关注：原生能力替代插件
 

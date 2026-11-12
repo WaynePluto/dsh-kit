@@ -1,17 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('react-dom/client', () => ({
-  createRoot: vi.fn(() => ({ render: vi.fn(), unmount: vi.fn() })),
-}))
-
-vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
-  Menu: (): null => null,
-  writeClipboard: vi.fn(async () => true),
-}))
-
 import { installNativeFilesEnhancement } from '../src/client/nativeFilesAdapter.js'
-import { createRoot } from 'react-dom/client'
 import { PreviewTabs } from '../src/client/previewTabs.js'
 import type { FilesSnapshot } from '../src/shared.js'
 
@@ -36,7 +26,6 @@ const twoEntries = (): FilesSnapshot => ({
 type SidebarFake = {
   mounted: { getSnapshot: () => string | undefined; subscribe: (fn: () => void) => () => void }
   openResource: ReturnType<typeof vi.fn>
-  split: ReturnType<typeof vi.fn>
 }
 
 function sidebarWith(session: string | undefined): SidebarFake {
@@ -50,7 +39,6 @@ function sidebarWith(session: string | undefined): SidebarFake {
       },
     },
     openResource: vi.fn(),
-    split: vi.fn(() => 'pane2'),
   }
 }
 
@@ -61,7 +49,6 @@ let button: HTMLButtonElement
 let dispose: (() => void) | undefined
 
 beforeEach(() => {
-  vi.stubGlobal('window', { innerWidth: 600 })
   document.body.innerHTML = ''
   pane = document.createElement('div')
   pane.dataset.dockkitPane = 'pane1'
@@ -84,8 +71,6 @@ beforeEach(() => {
 afterEach(() => {
   dispose?.()
   dispose = undefined
-  vi.unstubAllGlobals()
-  window.innerWidth = 1024
 })
 
 async function flush(): Promise<void> {
@@ -95,17 +80,10 @@ async function flush(): Promise<void> {
   }
 }
 
-function lastMenuElement(): { props: { target?: { path: string; kind: 'file' | 'directory' }; workspaceRoot?: string; onGitReview?: (path: string) => void } } {
-  const roots = vi.mocked(createRoot).mock.results
-  const renders = roots[roots.length - 1]?.value.render.mock.calls ?? []
-  return renders[0]?.[0] as { props: { target?: { path: string; kind: 'file' | 'directory' }; onGitReview?: (path: string) => void } }
-}
-
 describe('installNativeFilesEnhancement（DOM 级）', () => {
   it('发现原生树根：请求当前会话的 Git 快照并装饰行', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
-    const sidebar = sidebarWith('s1')
-    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
+    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never)
     await flush()
     expect(loadGit).toHaveBeenCalledOnce()
     expect(loadGit.mock.calls[0]?.[0]).toBe('s1')
@@ -114,16 +92,11 @@ describe('installNativeFilesEnhancement（DOM 级）', () => {
     const note = document.querySelector('.dsh-files-native-note')
     expect(note).not.toBeNull()
     expect((note as HTMLElement).hidden).toBe(true)
-    // 菜单宿主必须零尺寸脱离布局：流内行盒会撑出 body 滚动条（右键时全页横移抖动）。
-    const host = document.body.lastElementChild as HTMLElement
-    expect(getComputedStyle(host).position).toBe('fixed')
-    expect(getComputedStyle(host).width).toBe('0px')
-    expect(getComputedStyle(host).height).toBe('0px')
   })
 
   it('树内新增行经合并装饰；无关 body 变更不做发现扫描', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => twoEntries())
-    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
+    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never)
     await flush()
 
     // 树内新增一行：rowObserver 的重装饰经 rAF 合并后落到新行上。
@@ -151,7 +124,7 @@ describe('installNativeFilesEnhancement（DOM 级）', () => {
 
   it('Git 截断时在树根前插入提示节点', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot({ truncated: true }))
-    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => `t:${key}`, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
+    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => `t:${key}`, { open: vi.fn(), confirm: vi.fn() } as never)
     await flush()
     const note = document.querySelector('.dsh-files-native-note') as HTMLElement
     expect(note.hidden).toBe(false)
@@ -159,42 +132,59 @@ describe('installNativeFilesEnhancement（DOM 级）', () => {
     expect(note.nextElementSibling).toBe(tree)
   })
 
-  it('单击文件行经预览页签打开并拦截原生点击', async () => {
+  it('单击文件行在树所在分栏打开，不再 split 分栏', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
     const sidebar = sidebarWith('s1')
     const previewTabs = new PreviewTabs()
-    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, previewTabs, vi.fn())
+    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, previewTabs)
     await flush()
     row.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(sidebar.openResource).toHaveBeenCalledOnce()
     expect(sidebar.openResource).toHaveBeenCalledWith('dsh-resource://file/session/s1/a.md', { paneId: 'pane1' })
   })
 
-  it('右键文件行渲染复制菜单并携带文件行类型', async () => {
+  it('浮动面板里的树打开文件不带 paneId（与原生 onOpen 同语义）', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
-    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
+    const sidebar = sidebarWith('s1')
+    const previewTabs = new PreviewTabs()
+    const float = document.createElement('div')
+    float.dataset.dockkitFloat = 'float1'
+    float.append(tree)
+    pane.replaceWith(float)
+    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, previewTabs)
+    await flush()
+    row.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    expect(sidebar.openResource).toHaveBeenCalledWith('dsh-resource://file/session/s1/a.md', undefined)
+  })
+
+  it('双击文件行在打开之外把目标页签转为保留', async () => {
+    const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
+    const sidebar = sidebarWith('s1')
+    const previewTabs = { open: vi.fn(), confirm: vi.fn() }
+    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, previewTabs as never)
+    await flush()
+    row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }))
+    expect(previewTabs.open).toHaveBeenCalledWith('s1', 'pane1', 'dsh-resource://file/session/s1/a.md', expect.any(Function))
+    expect(previewTabs.confirm).toHaveBeenCalledWith('s1', 'pane1', 'dsh-resource://file/session/s1/a.md')
+    // open 的 source 仍走原生打开语义。
+    const source = previewTabs.open.mock.calls[0]?.[3] as () => void
+    source()
+    expect(sidebar.openResource).toHaveBeenCalledWith('dsh-resource://file/session/s1/a.md', { paneId: 'pane1' })
+  })
+
+  it('右键不再被插件拦截，交给原生 contextMenus 菜单', async () => {
+    const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
+    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never)
     await flush()
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     button.dispatchEvent(event)
-    expect(event.defaultPrevented).toBe(true)
-    const menu = lastMenuElement()
-    expect(menu.props.target?.path).toBe('a.md')
-    expect(menu.props.target?.kind).toBe('file')
-    expect(typeof menu.props.onGitReview).toBe('function')
-  })
-
-  it('右键目录行不携带文件行类型', async () => {
-    const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
-    dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
-    row.dataset.filesEntry = 'directory'
-    await flush()
-    button.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-    expect(lastMenuElement().props.target?.kind).toBe('directory')
+    expect(event.defaultPrevented).toBe(false)
   })
 
   it('卸载后移除提示节点与装饰属性，点击不再走插件预览', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot())
     const sidebar = sidebarWith('s1')
-    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never, vi.fn())
+    dispose = installNativeFilesEnhancement({} as never, sidebar as never, loadGit, key => key, { open: vi.fn(), confirm: vi.fn() } as never)
     await flush()
     dispose()
     dispose = undefined

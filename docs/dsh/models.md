@@ -33,6 +33,11 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
 - modelOverrides 只能覆盖内置已有模型，不能新增未知 id。
 - settings 写入会热更新路由，无需重启 dsh；插件代码变化仍需重启。
 - 内置供应商的模型发现从目录回答；自定义端点可请求 GET /models。
+  0.2.2-rc.2 起可探测协议新增 Gemini（`google-generative-ai`）：`LISTABLE_PROTOCOLS` =
+  anthropic-messages / google-generative-ai / openai-completions / openai-responses，
+  Gemini 走 `GET {baseURL}/models?pageSize=1000` + `x-goog-api-key`，读 `models` 数组、
+  剥 `models/` 前缀、跳过 `supportedGenerationMethods` 不含 `generateContent` 的条目
+  （`packages/llm/llm-pi-ai/src/discovery.ts`）。Azure/Codex 仍不探测（鉴权形态特殊）。
 - schemastery 会物化空 models:[]，是否显式配置要判断数组且长度大于 0。
 - listConfigurableProviders 包含未配置供应商，已配置路由应从 settings.providers 取。
 - listModels/resolveModelInfo 返回生效后的目录，不能当纯净内置快照。
@@ -50,6 +55,12 @@ settings.models.provider-card 按 ProviderDirectoryEntry.settingsNs 分派，包
   `data-dragging` 等钩子，`.modelEntry`/`.modelRow`/`.modelAdvanced` 类名保留）；
   `settings.models.*` 三个子槽契约未变。model-capabilities 的 portal 挂点复核以新 DOM
   钩子为准（0.2.2-rc.1 静态核对，待实机验证）。
+- 供应商级自动重试策略（0.2.2-rc.2 新增，`ui-settings-models` 的 `RetryPolicyEditor`）：
+  编辑 `providers.<route>.retryPolicy`（`packages/llm/llm/src/retry-policy.ts` schema 驱动），
+  `retryableCodes` 为内置码列表 + 任意非空字符串分支，delay 有下界。`LLM_FAILURE_CODES`
+  集中定义、`LlmError.fromFailure` 统一构造（`packages/llm/llm/src/error.ts`），
+  error 结局的 `error.code` 因此可能出现 `STREAM_CLOSED`、`HTTP_<n>` 等取值。该策略是传输层
+  自动重试，与 turn-retry 的 turn 级手动重试不同层、无配置命名空间冲突。
 - **官方 DeepSeek 路由跟随 `GET /models`（0.2.1-rc.3 起，API 密钥路由）**：llm-deepseek-api-key
   仅在 origin 为 `https://api.deepseek.com` 且 `models` 等于内置目录时跟随官方列表（`x-api-key`
   鉴权）；自定义 `models` 整份优先并停止列表请求；缓存按端点与 key 指纹存内存，过期后台刷新，
@@ -93,6 +104,15 @@ patch 里对应 entry 的 `models`（等价于该按钮的 deletePath），HMR �
 （独立向 `ctx.web` 注册搜索 provider，见 `packages/web/web-search-deepseek/src/index.ts`）
 与已存凭据。目录采纳的第三方 `deepseek` 路由由 `llm-pi-ai` 行从 pi-ai 目录声明
 （`packages/llm/llm-pi-ai/src/index.ts` 的 `directoryEntries`），与 `llm-deepseek` 行无关。
+
+0.2.2-rc.2 的 web 检索面变化（与本组件相关，需实机复核）：base `web` 行默认
+`searchProvider` 由 `deepseek-official` 改为 `deepseek-search-api`，`web-deepseek-api` 行删除
+`apiKeyEnv` config（凭据改为跟随会话模型路由解析：`deepseek-account` 用账号 token，否则用
+`deepseek-official` 路由的 `apiKeyEnv`，无路由时回退 `DEEPSEEK_API_KEY`）；
+`web-search-exa`/`web-search-perplexity` 两个包整体删除。`WebRuntime` 仍是 `ctx.web`，
+`registerSearchProvider`/`registerFetchProvider` 签名不变，新增 `listProviders` Remote 与
+`web/providers-changed` 事件（`packages/web/web/src/index.ts`）。移除 `deepseek-official`
+路由后，若用户密钥只存在凭据库或用了自定义 baseURL，搜索可能退回到环境变量解析路径。
 
 ## Models.dev 与协议
 

@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 // 仅类型：激活 browser half 使用的 locale、slots、session、connection 与 Sidebar merge。
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-context-menu/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
@@ -8,6 +9,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { FilesEndpoint, FilesSnapshot } from '../shared.js'
 import { en, NS, zh, type FilesKey } from './locales.js'
 import { ImageZoomStore } from './imageZoomOverlay.js'
+import { installContextMenuContributions } from './contextMenuContributions.js'
 import { installNativeFilesEnhancement } from './nativeFilesAdapter.js'
 import { installPreviewTitleEnhancement, installTabChipConfirm } from './previewTabTitle.js'
 import { PreviewTabs } from './previewTabs.js'
@@ -30,7 +32,9 @@ class FilesChannelError extends Error {
   constructor(message: string) { super(message); this.name = 'FilesChannelError' }
 }
 
-export const inject = ['slots', 'locale', 'connection', 'sidebarRight', 'sidebarRightTabs']
+// contextMenus/sessions 由右键菜单贡献使用；cordis 4 对 fiber 上下文的已声明服务
+// 属性强制要求 inject 声明，缺声明会让整行激活失败（web boot did not activate）。
+export const inject = ['slots', 'locale', 'connection', 'contextMenus', 'sessions', 'sidebarRight', 'sidebarRightTabs']
 
 const call = async <T,>(endpoint: FilesEndpoint, payload: object): Promise<T> => {
   const result = await callKitChannel('/files', endpoint, payload)
@@ -54,11 +58,14 @@ export function apply(ctx: Context): void {
     ctx.sidebarRight.openResource(gitReviewAddress(sessionId), { params: { path } })
   }
   ctx.effect(() => {
-    const disposeFiles = installNativeFilesEnhancement(ctx, ctx.sidebarRight, loadGit, t, previewTabs, openGitReview)
+    const disposeFiles = installNativeFilesEnhancement(ctx, ctx.sidebarRight, loadGit, t, previewTabs)
     const disposeTitle = installPreviewTitleEnhancement(ctx, previewTabs, imageStates, t)
     const disposeChip = installTabChipConfirm(previewTabs)
     const disposeMenu = installTabContextActions(ctx, ctx.sidebarRight, t)
+    // 树行右键走原生 contextMenus 贡献：只补充复制相对路径与查看 Git 变更。
+    const disposeContributions = installContextMenuContributions(ctx, { openGitReview, t })
     return () => {
+      disposeContributions()
       disposeMenu()
       disposeChip()
       imageStates.clear()

@@ -45,7 +45,14 @@
 6. 关窗即隐藏，宿主常驻；再次双击走 single-instance 只 focus
    （`main.ts` "Closing hides" 注释与 `single-instance.ts`）。
 
-## 欢迎连接 cookie 堆积 → 启动死锁（0.2.2-rc.1 官方缺陷，实机确诊）
+0.2.2-rc.2 两处装载相关变化：宿主不再内嵌 office 引擎（`installOfficeEngineResolution`
+与 desktopOffice 挂载删除，改由 web-app Bundle 的 `office-kit`/`skill-office`/
+`workspace-dependencies` 行承载），并在 profile 评估前设置 `process.env.DSH_PRIMARY_RUNTIME`
+（`apps/desktop-host/src/index.ts`，`workspace-dependencies` 行的 `disabled` 表达式以它门控）；
+`apps/cli/src/profile-boot.ts` 另在插件挂载前设 `DSH_USER_AGENT_SUFFIX = 'dsh-profile/<name>'`。
+启动时序结构本身未变。
+
+## 欢迎连接 cookie 堆积 → 启动死锁（0.2.2-rc.1 缺陷，rc.2 官方已修）
 
 出处：`packages/client/connection/src/browser-auth.ts`（`authorizeIndex`/`cookieName`）、
 `packages/host/webserver/src/index.ts`（裸 `createServer`，未调 `maxHeaderSize`）、
@@ -61,13 +68,13 @@
   `desktop welcome: Web authentication failed`，壳启动崩溃（`crash-*-host.log`）。
   壳首请求（Node fetch 无 jar）不受影响，故 token 换 cookie 总能成功——每次失败
   启动又净存一条，形成**死循环：崩一次多一条，永不自愈**。2026-11-08 本机实机
-  确诊（70 条 200 / 71 条 431 复现），与插件无关；用户侧表象为「装了套件后打不开」
-  时先查这里。
-- 恢复：关闭桌面版后清理 jar（备份后删行即可，jar 位于
-  `~/AppData/Roaming/@deepseek-ai/dsh-desktop/Network/Cookies`）：
-  `DELETE FROM cookies WHERE host_key='127.0.0.1' AND name LIKE 'dsh-auth-%'`。
-  每次启动约 +226 B，清完后约 70 次启动后会再次触顶；根治需官方修
-  （cookie 名去端口化改为覆盖写，或启动前清 stale cookie，或调大 `maxHeaderSize`）。
+  确诊（70 条 200 / 71 条 431 复现），与插件无关。
+- **0.2.2-rc.2 官方修复**（`apps/desktop/src/{web-document.ts,main.ts}`）：认证后
+  `removeLegacyHostCookies` 删除该 hostname 全部 `dsh-auth-*` cookie（异步、不阻塞 ready），
+  `connectDesktopWelcome` 改为直接携带单条 cookie、不再 `credentials:'include'`、不再从 jar
+  读 cookie，431 崩溃路径消除。旧版仍可能已堆积，历史 jar 需手工清理一次（关闭桌面版后）：
+  `DELETE FROM cookies WHERE host_key='127.0.0.1' AND name LIKE 'dsh-auth-%'`（jar 位于
+  `~/AppData/Roaming/@deepseek-ai/dsh-desktop/Network/Cookies`）。
 
 ## 插件操作诊断与宿主退出（0.2.2-rc.1）
 
@@ -78,6 +85,12 @@
 - 宿主 `stop()` 末尾补 `process.exit()`：dispose 慢的插件不再拖延壳退出；
   关窗隐藏、宿主常驻的行为不变。（待实机验证）
 - `ELECTRON_ENABLE_LOGGING` 仍有效；新版保留 DevTools 菜单与 F12 入口。
+- 「关闭所有插件启动」恢复路径会重写 profile patch（0.2.2-rc.1，2026-11-11 实机确诊）：
+  行 volatile Config（模型供应商、默认模型、权限预设等）随重写丢失，整份旧 patch 自动挪入
+  profile 目录 `cordis.patch.yml.bak-<epochms>`（单份滚动，下次重写覆盖）；恢复 = 停机后把
+  .bak 写回 `cordis.patch.yml`，dsh 的 patch HMR / 下次启动即重算，凭据引用（`apiKeyEnv`）
+  在 DSH_HOME `.credentials.yaml` 的 refs 中不受影响。卸载/重装 Bundle 的 patch 重写
+  是否同样伤及无关行未查证，遇用户报「配置丢失」先对比这两个文件的时间戳与行数。
 
 ## 协议唤起（外部把桌面版带到前台）
 

@@ -57,6 +57,15 @@ export interface Config {
   waiting: Volatile<boolean>
 }
 
+/**
+ * live 且 origin 非 subagent 的 agent 才视为 root。dsh 0.2.2-rc.2 起运行时 owner
+ * 概念移除、`ctx.agents.roots()` 删除（`core/agent/src/index.ts`），上游以
+ * `session.header.origin === 'subagent'` 作为 subagent 路由判定。
+ */
+function isLiveRoot(ctx: Context, agent: Agent): boolean {
+  return ctx.agents.get(agent.id) === agent && agent.session.header.origin !== 'subagent'
+}
+
 /** dsh Loader 从本导出解析行 config；`.volatile()` 让字段出现在 Plugins 表单并经 Loader 热更新。 */
 export const Config = z.object({
   enabled: z.boolean().default(DEFAULT_SETTINGS.enabled).volatile(),
@@ -255,7 +264,7 @@ export async function apply(ctx: Context, config: Config, options: NotifyOptions
     }
     if (status !== 'idle') return
     // subagent 的 turn 属于 parent，不直接通知用户。
-    if (!ctx.agents.roots().includes(agent)) return
+    if (!isLiveRoot(ctx, agent)) return
 
     const timer = setTimeout(() => {
       timers.delete(timer)
@@ -297,7 +306,7 @@ export async function apply(ctx: Context, config: Config, options: NotifyOptions
   const watchWaiting = (agent: Agent | undefined, notice: { title: string; body: string }): (() => void) => {
     const settings = readConfig(config)
     if (!settings.enabled || !settings.waiting) return () => {}
-    if (agent !== undefined && !ctx.agents.roots().includes(agent)) return () => {}
+    if (agent !== undefined && !isLiveRoot(ctx, agent)) return () => {}
     return arm(waitingDelayMs, () => { show(notice) })
   }
 
