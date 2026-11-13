@@ -122,14 +122,16 @@ describe('installNativeFilesEnhancement（DOM 级）', () => {
     querySpy.mockRestore()
   })
 
-  it('Git 截断时在树根前插入提示节点', async () => {
+  it('Git 截断时在树根内部首行插入提示节点（不得成为 flex row 的兄弟节点）', async () => {
     const loadGit = vi.fn(async (_sessionId: string, _signal: AbortSignal) => snapshot({ truncated: true }))
     dispose = installNativeFilesEnhancement({} as never, sidebarWith('s1') as never, loadGit, key => `t:${key}`, { open: vi.fn(), confirm: vi.fn() } as never)
     await flush()
     const note = document.querySelector('.dsh-files-native-note') as HTMLElement
     expect(note.hidden).toBe(false)
     expect(note.textContent).toBe('t:gitTruncated')
-    expect(note.nextElementSibling).toBe(tree)
+    // 树根父容器是 flex row，提示若在树根外会把树压到 0 宽（2026-11-13 用户实机回归）。
+    expect(note.parentElement).toBe(tree)
+    expect(tree.firstElementChild).toBe(note)
   })
 
   it('单击文件行在树所在分栏打开，不再 split 分栏', async () => {

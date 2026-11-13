@@ -6,6 +6,18 @@
 
 ## 已实现
 
+- [x] files 修复「Git 状态不可用时整棵树不可见」（2026-11-13，用户实机报非 Git 工作区
+  `clear-disk` 打开文件页只剩提示行）：插件提示节点此前作为树根的**前一个兄弟**插入，
+  而树根父容器是 flex row（files 页 `content`、预览 navigator row）——提示可见时以
+  `flex:none; width:100%` 吃掉整行宽度，把 `flex:1 1 auto; min-width:0` 的原生树根压到
+  0px，树渲染了但完全不可见；Git 可用时提示隐藏（display:none）不占位，因此只在
+  非 Git/失败/截断的工作区触发。修复：提示节点改插到树根**内部首行**（树根是 flex
+  column，提示成为自身一行推下树体，dsh-theme 的外部节点插入先例同样安全），CSS 不变。
+  dev 实例（0.2.2-rc.2）非 Git 默认工作区实测：提示行显示、树根恢复全宽、目录展开、
+  单击文件在树所在分栏开预览页签。13 个测试文件 72 项单测（提示插入位置断言改为
+  `note.parentElement === 树根` 且为首子节点）、lint/typecheck 全绿，suite tar 重打
+  （同版本号覆盖）。桌面实机复验（clear-disk 工作区树可见、点击文件开预览）待用户执行。
+
 - [x] files 打开跟随原生 + 目录树默认展开 + 右键并入原生菜单（2026-11-10，用户需求
   「充分利用原生目录树」）：① 删除 `sidebar.split` 分栏打开（`paneNavigation.ts` 整体删除），
   单击/双击文件都打进树所在分栏（停靠带 paneId、浮动不带，与原生 `FilesBody.onOpen` 同语义），

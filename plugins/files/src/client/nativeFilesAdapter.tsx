@@ -163,9 +163,12 @@ export function installNativeFilesEnhancement(
     note.className = 'dsh-files-native-note'
     note.setAttribute('role', 'status')
     note.hidden = true
-    // 提示节点插在原生树根之前。React 只按自身引用操作子节点，不重排外部兄弟节点；
-    // 根节点离开文档时由 detach 一并移除。
-    root.parentElement?.insertBefore(note, root)
+    // 提示节点必须插在树根内部（树根是 flex column，提示成为自身一行）。
+    // 若作为树根的前一个兄弟插入，树根的父容器是 flex row（files 页 content、
+    // 预览 navigator row），可见的提示会以 width:100% 吃掉整行宽度，把
+    // flex:1 1 auto; min-width:0 的树根压到 0——Git 状态不可用时整棵树不可见。
+    // React 只操作自身节点，忽略外部子节点；树根卸载时由 detach 一并移除。
+    root.insertBefore(note, root.firstChild)
 
     const binding: RootBinding = {
       root,
