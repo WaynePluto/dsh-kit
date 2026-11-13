@@ -66,15 +66,27 @@ describe('installContextMenuContributions', () => {
     expect(ctx.unregister).toEqual([])
   })
 
-  it('文件行补充查看 Git 变更（带分隔线）与复制相对路径', async () => {
+  it('文件行补充查看 Git 变更（带分隔线）与复制完整/相对路径', async () => {
     const ctx = ctxWith('C:\\work')
     installContextMenuContributions(ctx as unknown as Context, { openGitReview: vi.fn(), t: key => key })
     const items = await resolveOf(ctx, 'file', 'C:\\work/src\\a.md')
-    expect(items.map(item => item.id)).toEqual(['git-review', 'copy-relative-path'])
+    expect(items.map(item => item.id)).toEqual(['git-review', 'copy-absolute-path', 'copy-relative-path'])
     expect(items[0]?.separatorBefore).toBe(true)
     expect(items[0]?.label).toBe('gitReviewMenu')
-    expect(items[1]?.label).toBe('copyRelativePath')
-    expect(items[1]?.failureLabel).toBe('copyFailed')
+    expect(items[1]?.label).toBe('copyAbsolutePath')
+    expect(items[2]?.label).toBe('copyRelativePath')
+    expect(items[2]?.failureLabel).toBe('copyFailed')
+  })
+
+  it('复制完整路径用根的分隔符归一拼接，不混用斜杠', async () => {
+    const ctx = ctxWith('C:\\work')
+    const notify = ctx.contextMenus.notify
+    installContextMenuContributions(ctx as unknown as Context, { openGitReview: vi.fn(), t: key => key })
+    // 目标路径本身混用分隔符（官方目录菜单的拼接产物形态）
+    const items = await resolveOf(ctx, 'directory', 'C:\\work/plugins/suite')
+    await items[0]?.run?.()
+    expect(writeText).toHaveBeenCalledWith('C:\\work\\plugins\\suite')
+    expect(notify).toHaveBeenCalledWith('copied', true)
   })
 
   it('复制相对路径写入剪贴板并给出原生反馈', async () => {
@@ -82,7 +94,7 @@ describe('installContextMenuContributions', () => {
     const notify = ctx.contextMenus.notify
     installContextMenuContributions(ctx as unknown as Context, { openGitReview: vi.fn(), t: key => key })
     const items = await resolveOf(ctx, 'file', 'C:\\work/src/a.md')
-    await items[1]?.run?.()
+    await items[2]?.run?.()
     expect(writeText).toHaveBeenCalledWith('src/a.md')
     expect(notify).toHaveBeenCalledWith('copied', true)
   })
@@ -96,11 +108,14 @@ describe('installContextMenuContributions', () => {
     expect(openGitReview).toHaveBeenCalledWith('s1', 'src/a.md')
   })
 
-  it('目录行只补充复制相对路径，根自身不给条目', async () => {
+  it('目录行补充复制完整/相对路径；根行只给完整路径', async () => {
     const ctx = ctxWith('C:\\work')
     installContextMenuContributions(ctx as unknown as Context, { openGitReview: vi.fn(), t: key => key })
-    expect((await resolveOf(ctx, 'directory', 'C:\\work/src')).map(item => item.id)).toEqual(['copy-relative-path'])
-    expect((await resolveOf(ctx, 'directory', 'C:\\work'))).toEqual([])
+    expect((await resolveOf(ctx, 'directory', 'C:\\work/src')).map(item => item.id))
+      .toEqual(['copy-absolute-path', 'copy-relative-path'])
+    const root = await resolveOf(ctx, 'directory', 'C:\\work')
+    expect(root.map(item => item.id)).toEqual(['copy-absolute-path'])
+    expect(root[0]?.separatorBefore).toBe(true)
     expect((await resolveOf(ctx, 'directory', 'C:\\other\\outside'))).toEqual([])
   })
 

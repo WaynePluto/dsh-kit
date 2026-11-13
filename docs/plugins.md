@@ -34,7 +34,7 @@
 | [会话工作区显示](../plugins/session-workspace/README.md) | 输入框下方 → 统计栏最左 | 显示当前会话的工作区，悬停看完整路径，点击复制 |
 | [工具状态](../plugins/tools-inspector/README.md) | 会话 → 工具 | 查看可见工具及历史调用、失败次数；展开条目可划选复制工具名 |
 | [技能状态](../plugins/skills-inspector/README.md) | 会话 → 技能 | 查看技能来源与会话加载历史 |
-| [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、临时预览与目录树默认展开、右键菜单补充（复制相对路径、查看 Git 变更）、图片预览 Space + 鼠标左键拖动平移 |
+| [文件浏览](../plugins/files/README.md) | 右侧 Sidebar → 文件 | 原生文件树增强、Git 状态、临时预览与目录树默认展开、右键菜单补充（复制完整路径按根分隔符归一、复制相对路径、查看 Git 变更）、图片预览 Space + 鼠标左键拖动平移 |
 | [常驻服务](../plugins/services/README.md) | 模型工具；侧边栏「服务」面板 | 管理有名字、可跨会话存活的服务；注册表在 DSH_HOME，跨工作区可见可停 |
 | [任务看板](../plugins/task-board/README.md) | 侧边栏「任务看板」面板 | 本地 Trello 式看板：卡片跨列拖拽、标题与就地编辑、卡片图片（填入新对话时作为图片附件一并加入），第一列任务可填入工作区新对话（只填草稿不发送，成功后卡片移到第二列首位），最后一列可一键清空 |
 | [交互终端](../plugins/terminal/README.md) | 模型工具；右侧边栏「交互终端」tab（原生级 xterm 渲染） | 键盘直写、尺寸自适应、关 chip 杀进程（二次确认）、流式实时画面；密码回显归程序，提问/审批卡片与终端并存 |

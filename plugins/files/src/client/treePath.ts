@@ -38,3 +38,20 @@ export function workspaceRelativePath(root: string, target: string): string | un
   if (!left.startsWith(right)) return undefined
   return value.slice(prefix.length)
 }
+
+/**
+ * Restore a target-platform absolute path from a slash-relative workspace path.
+ *
+ * The separator follows the root's own spelling and the relative part is
+ * re-joined with the same separator, so the result never mixes `/` and `\`
+ * (upstream `resolveWorkspacePath` joins without normalizing the relative
+ * part, which is why the native directory "copy path" mixes separators).
+ */
+export function absolutePathOf(root: string, relative: string): string {
+  if (relative === '') return root
+  const separator = root.includes('\\') ? '\\' : '/'
+  const base = root.replace(/[\\/]+$/u, '')
+  const value = relative.split('/').join(separator)
+  if (base === '') return `${separator}${value}`
+  return `${base}${separator}${value}`
+}

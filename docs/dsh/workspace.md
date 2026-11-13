@@ -277,10 +277,15 @@ USER_GLOBAL_FILE 定义在内部 render.ts，不在公开入口，插件只能�
   `-c core.fsmonitor=false`、`--no-optional-locks`、`-C cwd`，并以 `rev-parse --show-prefix`
   把仓库根路径转换回 Session cwd。总预算为 3 秒、status stdout 1 MiB、最多投影 2000 项。
 - Git 失败、超时、非仓库或截断只降级 Git 展示，不影响原生树、原生预览或复制路径菜单；Git 状态不承诺实时。
-- 树行右键（2026-11-10 用户需求）：完全使用原生 `ctx.contextMenus` 菜单，插件以贡献身份补充原生没有的项
+- 树行右键（2026-11-10 用户需求）：完全使用原生 `ctx.contextMenus` 菜单，插件以贡献身份补充只读项
   （`contextMenuContributions.ts`，order 300 排在 open-in-app 100 / file-actions 200 之后，首项带分隔线）：
-  文件行「查看 Git 变更」「复制相对路径」，目录行「复制相对路径」；相对路径以 `ctx.sessions.list` 的
-  会话 cwd 为根计算，无 cwd 或越出根不出条目；复制走 `navigator.clipboard` + 原生 `notify` 反馈。
+  文件行「查看 Git 变更」「复制完整路径」「复制相对路径」，目录行「复制完整路径」「复制相对路径」；
+  相对路径以 `ctx.sessions.list` 的会话 cwd 为根计算，无 cwd 或越出根不出条目；复制走
+  `navigator.clipboard` + 原生 `notify` 反馈。
+  2026-11-13 恢复「复制完整路径」（D28）：官方 ui-open-in-app 目录菜单的
+  `resolveWorkspacePath`（`packages/util/workspace-path/src/index.ts`）拼接时不归一相对段的
+  分隔符，Windows 下产出 `/`与`\` 混排路径；本插件用 `absolutePathOf`（treePath.ts）以根的
+  分隔符重拼相对段，上游修复后撤下本项。工作区根行只提供完整路径（即根本身）。
   插件不再拦截 contextmenu/ContextMenu 键，也不再有自绘菜单（0.2.2 起原生行菜单与旧自绘菜单会双开，此问题随之消除）。
   不提供任何写入或 Git 修改动作。
 - Git 变更面板（`gitReviewTab.tsx`）：文件行右键 → `dsh-resource://files-git-review/session/<sessionId>` 资源页签

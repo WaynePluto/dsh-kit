@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { slashPath, workspaceRelativePath } from './treePath.js'
+import { absolutePathOf, slashPath, workspaceRelativePath } from './treePath.js'
 
 describe('workspace tree paths', () => {
   it('accepts the native mixed Windows separators and keeps the relative slash form', () => {
@@ -16,5 +16,17 @@ describe('workspace tree paths', () => {
   it('normalizes only separators, leaving names and spaces intact', () => {
     expect(slashPath('a\\b c\\d')).toBe('a/b c/d')
     expect(workspaceRelativePath('/work/repo', '/work/repo/a b/c.txt')).toBe('a b/c.txt')
+  })
+})
+
+describe('absolutePathOf', () => {
+  it('re-joins the relative part with the root separator, never mixing separators', () => {
+    expect(absolutePathOf('D:\\Documents\\repo', 'plugins/suite')).toBe('D:\\Documents\\repo\\plugins\\suite')
+    expect(absolutePathOf('/work/repo', 'src/a.ts')).toBe('/work/repo/src/a.ts')
+  })
+
+  it('returns the root itself for the workspace-root row and trims trailing separators', () => {
+    expect(absolutePathOf('D:\\Documents\\repo\\', '')).toBe('D:\\Documents\\repo\\')
+    expect(absolutePathOf('D:\\Documents\\repo', 'a.md')).toBe('D:\\Documents\\repo\\a.md')
   })
 })
