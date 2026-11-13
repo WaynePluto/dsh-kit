@@ -21,7 +21,19 @@ llm-retry 默认最多 5 次、初始 500ms、上限 10 秒，可重试码包括
 放弃时调用 next；mode:always 会先 next 再无限退避，不能靠下游监听次数判断预算是否耗尽。
 最终抛错会写 turn/end，失败后已有 nextTurn 队列可能被搁置。
 
-turn-retry 以持久化 turn/end 为依据：
+turn-retry 的在环自动重试（D27，2026-11-13 起）以 `{prepend:true}` 挂到 waterfall 最前：
+
+- `PI_AI_ERROR`（pi-ai 分类兜底码，官方不重试）在同一 turn/step 内由插件重试一次
+  （等待 2 秒、内存计数），之后放行；provider 配置 `mode:'always'` 或已把该码加入
+  `retryableCodes` 时不介入。
+- 官方 normal 模式可重试码封顶 2 次：插件投影 `turnRetryAutoCap` 折叠官方 `llm/retry`
+  事件计数（`step/start`/`turn/end` 重置，与 llm-retry 自身投影同口径），当前 step 计数
+  ≥2 时不调 next 直接返回 undefined，官方 llm-retry 被短路；未超时原样 next，退避与
+  持久化仍由官方完成。
+- 依赖「官方 llm-retry 以普通 ctx.on 注册（不 prepend）」的上游事实，dsh 升级需复核；
+  监听器不追加任何 session 事件。
+
+turn-retry 的事后重试以持久化 turn/end 为依据：
 
 | 结局 | 动作 |
 |---|---|

@@ -8,7 +8,25 @@ dsh 自己已经会自动退避重试失败的模型请求。自动重试最终�
 `turn/end {kind:'error'}` 收尾；手动停止则留下 `aborted{user}`。原版 dsh 在这些结局后
 都要求用户再发一条消息。
 
-本插件的入口是输入框上方的持久重试栏，显示失败原因与重试或继续操作。
+本插件有两层：
+
+- **在环自动重试**（固定行为）：见下节。
+- **事后手动重试**：入口是输入框上方的持久重试栏，显示失败原因与重试或继续操作。
+
+## 在环自动重试
+
+对失败中的模型请求直接介入 `agent/request-error`，两条规则：
+
+1. **未知错误重试一次**：`PI_AI_ERROR` 是 pi-ai 适配器无法分类的上游错误（典型：中转
+   返回不带状态码的非标准文案，如 "all accounts are temporarily unavailable"）。官方
+   llm-retry 对它直接放弃；本插件在同一 turn/step 内自动重试一次（等待 2 秒），仍失败
+   则照常失败、交给重试栏。
+2. **官方瞬态重试封顶 2 次**：dsh 默认对 EMPTY_RESPONSE、RATE_LIMIT、SERVER、TIMEOUT、
+   TRANSPORT 最多退避重试 5 次；本插件把它收紧为 2 次，失败更快落到重试栏交还给你。
+   `mode:'always'` 或你在 provider 里显式配置过的可重试码不受影响。
+
+两条规则都不追加会话事件；封顶计数来自折叠官方 `llm/retry` 事件的投影，未知错误计数
+只在内存中（重启后同一失败会多重试一次）。
 
 ## 工作方式
 
@@ -50,10 +68,10 @@ plugin 溯源、`form:'notice'` 的短通知；会话里显示为折叠 context 
 
 | 部分 | 实现 |
 |---|---|
-| 宿主半 | `src/index.ts`：projection、inbox guard、RPC |
+| 宿主半 | `src/index.ts`：projection、inbox guard、RPC；`src/auto-retry.ts`：在环自动重试 |
 | 浏览器半 | `src/client/`：输入框上方的重试栏 |
-| 状态接缝 | session projection `turnRetry` |
-| 动作接缝 | 认证通道 `/turn-retry/retry` |
+| 状态接缝 | session projection `turnRetry`、封顶投影 `turnRetryAutoCap`（仅宿主内读） |
+| 动作接缝 | 认证通道 `/turn-retry/retry`；`agent/request-error` waterfall（prepend） |
 
 投影形状仍是 failed/stopped/null，`stateVersion` 保持 2。
 
@@ -68,7 +86,7 @@ node scripts/turn-retry-check.mjs
 
 ## 分发与管理
 
-本包不作为独立安装项分发，而是 `@dsh-kit/dsh-plugin-conversation-enhancements`（会话增强 Bundle）的组件。停用后，失败重试、停止继续横幅与排队消息保护消失；dsh 自带的自动重试不受影响。
+本包不作为独立安装项分发，而是 `@dsh-kit/dsh-plugin-conversation-enhancements`（会话增强 Bundle）的组件。停用后，在环自动重试（未知错误一次、封顶 2 次）与失败重试、停止继续横幅、排队消息保护一并消失；dsh 自带的自动重试（默认 5 次）恢复原样。
 可在该 Bundle 详情中单独停用或重新启用本组件；安装、卸载和升级以整个会话增强 Bundle 为单位。
 套件安装后本组件默认启用；后续升级以整个套件为单位，并保留 Bundle 与组件的停用状态；卸载后不会自动补回。
 需要重装时，在 dsh「添加插件」中填写套件目录 `plugins/suite` 的绝对目录。

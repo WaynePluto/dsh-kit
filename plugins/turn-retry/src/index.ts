@@ -17,6 +17,7 @@ import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
 import { foldTurnRetry, INITIAL_STATE } from './projection.js'
+import { installAutoRetry } from './auto-retry.js'
 import {
   BAD_PAYLOAD_CODE, CHANNEL, INTERNAL_CODE, isRetryRequest, isTurnRetryEndpoint,
   PROJECTION_KEY, UNKNOWN_ENDPOINT_CODE,
@@ -40,6 +41,11 @@ export type {
   FailedTurnView, RetryResult, StoppedCause, StoppedTurnView, TurnRetryState, TurnRetryView,
 } from './shared.js'
 export { foldTurnRetry, INITIAL_STATE, stoppedCause } from './projection.js'
+export {
+  AUTO_CAP_INITIAL, AUTO_CAP_PROJECTION_KEY, createAutoRetryInterceptor, foldAutoCap,
+  installAutoRetry, MAX_TRANSIENT_RETRIES, UNKNOWN_RETRY_DELAY_MS,
+} from './auto-retry.js'
+export type { AutoCapState, CancellableWait, RequestErrorPayload } from './auto-retry.js'
 
 /** Cordis 插件名，出现在 dsh 诊断信息中。 */
 export const name = 'dsh-kit-turn-retry'
@@ -202,5 +208,8 @@ export async function apply(ctx: Context): Promise<void> {
     async (endpoint, requestPayload) => await dispatch(ctx, endpoint, requestPayload),
   )
   ctx.effect(() => () => void dispose(), 'turn-retry: channel')
+
+  // 在环自动重试：未知错误一次 + 官方瞬态重试封顶 2（固定行为，无设置）。
+  await installAutoRetry(ctx)
   await ready
 }

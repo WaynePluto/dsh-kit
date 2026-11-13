@@ -95,7 +95,11 @@ function fakeCtx(options: CtxOptions = {}): Built {
         },
       },
     },
-    on: (name: string, listener: (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>) => {
+    on: (
+      name: string,
+      listener: (payload: unknown, next: () => Promise<unknown>) => Promise<unknown>,
+      _options?: { prepend?: boolean },
+    ) => {
       listeners.set(name, listener)
       return () => {}
     },
@@ -110,13 +114,19 @@ function fakeCtx(options: CtxOptions = {}): Built {
 }
 
 describe('apply', () => {
-  it('registers the projection as a wire unit', async () => {
+  it('registers the turn projection as a wire unit', async () => {
     const built = fakeCtx()
     await apply(built.ctx)
-    expect(built.registered).toHaveLength(1)
-    expect(built.registered[0]).toMatchObject({ key: 'turnRetry', stateVersion: 2 })
-    // 实现说明：此处记录相关接口、边界和生命周期约束。（涉及：`wire`）
-    expect(built.registered[0]?.wire).toBeDefined()
+    const turn = built.registered.find(entry => entry.key === 'turnRetry')
+    expect(turn).toMatchObject({ stateVersion: 2 })
+    expect(turn?.wire).toBeDefined()
+  })
+
+  it('registers the auto-retry cap projection and a prepend request-error listener', async () => {
+    const built = fakeCtx()
+    await apply(built.ctx)
+    expect(built.registered.some(entry => entry.key === 'turnRetryAutoCap')).toBe(true)
+    expect(built.listeners.has('agent/request-error')).toBe(true)
   })
 
   it('serves its channel', async () => {
@@ -132,12 +142,6 @@ describe('apply', () => {
     const built = fakeCtx()
     void apply(built.ctx)
     expect(built.registered[0]?.stateSchema?.parse(state)).toEqual(state)
-  })
-
-  it('does not register a live request-error prompt', async () => {
-    const built = fakeCtx()
-    await apply(built.ctx)
-    expect(built.listeners.has('agent/request-error')).toBe(false)
   })
 })
 
